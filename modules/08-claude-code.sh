@@ -3,6 +3,8 @@
 # Dependencies: lib/common.sh, lib/config.sh
 
 install_claude_code() {
+    print_header "Claude Code"
+
     if ! cfg_enabled "claude_code.enabled"; then
         log_info "Claude Code disabled in config — skipping"
         return 0
