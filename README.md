@@ -46,7 +46,7 @@ vim config.yaml
 | **CLI 工具** | fzf、ripgrep、bat、fd、eza、zoxide、jq、btop、tldr、tree、httpie |
 | **Shell** | Zsh、Oh My Zsh、Powerlevel10k、zsh-autosuggestions、zsh-syntax-highlighting、zsh-completions |
 | **終端機** | tmux + TPM + 9 個外掛（Tokyo Night 主題） |
-| **NPM** | Claude Code CLI |
+| **AI 工具** | Claude Code CLI |
 
 每個項目都可以在 `config.yaml` 中個別開關。
 
@@ -103,8 +103,8 @@ shell:
 tmux:
   enabled: false
 
-npm_globals:
-  claude_cli: false
+claude_code:
+  enabled: false
 ```
 
 完整設定說明請參考 [`config.yaml.example`](config.yaml.example)。
@@ -112,7 +112,7 @@ npm_globals:
 ## 架構
 
 ```
-setup.sh 讀取 config.yaml → 依序執行 7 個模組
+setup.sh 讀取 config.yaml → 依序執行 8 個模組
  │
  ├─ 01-core         Homebrew → Git → gh → build tools
  ├─ 02-languages    nvm/Node.js → pyenv/Python → Conda
@@ -120,7 +120,8 @@ setup.sh 讀取 config.yaml → 依序執行 7 個模組
  ├─ 04-docker       Docker
  ├─ 05-cli-tools    11 個 CLI 工具
  ├─ 06-shell        Zsh → Oh My Zsh → P10k → plugins → .zshrc 組裝
- └─ 07-tmux         tmux → TPM → config → plugins
+ ├─ 07-tmux         tmux → TPM → config → plugins
+ └─ 08-claude-code  Claude Code CLI（原生安裝）
 ```
 
 ### .zshrc Fragment 系統
@@ -171,7 +172,8 @@ env-setup/
 │   ├── 04-docker.sh
 │   ├── 05-cli-tools.sh
 │   ├── 06-shell.sh
-│   └── 07-tmux.sh
+│   ├── 07-tmux.sh
+│   └── 08-claude-code.sh
 ├── configs/                  # 設定檔模板
 │   ├── zshrc/                #   .zshrc fragments
 │   ├── tmux/                 #   tmux 設定

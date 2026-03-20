@@ -225,38 +225,6 @@ run_module() {
 }
 
 # =============================================================================
-# NPM globals
-# =============================================================================
-install_npm_globals() {
-    if ! cfg_enabled "npm_globals.claude_cli"; then
-        return 0
-    fi
-
-    # npm must be available (via nvm/fnm)
-    # Try to source nvm/fnm in case they were just installed (disable nounset for nvm)
-    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-    set +u
-    # shellcheck source=/dev/null
-    [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null
-    command -v fnm &>/dev/null && eval "$(fnm env)" 2>/dev/null
-    set -u
-
-    if ! command_exists npm; then
-        log_warn "npm not found — skipping global npm packages"
-        return 0
-    fi
-
-    print_header "NPM Global Packages"
-
-    if npm list -g @anthropic-ai/claude-code &>/dev/null; then
-        log_success "claude-code already installed globally"
-    else
-        log_info "Installing @anthropic-ai/claude-code..."
-        dry_run_cmd npm install -g @anthropic-ai/claude-code
-    fi
-}
-
-# =============================================================================
 # Verification
 # =============================================================================
 run_verification() {
@@ -341,8 +309,8 @@ run_module "05-cli-tools"    "install_cli_tools"
 run_module "06-shell"        "install_shell"
 run_module "07-tmux"         "install_tmux"
 
-# NPM globals (depends on node being available)
-install_npm_globals
+# Claude Code (standalone — no Node.js dependency)
+run_module "08-claude-code" "install_claude_code"
 
 # Verification
 run_verification
