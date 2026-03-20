@@ -116,7 +116,7 @@ _apply_env_overrides() {
 # Export all CFG_* variables to the environment
 _export_cfg_vars() {
     local var
-    while IFS= read -r var; do
+    for var in "${!CFG_@}"; do
         export "${var?}"
-    done < <(compgen -v | grep '^CFG_')
+    done
 }

@@ -95,12 +95,8 @@ yaml_parse() {
             depth = indent + 1
 
             if (val_part != "") {
-                # Scalar value
+                # Scalar value — build key from stack 0..indent
                 val_part = strip_quotes(val_part)
-                full_key = build_key(indent + 1)
-                # Remove trailing key we just set since this is a leaf
-                full_key = build_key(indent) "_" key_part
-                # Actually just build from 0..indent
                 full_key = ""
                 for (i = 0; i <= indent; i++) {
                     if (i > 0) full_key = full_key "_"
@@ -137,13 +133,21 @@ yaml_parse() {
 }
 
 # =============================================================================
+# _cfg_varname — Convert dot-path to CFG_ variable name (no fork)
+# =============================================================================
+_cfg_varname() {
+    local path="$1"
+    # Replace . and - with _, then uppercase via tr (single fork)
+    echo "CFG_$(echo "$path" | tr '.\-a-z' '__A-Z')"
+}
+
+# =============================================================================
 # cfg_get — Get a config value by dot-path
 # Usage: cfg_get "languages.python.version"
 # =============================================================================
 cfg_get() {
-    local dotpath="$1"
     local varname
-    varname="CFG_$(echo "$dotpath" | tr '.' '_' | tr '-' '_' | tr '[:lower:]' '[:upper:]')"
+    varname="$(_cfg_varname "$1")"
     echo "${!varname:-}"
 }
 
@@ -153,8 +157,8 @@ cfg_get() {
 # =============================================================================
 cfg_enabled() {
     local val
-    val="$(cfg_get "$1" | tr '[:upper:]' '[:lower:]')"
-    [[ "$val" == "true" ]]
+    val="$(cfg_get "$1")"
+    [[ "${val}" == "true" ]] || [[ "${val}" == "True" ]] || [[ "${val}" == "TRUE" ]]
 }
 
 # =============================================================================
@@ -162,9 +166,8 @@ cfg_enabled() {
 # Usage: cfg_list "cli_tools.packages"
 # =============================================================================
 cfg_list() {
-    local dotpath="$1"
     local base_var
-    base_var="CFG_$(echo "$dotpath" | tr '.' '_' | tr '-' '_' | tr '[:lower:]' '[:upper:]')"
+    base_var="$(_cfg_varname "$1")"
     local count_var="${base_var}_COUNT"
     local count="${!count_var:-0}"
 

@@ -141,12 +141,13 @@ _install_conda() {
     print_header "Conda"
 
     # Source conda if already installed but not in PATH (disable nounset for conda init)
+    local brew_prefix
+    brew_prefix="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
+
     set +u
     if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
         . "$HOME/miniconda3/etc/profile.d/conda.sh"
     elif is_macos; then
-        local brew_prefix
-        brew_prefix="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
         if [[ -f "$brew_prefix/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]]; then
             . "$brew_prefix/Caskroom/miniconda/base/etc/profile.d/conda.sh"
         fi
@@ -163,10 +164,6 @@ _install_conda() {
 
     if is_macos; then
         dry_run_cmd brew install --cask miniconda
-
-        # Detect correct Homebrew Caskroom path
-        local brew_prefix
-        brew_prefix="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
         local conda_path="$brew_prefix/Caskroom/miniconda/base"
         if [[ -f "$conda_path/etc/profile.d/conda.sh" ]]; then
             . "$conda_path/etc/profile.d/conda.sh"

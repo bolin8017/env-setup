@@ -37,7 +37,8 @@ setup_logging() {
 # Internal: write to log file and stdout
 _log() {
     local msg="$1"
-    echo -e "$msg" | tee -a "$INSTALL_LOG"
+    echo -e "$msg"
+    echo -e "$msg" >> "$INSTALL_LOG"
 }
 
 log_info() {
@@ -67,31 +68,35 @@ print_header() {
 # Platform detection
 # =============================================================================
 detect_os() {
+    if [[ -n "${_CACHED_OS:-}" ]]; then echo "$_CACHED_OS"; return; fi
     case "$(uname -s)" in
-        Darwin) echo "macos" ;;
+        Darwin) _CACHED_OS="macos" ;;
         Linux)
             if grep -qi microsoft /proc/version 2>/dev/null || \
                grep -qi wsl /proc/version 2>/dev/null; then
-                echo "wsl"
+                _CACHED_OS="wsl"
             else
-                echo "linux"
+                _CACHED_OS="linux"
             fi
             ;;
-        *) echo "unknown" ;;
+        *) _CACHED_OS="unknown" ;;
     esac
+    echo "$_CACHED_OS"
 }
 
 detect_arch() {
+    if [[ -n "${_CACHED_ARCH:-}" ]]; then echo "$_CACHED_ARCH"; return; fi
     case "$(uname -m)" in
-        x86_64)  echo "amd64" ;;
-        aarch64) echo "arm64" ;;
-        arm64)   echo "arm64" ;;
-        *)       uname -m ;;
+        x86_64)  _CACHED_ARCH="amd64" ;;
+        aarch64) _CACHED_ARCH="arm64" ;;
+        arm64)   _CACHED_ARCH="arm64" ;;
+        *)       _CACHED_ARCH="$(uname -m)" ;;
     esac
+    echo "$_CACHED_ARCH"
 }
 
 is_macos() { [[ "$(detect_os)" == "macos" ]]; }
-is_linux() { [[ "$(detect_os)" == "linux" ]] || [[ "$(detect_os)" == "wsl" ]]; }
+is_linux() { local os; os="$(detect_os)"; [[ "$os" == "linux" ]] || [[ "$os" == "wsl" ]]; }
 is_wsl()   { [[ "$(detect_os)" == "wsl" ]]; }
 
 # =============================================================================

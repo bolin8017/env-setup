@@ -65,15 +65,6 @@ _ubuntu_version() {
 # Uses the gierens.de apt repository on older Ubuntu.
 # =============================================================================
 _install_eza() {
-    if ! cfg_enabled "cli_tools.eza"; then
-        return 0
-    fi
-
-    if command_exists eza; then
-        log_success "eza already installed"
-        return 0
-    fi
-
     log_info "Installing eza..."
 
     if is_macos; then
@@ -110,15 +101,6 @@ _install_eza() {
 # install_zoxide — On older Ubuntu it may not be in apt; fall back to installer
 # =============================================================================
 _install_zoxide() {
-    if ! cfg_enabled "cli_tools.zoxide"; then
-        return 0
-    fi
-
-    if command_exists zoxide; then
-        log_success "zoxide already installed"
-        return 0
-    fi
-
     log_info "Installing zoxide..."
 
     if is_macos; then
