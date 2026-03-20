@@ -185,7 +185,11 @@ echo ""
 # Docker
 # =============================================================================
 echo -e "${BOLD}Docker${NC}"
-check_cmd docker    "docker"
+if [[ "${SKIP_DOCKER:-}" == "true" ]]; then
+    check_skip "docker" "SKIP_DOCKER=true"
+else
+    check_cmd docker    "docker"
+fi
 echo ""
 
 # =============================================================================
