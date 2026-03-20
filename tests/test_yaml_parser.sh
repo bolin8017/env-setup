@@ -166,7 +166,7 @@ assert_eq "true"  "$(cfg_get "docker.enabled")"            "real config: docker 
 assert_eq "true"  "$(cfg_get "cli_tools.fzf")"             "real config: fzf enabled"
 assert_eq "true"  "$(cfg_get "shell.oh_my_zsh")"           "real config: oh_my_zsh enabled"
 assert_eq "true"  "$(cfg_get "tmux.tpm")"                  "real config: tpm enabled"
-assert_eq "true"  "$(cfg_get "npm_globals.claude_cli")"    "real config: claude_cli enabled"
+assert_eq "true"  "$(cfg_get "claude_code.enabled")"       "real config: claude_code enabled"
 
 real_plugins="$(cfg_list "shell.plugins.external")"
 assert_eq "3" "$(echo "$real_plugins" | wc -l | tr -d ' ')" "real config: 3 external plugins"

@@ -46,7 +46,7 @@ vim config.yaml
 | **CLI 工具** | fzf、ripgrep、bat、fd、eza、zoxide、jq、btop、tldr、tree、httpie |
 | **Shell** | Zsh、Oh My Zsh、Powerlevel10k、zsh-autosuggestions、zsh-syntax-highlighting、zsh-completions |
 | **終端機** | tmux + TPM + 9 個外掛（Tokyo Night 主題） |
-| **NPM** | Claude Code CLI |
+| **AI 工具** | Claude Code CLI |
 
 每個項目都可以在 `config.yaml` 中個別開關。
 
@@ -103,8 +103,8 @@ shell:
 tmux:
   enabled: false
 
-npm_globals:
-  claude_cli: false
+claude_code:
+  enabled: false
 ```
 
 完整設定說明請參考 [`config.yaml.example`](config.yaml.example)。

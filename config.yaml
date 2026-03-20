@@ -160,8 +160,9 @@ tmux:
   auto_install_plugins: true
 
 # -----------------------------------------------------------------------------
-# Global npm packages (installed only when languages.node.enabled is true)
+# Claude Code — AI-powered coding assistant CLI
+# Installed via native installer (no Node.js dependency)
+# https://code.claude.com/docs/setup
 # -----------------------------------------------------------------------------
-npm_globals:
-  # Claude Code CLI (@anthropic-ai/claude-code)
-  claude_cli: true
+claude_code:
+  enabled: true
