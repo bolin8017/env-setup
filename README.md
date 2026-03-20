@@ -112,7 +112,7 @@ claude_code:
 ## 架構
 
 ```
-setup.sh 讀取 config.yaml → 依序執行 7 個模組
+setup.sh 讀取 config.yaml → 依序執行 8 個模組
  │
  ├─ 01-core         Homebrew → Git → gh → build tools
  ├─ 02-languages    nvm/Node.js → pyenv/Python → Conda
@@ -120,7 +120,8 @@ setup.sh 讀取 config.yaml → 依序執行 7 個模組
  ├─ 04-docker       Docker
  ├─ 05-cli-tools    11 個 CLI 工具
  ├─ 06-shell        Zsh → Oh My Zsh → P10k → plugins → .zshrc 組裝
- └─ 07-tmux         tmux → TPM → config → plugins
+ ├─ 07-tmux         tmux → TPM → config → plugins
+ └─ 08-claude-code  Claude Code CLI（原生安裝）
 ```
 
 ### .zshrc Fragment 系統
@@ -171,7 +172,8 @@ env-setup/
 │   ├── 04-docker.sh
 │   ├── 05-cli-tools.sh
 │   ├── 06-shell.sh
-│   └── 07-tmux.sh
+│   ├── 07-tmux.sh
+│   └── 08-claude-code.sh
 ├── configs/                  # 設定檔模板
 │   ├── zshrc/                #   .zshrc fragments
 │   ├── tmux/                 #   tmux 設定

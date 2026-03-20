@@ -225,24 +225,6 @@ run_module() {
 }
 
 # =============================================================================
-# Claude Code
-# =============================================================================
-install_claude_code() {
-    if ! cfg_enabled "claude_code.enabled"; then
-        return 0
-    fi
-
-    print_header "Claude Code"
-
-    if command_exists claude; then
-        log_success "Claude Code already installed"
-    else
-        log_info "Installing Claude Code via native installer..."
-        dry_run_cmd bash -c "curl -fsSL https://claude.ai/install.sh | bash"
-    fi
-}
-
-# =============================================================================
 # Verification
 # =============================================================================
 run_verification() {
@@ -328,7 +310,7 @@ run_module "06-shell"        "install_shell"
 run_module "07-tmux"         "install_tmux"
 
 # Claude Code (standalone — no Node.js dependency)
-install_claude_code
+run_module "08-claude-code" "install_claude_code"
 
 # Verification
 run_verification
