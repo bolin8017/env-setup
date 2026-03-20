@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # 07-tmux.sh — tmux installation, TPM, config deployment, plugin install
-# Rewritten from tmux-config/install.sh.
-# Simplified: only apt (Ubuntu/WSL) + brew (macOS). No dnf/yum/pacman/zypper/apk.
-#
 # Dependencies: lib/common.sh, lib/config.sh, lib/dryrun.sh, lib/package.sh
-# All sourced by setup.sh before this module runs.
 # ENV_SETUP_DIR must be set to the repo root by setup.sh.
 
 # =============================================================================

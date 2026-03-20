@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # 05-cli-tools.sh — Install modern CLI tools (fzf, ripgrep, bat, fd, eza, etc.)
-# Merged from dev-env-setup/modules/05-cli-tools.sh and
-# shell-setup-automation/scripts/install_plugins.sh (install_modern_tools).
-#
 # Dependencies: lib/common.sh, lib/config.sh, lib/dryrun.sh, lib/package.sh
-# All sourced by setup.sh before this module runs.
 
 # =============================================================================
 # Tool registry — "config_key:brew_pkg:apt_pkg:check_cmd"

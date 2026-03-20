@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 # 06-shell.sh — Zsh, Oh My Zsh, Powerlevel10k, plugins, and shell configuration
-# Rewritten by combining:
-#   - shell-setup-automation/scripts/install_oh_my_zsh.sh
-#   - shell-setup-automation/scripts/install_p10k.sh
-#   - shell-setup-automation/scripts/install_plugins.sh (plugin install)
-#   - shell-setup-automation/install.sh (config deploy + chsh flow)
-#
 # Dependencies: lib/common.sh, lib/config.sh, lib/dryrun.sh, lib/package.sh
-# All sourced by setup.sh before this module runs.
 # ENV_SETUP_DIR must be set to the repo root by setup.sh.
 
 # =============================================================================

@@ -37,13 +37,7 @@ _find_config_file() {
         return 0
     fi
 
-    # 3. Default config shipped with the repo
-    if [[ -f "${project_root}/configs/default.yaml" ]]; then
-        echo "${project_root}/configs/default.yaml"
-        return 0
-    fi
-
-    log_error "No config file found"
+    log_error "No config file found (searched: CLI path, ${project_root}/config.yaml)"
     return 1
 }
 
@@ -58,7 +52,16 @@ load_config() {
     log_info "Loading config from: $config_file"
 
     # Parse YAML into CFG_* variables
-    eval "$(yaml_parse "$config_file")"
+    local parsed
+    parsed="$(yaml_parse "$config_file")" || {
+        log_error "Failed to parse config file: $config_file"
+        return 1
+    }
+    if [[ -z "$parsed" ]]; then
+        log_error "Config file parsed to empty output: $config_file"
+        return 1
+    fi
+    eval "$parsed"
 
     # Apply environment variable overrides for backward compat
     _apply_env_overrides

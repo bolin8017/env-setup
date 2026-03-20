@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # yaml.sh — Lightweight YAML parser using awk
 # Parses simple YAML into flat CFG_* shell variables.
-# Supports scalars, nested keys (2-space indent, up to 4 levels), lists, booleans, comments.
+# Supports scalars, nested keys (2-space indent), lists, booleans, comments.
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     set -euo pipefail
@@ -23,7 +23,6 @@ yaml_parse() {
     awk '
     BEGIN {
         depth = 0
-        list_counts_len = 0
     }
 
     # Skip blank lines and pure comment lines

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # common.sh — Core utilities: logging, platform detection, shell helpers
-# Sourced by all other scripts in the env-setup monorepo.
+# Sourced by all other scripts in the env-setup project.
 
 # Guard: only apply strict mode when run standalone
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -54,7 +54,10 @@ log_warn() {
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1" | tee -a "$ERROR_LOG" >&2
+    local msg="${RED}[ERROR]${NC} $1"
+    echo -e "$msg" >&2
+    echo -e "$msg" >> "$ERROR_LOG"
+    echo -e "$msg" >> "$INSTALL_LOG"
 }
 
 print_header() {

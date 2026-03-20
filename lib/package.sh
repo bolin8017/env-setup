@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # package.sh — Cross-platform package management abstraction
-# Wraps brew/apt/dnf with a unified interface. Respects dry-run mode.
+# Wraps brew/apt with a unified interface (dnf/yum fallback for pkg_install only).
+# Respects dry-run mode.
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     set -euo pipefail

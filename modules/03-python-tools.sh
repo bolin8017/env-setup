@@ -54,6 +54,11 @@ _install_uv() {
 # Main entry point
 # =============================================================================
 install_python_tools() {
+    if ! cfg_enabled "languages.python.enabled"; then
+        log_info "Skipping Python tools (Python is disabled)"
+        return 0
+    fi
+
     print_header "Python Tools"
 
     if cfg_enabled "python_tools.jupyter"; then

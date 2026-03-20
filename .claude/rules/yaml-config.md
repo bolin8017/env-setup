@@ -18,4 +18,4 @@ paths:
   # Section Name — brief description
   # -----------------------------------------------------------------------------
   ```
-- The YAML parser (`lib/yaml_parser.sh`) is pure bash/awk — do not use advanced YAML features (anchors, merge keys, multi-line strings)
+- The YAML parser (`lib/yaml.sh`) is pure bash/awk — do not use advanced YAML features (anchors, merge keys, multi-line strings)
