@@ -57,7 +57,9 @@ backup_configs() {
         log_success "Backup created: $backup_path"
     else
         log_warn "No configuration files found to back up"
-        [[ "${DRY_RUN:-false}" != "true" ]] && rm -rf "$backup_path"
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            rm -rf "$backup_path"
+        fi
     fi
 }
 
