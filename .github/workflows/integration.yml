@@ -26,14 +26,14 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      # Docker install fails in CI (no systemd on runners); skip it
+      SKIP_DOCKER: "true"
     steps:
       - uses: actions/checkout@v4
 
       - name: Run full installation
         run: bash setup.sh --auto-yes
-        env:
-          # Docker install fails in CI (no systemd); skip it
-          SKIP_DOCKER: "true"
 
       - name: Run verification
         run: bash scripts/verify.sh
