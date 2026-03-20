@@ -1,0 +1,167 @@
+# =============================================================================
+# env-setup configuration — fully commented reference
+# =============================================================================
+#
+# Copy this file to config.yaml and customise as needed.
+# Every option shown below is the DEFAULT value; you only need to include
+# lines you want to change.
+#
+# Booleans: true / false
+# Strings:  quoted ("lts", "3.12")
+# Lists:    YAML sequences (- item)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# General behaviour
+# -----------------------------------------------------------------------------
+general:
+  # Skip all interactive prompts and assume "yes"
+  auto_yes: true
+
+  # Print what *would* be done without making any changes
+  dry_run: false
+
+  # Back up existing dotfiles before overwriting (~/.config/env-setup/backups/)
+  backup: true
+
+# -----------------------------------------------------------------------------
+# Core toolchain — installed first because later modules depend on them
+# -----------------------------------------------------------------------------
+core:
+  # macOS: install Homebrew; Linux: ensure apt is up to date
+  homebrew: true
+
+  # Configure git defaults (user, aliases, delta pager)
+  git: true
+
+  # Install the GitHub CLI (gh)
+  github_cli: true
+
+  # macOS: Xcode Command Line Tools; Linux: build-essential, cmake, pkg-config
+  build_tools: true
+
+# -----------------------------------------------------------------------------
+# Programming languages
+# -----------------------------------------------------------------------------
+languages:
+  node:
+    # Install Node.js via nvm (Node Version Manager)
+    enabled: true
+    # Version: "lts", "latest", or a specific version like "20.11.0"
+    version: "lts"
+
+  python:
+    # Install Python via pyenv
+    enabled: true
+    # Version: any version string supported by pyenv (e.g. "3.12", "3.11.7")
+    version: "3.12"
+
+  conda:
+    # Install Miniconda — disabled by default (use pyenv + venv instead)
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# Python ecosystem tools (installed only when languages.python.enabled is true)
+# -----------------------------------------------------------------------------
+python_tools:
+  # JupyterLab — interactive notebooks
+  jupyter: true
+
+  # Poetry — dependency management & packaging
+  poetry: true
+
+  # uv — ultra-fast pip replacement from Astral
+  uv: true
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker:
+  # Install Docker Engine (Linux) or Docker Desktop (macOS)
+  enabled: true
+
+# -----------------------------------------------------------------------------
+# CLI tools — modern Unix replacements and productivity utilities
+# -----------------------------------------------------------------------------
+cli_tools:
+  # fzf — fuzzy finder for files, history, and more
+  fzf: true
+
+  # ripgrep (rg) — blazing-fast recursive grep
+  ripgrep: true
+
+  # bat — cat with syntax highlighting and line numbers
+  bat: true
+
+  # fd — user-friendly alternative to find
+  fd: true
+
+  # eza — modern replacement for ls (colours, icons, git status)
+  eza: true
+
+  # zoxide (z) — smarter cd that learns your habits
+  zoxide: true
+
+  # jq — command-line JSON processor
+  jq: true
+
+  # btop — resource monitor (CPU, RAM, disk, network)
+  btop: true
+
+  # tldr — simplified man pages with practical examples
+  tldr: true
+
+  # tree — directory listing in tree format
+  tree: true
+
+  # httpie (http/https) — human-friendly HTTP client
+  httpie: true
+
+# -----------------------------------------------------------------------------
+# Shell — Zsh + Oh My Zsh + Powerlevel10k
+# -----------------------------------------------------------------------------
+shell:
+  # Install zsh if not already present
+  install_zsh: true
+
+  # Change the default login shell to zsh (requires sudo on Linux)
+  set_default_shell: true
+
+  # Install Oh My Zsh framework
+  oh_my_zsh: true
+
+  # Install the Powerlevel10k prompt theme
+  powerlevel10k: true
+
+  plugins:
+    # Oh My Zsh built-in plugins (no installation needed)
+    builtin:
+      - git           # git aliases and helpers
+      - web-search    # search Google/DuckDuckGo from the terminal
+      - extract       # one command to extract any archive format
+
+    # Third-party plugins (cloned into $ZSH_CUSTOM/plugins/)
+    external:
+      - zsh-autosuggestions       # fish-like inline suggestions
+      - zsh-syntax-highlighting   # real-time command colouring
+      - zsh-completions           # extra completion definitions
+
+# -----------------------------------------------------------------------------
+# tmux — terminal multiplexer
+# -----------------------------------------------------------------------------
+tmux:
+  # Install tmux
+  enabled: true
+
+  # Install TPM (Tmux Plugin Manager)
+  tpm: true
+
+  # Run TPM install automatically after setting up .tmux.conf
+  auto_install_plugins: true
+
+# -----------------------------------------------------------------------------
+# Global npm packages (installed only when languages.node.enabled is true)
+# -----------------------------------------------------------------------------
+npm_globals:
+  # Claude Code CLI (@anthropic-ai/claude-code)
+  claude_cli: true
