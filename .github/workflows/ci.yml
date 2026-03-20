@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: shellcheck -x setup.sh bootstrap.sh lib/*.sh modules/*.sh scripts/*.sh
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck (needed by test_shellcheck.sh)
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run test suite
+        run: bash tests/run_all.sh
+
+  dry-run:
+    name: Dry Run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run dry-run
+        run: bash setup.sh --dry-run --auto-yes
+
+  yaml-validate:
+    name: Validate YAML Config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: config.yaml and config.yaml.example must be identical
+        run: diff config.yaml config.yaml.example
+
+      - name: Validate YAML syntax
+        run: python3 -c "import yaml; yaml.safe_load(open('config.yaml.example'))"

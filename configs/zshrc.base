@@ -1,0 +1,3 @@
+# Managed by env-setup. Customizations go in ~/.config/zsh/custom/*.zsh
+for f in "${HOME}/.config/zsh/fragments"/*.zsh(N); do source "$f"; done
+for f in "${HOME}/.config/zsh/custom"/*.zsh(N); do source "$f"; done

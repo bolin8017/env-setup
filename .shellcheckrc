@@ -1,0 +1,4 @@
+# Allow sourcing from paths that don't exist at check time
+disable=SC1091
+# Allow checking exit codes via $? (used in some modules)
+disable=SC2181

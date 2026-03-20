@@ -1,0 +1,46 @@
+name: Integration Tests
+
+on:
+  # Weekly on Monday at 02:00 UTC
+  schedule:
+    - cron: '0 2 * * 1'
+  # Manual trigger from GitHub UI
+  workflow_dispatch:
+  # Also run on PRs that touch installer code
+  pull_request:
+    branches: [main]
+    paths:
+      - 'setup.sh'
+      - 'lib/**'
+      - 'modules/**'
+      - 'configs/**'
+      - 'config.yaml'
+      - 'config.yaml.example'
+
+jobs:
+  install:
+    name: Full Install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run full installation
+        run: bash setup.sh --auto-yes
+        env:
+          # Docker install fails in CI (no systemd); skip it
+          SKIP_DOCKER: "true"
+
+      - name: Run verification
+        run: bash scripts/verify.sh
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.os }}
+          path: ~/.env-setup/

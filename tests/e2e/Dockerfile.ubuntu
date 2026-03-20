@@ -1,0 +1,25 @@
+FROM ubuntu:24.04
+
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Minimal bootstrap dependencies (same as what bootstrap.sh expects)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user (simulates real usage)
+RUN useradd -m -s /bin/bash testuser \
+    && echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER testuser
+WORKDIR /home/testuser
+
+# Copy the project
+COPY --chown=testuser:testuser . /home/testuser/env-setup
+
+WORKDIR /home/testuser/env-setup
+
+# Run the installer
+CMD ["bash", "tests/e2e/run_e2e.sh"]
