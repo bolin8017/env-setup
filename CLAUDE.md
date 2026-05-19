@@ -40,7 +40,8 @@ env-setup/
 │   ├── zshrc.base        # Skeleton .zshrc that sources fragments
 │   ├── aliases.zsh       # Custom shell aliases
 │   ├── tmux/             # tmux.conf + macOS overrides + dev layout
-│   └── p10k/             # Powerlevel10k configuration
+│   ├── p10k/             # Powerlevel10k configuration
+│   └── ccstatusline/     # ccstatusline widget config (deployed by 08-claude-code)
 ├── scripts/              # Maintenance and helper scripts
 │   └── verify.sh         # Post-install verification
 └── .github/workflows/    # CI — shellcheck + dry-run on macOS & Ubuntu
