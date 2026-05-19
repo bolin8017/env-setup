@@ -4,11 +4,39 @@
 
 # =============================================================================
 # _create_user_dir — Create one directory under $HOME (idempotent, best-effort)
-# Stub: validation logic is added in a follow-up commit.
+# Rejects absolute paths, ~/ prefix, and '..' components per schema contract.
+# Refuses to clobber an existing non-directory target.
 # =============================================================================
 _create_user_dir() {
     local rel_path="$1"
+
+    if [[ "$rel_path" == /* ]]; then
+        log_warn "Absolute paths not allowed in user_dirs.paths: $rel_path (skipped)"
+        return 0
+    fi
+
+    # shellcheck disable=SC2088  # matching literal '~', not expanding it
+    if [[ "$rel_path" == "~" ]] || [[ "$rel_path" == "~/"* ]]; then
+        log_warn "Drop the leading '~/' — paths are already relative to \$HOME: $rel_path (skipped)"
+        return 0
+    fi
+
+    if [[ "$rel_path" == *".."* ]]; then
+        log_warn "Paths containing '..' not allowed: $rel_path (skipped)"
+        return 0
+    fi
+
     local target="$HOME/$rel_path"
+
+    if [[ -e "$target" ]] && [[ ! -d "$target" ]]; then
+        log_warn "Path exists but is not a directory: $target (skipped)"
+        return 0
+    fi
+
+    if [[ -d "$target" ]]; then
+        log_info "Already exists: $target"
+        return 0
+    fi
 
     if dry_run_mkdir "$target"; then
         log_success "Created: $target"

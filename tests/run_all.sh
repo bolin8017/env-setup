@@ -25,6 +25,7 @@ tests=(
     "test_modules.sh"
     "test_config_consistency.sh"
     "test_fragments.sh"
+    "test_user_dirs.sh"
     "test_shellcheck.sh"
 )
 
