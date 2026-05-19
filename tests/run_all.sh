@@ -26,6 +26,7 @@ tests=(
     "test_config_consistency.sh"
     "test_fragments.sh"
     "test_user_dirs.sh"
+    "test_ccstatusline.sh"
     "test_shellcheck.sh"
 )
 
