@@ -167,6 +167,16 @@ tmux:
 claude_code:
   enabled: true
 
+  # ccstatusline — status line formatter for Claude Code
+  # https://github.com/sirmalloc/ccstatusline
+  # Runs on demand via `npx -y ccstatusline@latest`, so no package install
+  # is performed here. Two config files are deployed:
+  #   1. ~/.config/ccstatusline/settings.json (widget layout & options)
+  #   2. ~/.claude/settings.json statusLine block (jq-merged, other keys
+  #      preserved)
+  ccstatusline:
+    enabled: true
+
 # -----------------------------------------------------------------------------
 # User directories — create personal folders under $HOME
 # -----------------------------------------------------------------------------
