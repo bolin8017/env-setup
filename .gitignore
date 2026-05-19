@@ -22,3 +22,6 @@ Thumbs.db
 
 # Backup artifacts
 backups/
+
+# Superpowers brainstorming/planning artifacts (local-only by convention)
+docs/superpowers/

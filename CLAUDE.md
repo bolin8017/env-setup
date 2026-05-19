@@ -33,7 +33,8 @@ env-setup/
 │   ├── 05-cli-tools.sh   # fzf, ripgrep, bat, fd, eza, zoxide, etc.
 │   ├── 06-shell.sh       # Zsh, Oh My Zsh, Powerlevel10k, plugins
 │   ├── 07-tmux.sh        # tmux + TPM
-│   └── 08-claude-code.sh # Claude Code CLI (native installer)
+│   ├── 08-claude-code.sh # Claude Code CLI (native installer)
+│   └── 09-user-dirs.sh   # Create personal directories under $HOME
 ├── configs/              # Dotfile templates and fragments
 │   ├── zshrc/            # .zshrc fragments (numbered for load order)
 │   ├── zshrc.base        # Skeleton .zshrc that sources fragments

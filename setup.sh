@@ -312,6 +312,9 @@ run_module "07-tmux"         "install_tmux"
 # Claude Code (standalone — no Node.js dependency)
 run_module "08-claude-code" "install_claude_code"
 
+# User directories (no dependencies; runs last so all tools are in place)
+run_module "09-user-dirs" "install_user_dirs"
+
 # Verification
 run_verification
 

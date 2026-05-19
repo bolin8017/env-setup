@@ -34,6 +34,8 @@ declare -A MODULE_MAP=(
     ["05-cli-tools"]="install_cli_tools"
     ["06-shell"]="install_shell"
     ["07-tmux"]="install_tmux"
+    ["08-claude-code"]="install_claude_code"
+    ["09-user-dirs"]="install_user_dirs"
 )
 
 for module in "${!MODULE_MAP[@]}"; do

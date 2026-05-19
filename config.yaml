@@ -166,3 +166,18 @@ tmux:
 # -----------------------------------------------------------------------------
 claude_code:
   enabled: true
+
+# -----------------------------------------------------------------------------
+# User directories — create personal folders under $HOME
+# -----------------------------------------------------------------------------
+user_dirs:
+  # Create the directories listed below
+  enabled: true
+
+  # Paths are always relative to $HOME. Nested paths like
+  # "Documents/repositories" are created in a single mkdir -p call.
+  paths:
+    - Documents
+    - Downloads
+    - Tools
+    - Documents/repositories
