@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# test_ccstatusline.sh — Tests for ccstatusline integration in 08-claude-code.sh
+# test_ccstatusline.sh — Tests for 08-claude-code.sh ccstatusline integration
+# and the broader ~/.claude/settings.json whitelist merge.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,6 +12,7 @@ source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 source "$PROJECT_ROOT/lib/config.sh"
 
+_setup_tmpdir
 setup_logging
 load_config "$PROJECT_ROOT/config.yaml"
 DRY_RUN="false"
@@ -25,7 +27,7 @@ mkdir -p "$HOME/.config" "$HOME/.claude"
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/modules/08-claude-code.sh"
 
-echo -e "${_T_BOLD}Test: 08-claude-code.sh ccstatusline integration${_T_NC}"
+echo -e "${_T_BOLD}Test: 08-claude-code.sh ccstatusline + settings merge${_T_NC}"
 
 # Reset target paths between suites
 _reset() {
@@ -39,7 +41,12 @@ suite "Template snapshot exists and parses"
 assert_file_exists "$PROJECT_ROOT/configs/ccstatusline/settings.json" \
     "configs/ccstatusline/settings.json is in the repo"
 jq empty "$PROJECT_ROOT/configs/ccstatusline/settings.json" 2>/dev/null
-assert_true "$?" "template is valid JSON"
+assert_true "$?" "ccstatusline template is valid JSON"
+
+assert_file_exists "$PROJECT_ROOT/configs/claude/settings.json" \
+    "configs/claude/settings.json is in the repo"
+jq empty "$PROJECT_ROOT/configs/claude/settings.json" 2>/dev/null
+assert_true "$?" "claude settings template is valid JSON"
 
 # ---------------------------------------------------------------------------
 suite "Disabled config: nothing happens"
@@ -48,9 +55,7 @@ _reset
 CFG_CLAUDE_CODE_CCSTATUSLINE_ENABLED="false" \
     _install_ccstatusline >/dev/null 2>&1
 assert_file_not_exists "$HOME/.config/ccstatusline/settings.json" \
-    "config not deployed when ccstatusline.enabled=false"
-assert_file_not_exists "$HOME/.claude/settings.json" \
-    "settings.json not written when ccstatusline.enabled=false"
+    "ccstatusline widget not deployed when ccstatusline.enabled=false"
 
 # ---------------------------------------------------------------------------
 suite "Deploy: fresh install drops the template byte-identically"
@@ -77,57 +82,56 @@ assert_true "$?" "overwrite restores template content"
 suite "Merge: missing ~/.claude/settings.json creates a fresh file"
 # ---------------------------------------------------------------------------
 _reset
-_merge_claude_statusline >/dev/null 2>&1
+_merge_claude_settings >/dev/null 2>&1
 assert_file_exists "$HOME/.claude/settings.json" "settings.json created"
 jq empty "$HOME/.claude/settings.json" 2>/dev/null
 assert_true "$?" "created file is valid JSON"
 cmd="$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")"
 assert_eq "npx -y ccstatusline@latest" "$cmd" \
-    "statusLine.command is correct"
+    "statusLine.command merged from repo template"
 
 # ---------------------------------------------------------------------------
-suite "Merge: existing keys are preserved"
+suite "Merge: non-whitelisted keys are preserved verbatim"
 # ---------------------------------------------------------------------------
+# settings_merge_keys whitelists env, statusLine, enabledPlugins,
+# skipDangerousModePermissionPrompt, teammateMode. Any other top-level key
+# the user has locally (experimental flags, auth, machine-specific state)
+# must survive the merge untouched.
 _reset
 cat > "$HOME/.claude/settings.json" <<'JSON'
 {
-  "env": { "FOO": "1" },
-  "enabledPlugins": { "plug-a": true },
-  "teammateMode": "tmux"
+  "agentPushNotifEnabled": true,
+  "someCustomKey": "preserve-me",
+  "teammateMode": "in-process"
 }
 JSON
-_merge_claude_statusline >/dev/null 2>&1
-assert_eq "1"     "$(jq -r '.env.FOO'                   "$HOME/.claude/settings.json")" "env.FOO preserved"
-assert_eq "true"  "$(jq -r '.enabledPlugins["plug-a"]'   "$HOME/.claude/settings.json")" "enabledPlugins preserved"
-assert_eq "tmux"  "$(jq -r '.teammateMode'              "$HOME/.claude/settings.json")" "teammateMode preserved"
+_merge_claude_settings >/dev/null 2>&1
+assert_eq "true"        "$(jq -r '.agentPushNotifEnabled' "$HOME/.claude/settings.json")" \
+    "non-whitelisted agentPushNotifEnabled preserved"
+assert_eq "preserve-me" "$(jq -r '.someCustomKey'        "$HOME/.claude/settings.json")" \
+    "non-whitelisted custom key preserved"
+assert_eq "tmux"        "$(jq -r '.teammateMode'         "$HOME/.claude/settings.json")" \
+    "whitelisted teammateMode replaced with repo value"
 assert_eq "npx -y ccstatusline@latest" \
     "$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")" \
-    "statusLine added"
+    "whitelisted statusLine added from repo"
 
 # ---------------------------------------------------------------------------
-suite "Merge: idempotent — already correct, no .bak, no content change"
+suite "Merge: idempotent — already in sync, no .bak, no content change"
 # ---------------------------------------------------------------------------
 _reset
-cat > "$HOME/.claude/settings.json" <<'JSON'
-{
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y ccstatusline@latest",
-    "padding": 0,
-    "refreshInterval": 10
-  }
-}
-JSON
+# Start from a settings.json that already matches the repo's whitelisted keys
+cp "$PROJECT_ROOT/configs/claude/settings.json" "$HOME/.claude/settings.json"
 hash_before="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
-out="$(_merge_claude_statusline 2>&1)"
+out="$(_merge_claude_settings 2>&1)"
 hash_after="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
-assert_eq "$hash_before" "$hash_after" "file content unchanged"
+assert_eq "$hash_before" "$hash_after" "file content unchanged on idempotent run"
 assert_eq "0" "$(find "$HOME/.claude" -name 'settings.json.bak.*' 2>/dev/null | wc -l | tr -d ' ')" \
     "no .bak created for idempotent run"
-assert_contains "$out" "already configured" "logs idempotent skip"
+assert_contains "$out" "already in sync" "logs idempotent skip"
 
 # ---------------------------------------------------------------------------
-suite "Merge: stale statusLine triggers .bak and updates command"
+suite "Merge: stale whitelisted value triggers .bak and update"
 # ---------------------------------------------------------------------------
 _reset
 cat > "$HOME/.claude/settings.json" <<'JSON'
@@ -135,35 +139,32 @@ cat > "$HOME/.claude/settings.json" <<'JSON'
   "statusLine": { "type": "command", "command": "echo old", "padding": 0 }
 }
 JSON
-_merge_claude_statusline >/dev/null 2>&1
+_merge_claude_settings >/dev/null 2>&1
 bak="$(find "$HOME/.claude" -maxdepth 1 -name 'settings.json.bak.*' | head -1)"
-assert_neq "" "$bak" ".bak created"
+assert_neq "" "$bak" ".bak created when whitelisted key changes"
 assert_contains "$(cat "$bak")" "echo old" "old command preserved in .bak"
 assert_eq "npx -y ccstatusline@latest" \
     "$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")" \
-    "command updated to ccstatusline"
+    "statusLine.command updated to repo version"
 
 # ---------------------------------------------------------------------------
 suite "Merge: jq missing → log_warn, no mutation"
 # ---------------------------------------------------------------------------
 _reset
 cat > "$HOME/.claude/settings.json" <<'JSON'
-{ "teammateMode": "tmux" }
+{ "teammateMode": "in-process" }
 JSON
 # Override command_exists to claim jq is missing, then restore so later
 # suites do not see jq as missing. shellcheck disable=SC2317 — both
-# definitions are reached via indirect invocation from _merge_claude_statusline.
+# definitions are reached via indirect invocation from _merge_claude_settings.
 # shellcheck disable=SC2317
 command_exists() { [[ "$1" == "jq" ]] && return 1; builtin command -v "$1" &>/dev/null; }
-out="$(_merge_claude_statusline 2>&1)"
+out="$(_merge_claude_settings 2>&1)"
 # shellcheck disable=SC2317
 command_exists() { command -v "$1" &>/dev/null; }   # restore lib/common.sh original
 assert_contains "$out" "jq" "logs warning mentioning jq"
-# File should be untouched
-assert_eq "tmux" "$(jq -r '.teammateMode' "$HOME/.claude/settings.json")" \
+assert_eq "in-process" "$(jq -r '.teammateMode' "$HOME/.claude/settings.json")" \
     "existing settings.json untouched when jq missing"
-assert_eq "null" "$(jq -r '.statusLine // "null"' "$HOME/.claude/settings.json")" \
-    "no statusLine added when jq missing"
 
 # ---------------------------------------------------------------------------
 suite "Merge: malformed JSON → log_error, file unchanged"
@@ -171,7 +172,7 @@ suite "Merge: malformed JSON → log_error, file unchanged"
 _reset
 echo "{ this is not json" > "$HOME/.claude/settings.json"
 before="$(cat "$HOME/.claude/settings.json")"
-out="$(_merge_claude_statusline 2>&1)"
+out="$(_merge_claude_settings 2>&1)"
 after="$(cat "$HOME/.claude/settings.json")"
 assert_eq "$before" "$after" "malformed file preserved verbatim"
 assert_contains "$out" "ERROR" "log_error emitted"
