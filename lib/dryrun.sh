@@ -47,7 +47,10 @@ dry_run_mkdir() {
 
 # =============================================================================
 # deploy_config — Copy a config file with overwrite protection.
-# If the destination exists and AUTO_YES is not true, ask user before overwriting.
+# Modes (mainstream dpkg/chezmoi style):
+#   KEEP_EXISTING=true → skip if dest exists
+#   AUTO_YES=true      → overwrite without prompting
+#   default            → show a one-line diff summary then ask y/N
 # Fragments (managed files) should use dry_run_cp directly instead.
 # Usage: deploy_config <src> <dest> [<label>]
 # =============================================================================
@@ -62,11 +65,28 @@ deploy_config() {
     fi
 
     if [[ -f "$dest" ]]; then
+        if [[ "${KEEP_EXISTING:-false}" == "true" ]]; then
+            log_info "[SKIP] Keeping existing ${label} (--keep-existing)"
+            return 0
+        fi
+
         if [[ "${AUTO_YES:-false}" == "true" ]]; then
             log_info "Overwriting ${label} (auto-yes)"
-        elif ! ask_yes_no "Overwrite ${dest}?"; then
-            log_info "[SKIP] Keeping existing ${label}"
-            return 0
+        else
+            # Show one-line diff summary so the user can decide informed
+            local src_lines dest_lines
+            src_lines=$(wc -l < "$src" 2>/dev/null || echo "?")
+            dest_lines=$(wc -l < "$dest" 2>/dev/null || echo "?")
+            if cmp -s "$src" "$dest" 2>/dev/null; then
+                log_info "${label}: identical to repo version — skipping"
+                return 0
+            fi
+            log_info "${label}: existing ${dest_lines} lines → repo ${src_lines} lines"
+
+            if ! ask_yes_no "Overwrite ${dest}?"; then
+                log_info "[SKIP] Keeping existing ${label}"
+                return 0
+            fi
         fi
     fi
 

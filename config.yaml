@@ -161,21 +161,36 @@ tmux:
 
 # -----------------------------------------------------------------------------
 # Claude Code — AI-powered coding assistant CLI
-# Installed via native installer (no Node.js dependency)
-# https://code.claude.com/docs/setup
+# Installs the CLI and syncs personal configuration from configs/claude/ so
+# the same Claude Code setup follows you across machines. See
+# config.yaml.example for the full set of available keys and what each does.
 # -----------------------------------------------------------------------------
 claude_code:
   enabled: true
 
-  # ccstatusline — status line formatter for Claude Code
-  # https://github.com/sirmalloc/ccstatusline
-  # Runs on demand via `npx -y ccstatusline@latest`, so no package install
-  # is performed here. Two config files are deployed:
-  #   1. ~/.config/ccstatusline/settings.json (widget layout & options)
-  #   2. ~/.claude/settings.json statusLine block (jq-merged, other keys
-  #      preserved)
   ccstatusline:
     enabled: true
+
+  sync_global_md: true
+  sync_rules: true
+  sync_commands: true
+  sync_agents: true
+
+  settings_merge_keys:
+    - env
+    - statusLine
+    - enabledPlugins
+    - skipDangerousModePermissionPrompt
+    - teammateMode
+
+  register_marketplaces: true
+  marketplaces:
+    - anthropics/claude-plugins-official
+    - obra/superpowers-marketplace
+
+  install_enabled_plugins: true
+
+  sync_mcp_servers: true
 
 # -----------------------------------------------------------------------------
 # User directories — create personal folders under $HOME

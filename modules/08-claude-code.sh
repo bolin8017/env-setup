@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 08-claude-code.sh — Install Claude Code CLI + ccstatusline integration
-# Dependencies: lib/common.sh, lib/config.sh, lib/dryrun.sh
+# 08-claude-code.sh — Install Claude Code CLI and sync personal configuration
+# Dependencies: lib/common.sh, lib/config.sh, lib/dryrun.sh, lib/yaml.sh
 
 # =============================================================================
 # _install_claude_native — Native installer (curl | bash), idempotent
@@ -53,7 +53,7 @@ _install_claude_native() {
 }
 
 # =============================================================================
-# _deploy_ccstatusline_config — Copy template to ~/.config/ccstatusline/
+# _deploy_ccstatusline_config — Copy ccstatusline widget template
 # =============================================================================
 _deploy_ccstatusline_config() {
     local src="${ENV_SETUP_DIR}/configs/ccstatusline/settings.json"
@@ -65,77 +65,239 @@ _deploy_ccstatusline_config() {
 }
 
 # =============================================================================
-# _merge_claude_statusline — jq-merge statusLine into ~/.claude/settings.json
-# Idempotent: skips when .statusLine.command already matches. Mutating
-# writes a timestamped .bak next to the file.
+# _install_ccstatusline — Orchestrate ccstatusline widget step.
+# The ~/.claude/settings.json statusLine block is now handled uniformly by
+# _merge_claude_settings via the settings_merge_keys whitelist.
 # =============================================================================
-_merge_claude_statusline() {
-    local settings="${HOME}/.claude/settings.json"
-    local target_cmd="npx -y ccstatusline@latest"
-
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "[DRY-RUN] Would merge statusLine into ${settings}"
+_install_ccstatusline() {
+    if ! cfg_enabled "claude_code.ccstatusline.enabled"; then
+        log_info "ccstatusline disabled in config — skipping"
         return 0
     fi
 
-    # Case 1: file does not exist — write a minimal fresh one (no jq needed)
-    if [[ ! -f "$settings" ]]; then
-        dry_run_mkdir "$(dirname "$settings")"
-        cat > "$settings" <<'JSON'
-{
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y ccstatusline@latest",
-    "padding": 0,
-    "refreshInterval": 10
-  }
+    print_header "ccstatusline"
+    _deploy_ccstatusline_config
 }
-JSON
-        log_success "Created ${settings} with statusLine block"
+
+# =============================================================================
+# _sync_claude_global_md — Deploy ~/.claude/CLAUDE.md from repo
+# =============================================================================
+_sync_claude_global_md() {
+    if ! cfg_enabled "claude_code.sync_global_md"; then
+        log_info "sync_global_md disabled — skipping"
+        return 0
+    fi
+
+    local src="${ENV_SETUP_DIR}/configs/claude/CLAUDE.md"
+    local dest="${HOME}/.claude/CLAUDE.md"
+
+    dry_run_mkdir "$(dirname "$dest")"
+    deploy_config "$src" "$dest" "global CLAUDE.md"
+}
+
+# =============================================================================
+# _sync_claude_rules — Sync ~/.claude/rules/ from configs/claude/rules/
+# Additive: only deploys files present in the repo; existing user-only rules
+# are preserved.
+# =============================================================================
+_sync_claude_rules() {
+    if ! cfg_enabled "claude_code.sync_rules"; then
+        log_info "sync_rules disabled — skipping"
+        return 0
+    fi
+
+    local src_dir="${ENV_SETUP_DIR}/configs/claude/rules"
+    local dest_dir="${HOME}/.claude/rules"
+
+    if [[ ! -d "$src_dir" ]]; then
+        log_warn "rules source dir not found: ${src_dir}"
+        return 0
+    fi
+
+    dry_run_mkdir "$dest_dir"
+
+    local f
+    shopt -s nullglob
+    for f in "$src_dir"/*.md; do
+        deploy_config "$f" "${dest_dir}/$(basename "$f")" "rule $(basename "$f")"
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
+# _sync_claude_commands — Sync ~/.claude/commands/ from configs/claude/commands/
+# Additive: existing user-only command files are preserved.
+# =============================================================================
+_sync_claude_commands() {
+    if ! cfg_enabled "claude_code.sync_commands"; then
+        log_info "sync_commands disabled — skipping"
+        return 0
+    fi
+
+    local src_dir="${ENV_SETUP_DIR}/configs/claude/commands"
+    local dest_dir="${HOME}/.claude/commands"
+
+    if [[ ! -d "$src_dir" ]]; then
+        log_warn "commands source dir not found: ${src_dir}"
+        return 0
+    fi
+
+    dry_run_mkdir "$dest_dir"
+
+    local f
+    shopt -s nullglob
+    for f in "$src_dir"/*.md; do
+        deploy_config "$f" "${dest_dir}/$(basename "$f")" "command $(basename "$f")"
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
+# _sync_claude_agents — Sync ~/.claude/agents/ from configs/claude/agents/
+# Additive: existing user-only agent files are preserved.
+# =============================================================================
+_sync_claude_agents() {
+    if ! cfg_enabled "claude_code.sync_agents"; then
+        log_info "sync_agents disabled — skipping"
+        return 0
+    fi
+
+    local src_dir="${ENV_SETUP_DIR}/configs/claude/agents"
+    local dest_dir="${HOME}/.claude/agents"
+
+    if [[ ! -d "$src_dir" ]]; then
+        log_warn "agents source dir not found: ${src_dir}"
+        return 0
+    fi
+
+    dry_run_mkdir "$dest_dir"
+
+    local f
+    shopt -s nullglob
+    for f in "$src_dir"/*.md; do
+        deploy_config "$f" "${dest_dir}/$(basename "$f")" "agent $(basename "$f")"
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
+# _merge_claude_settings — Whitelist jq-merge of ~/.claude/settings.json.
+# For each top-level key in claude_code.settings_merge_keys, copies that field
+# from the repo's settings.json into the user's. Other keys (e.g. internal
+# experimental flags) are preserved verbatim. Idempotent: skips if the merged
+# result equals the current file. Backs up before any mutation.
+# =============================================================================
+_merge_claude_settings() {
+    local src="${ENV_SETUP_DIR}/configs/claude/settings.json"
+    local dest="${HOME}/.claude/settings.json"
+
+    if [[ ! -f "$src" ]]; then
+        log_warn "claude settings source not found: ${src}"
+        return 0
+    fi
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "[DRY-RUN] Would merge whitelisted keys into ${dest}"
+        return 0
+    fi
+
+    # KEEP_EXISTING mode: bail out before mutating anything
+    if [[ "${KEEP_EXISTING:-false}" == "true" ]] && [[ -f "$dest" ]]; then
+        log_info "[SKIP] Keeping existing settings.json (--keep-existing)"
+        return 0
+    fi
+
+    dry_run_mkdir "$(dirname "$dest")"
+
+    # Case 1: dest does not exist — copy the source as-is (already whitelisted)
+    if [[ ! -f "$dest" ]]; then
+        cp -p "$src" "$dest"
+        log_success "Created ${dest} from repo template"
         return 0
     fi
 
     # Case 2: jq missing — degrade gracefully
     if ! command_exists jq; then
-        log_warn "jq not found — skipping ~/.claude/settings.json merge."
-        log_warn "Add this block manually:"
-        log_warn '  "statusLine": { "type": "command", "command": "npx -y ccstatusline@latest", "padding": 0, "refreshInterval": 10 }'
+        log_warn "jq not found — skipping ~/.claude/settings.json merge"
         return 0
     fi
 
     # Case 3: malformed JSON — refuse to guess
-    if ! jq empty "$settings" 2>/dev/null; then
-        log_error "${settings} is not valid JSON — skipping merge. Fix the file manually."
+    if ! jq empty "$dest" 2>/dev/null; then
+        log_error "${dest} is not valid JSON — skipping merge. Fix manually."
         return 0
     fi
 
-    # Case 4: idempotent check
-    local current_cmd
-    current_cmd="$(jq -r '.statusLine.command // empty' "$settings" 2>/dev/null)" || true
-    if [[ "$current_cmd" == "$target_cmd" ]]; then
-        log_info "statusLine already configured — skipping merge"
+    # Collect whitelist from config.yaml
+    local keys=()
+    while IFS= read -r k; do
+        [[ -n "$k" ]] && keys+=("$k")
+    done < <(cfg_list "claude_code.settings_merge_keys")
+
+    if [[ ${#keys[@]} -eq 0 ]]; then
+        log_warn "settings_merge_keys is empty in config.yaml — skipping merge"
         return 0
     fi
 
-    # Case 5: mutate — backup, then atomic write
-    local ts
+    # Build jq filter that assigns each whitelisted key from $src[0]
+    local jq_filter='.'
+    local k
+    for k in "${keys[@]}"; do
+        jq_filter="${jq_filter} | .[\"${k}\"] = \$src[0][\"${k}\"]"
+    done
+
+    # Idempotency check: would the merged result equal the current file?
+    local current expected
+    current=$(jq -S . "$dest" 2>/dev/null)
+    expected=$(jq -S --slurpfile src "$src" "$jq_filter" "$dest" 2>/dev/null) || {
+        log_error "jq merge dry-evaluation failed — skipping (no changes made)"
+        return 0
+    }
+    if [[ "$current" == "$expected" ]]; then
+        log_info "claude settings already in sync — skipping"
+        return 0
+    fi
+
+    # Interactive mode: show per-key diff summary then prompt
+    if [[ "${AUTO_YES:-false}" != "true" ]]; then
+        log_info "Settings merge preview (will apply to ${dest}):"
+        local changing=0
+        for k in "${keys[@]}"; do
+            local src_v dst_v
+            src_v=$(jq -Sc --arg k "$k" '.[$k] // null' "$src" 2>/dev/null)
+            dst_v=$(jq -Sc --arg k "$k" '.[$k] // null' "$dest" 2>/dev/null)
+            if [[ "$src_v" != "$dst_v" ]]; then
+                log_info "  ${k}: will change"
+                (( changing += 1 ))
+            else
+                log_info "  ${k}: unchanged"
+            fi
+        done
+        if [[ $changing -eq 0 ]]; then
+            log_info "no whitelisted keys actually changing — skipping"
+            return 0
+        fi
+        if ! ask_yes_no "Apply merge to ${dest}?"; then
+            log_info "[SKIP] Keeping existing settings.json"
+            return 0
+        fi
+    fi
+
+    # Backup before mutation
+    local ts bak
     ts="$(date +%Y%m%d_%H%M%S)"
-    local bak="${settings}.bak.${ts}"
-    if ! cp -p "$settings" "$bak"; then
+    bak="${dest}.bak.${ts}"
+    if ! cp -p "$dest" "$bak"; then
         log_error "Failed to create backup ${bak} — aborting merge"
         return 0
     fi
     log_info "Backed up existing settings.json to ${bak}"
 
-    local tmp="${settings}.tmp.$$"
-    if jq '.statusLine = {
-              type: "command",
-              command: "npx -y ccstatusline@latest",
-              padding: 0,
-              refreshInterval: 10
-          }' "$settings" > "$tmp"; then
-        if mv "$tmp" "$settings"; then
-            log_success "Merged statusLine into ${settings}"
+    # Apply merge atomically
+    local tmp="${dest}.tmp.$$"
+    if jq --slurpfile src "$src" "$jq_filter" "$dest" > "$tmp"; then
+        if mv "$tmp" "$dest"; then
+            log_success "Merged ${#keys[@]} whitelisted keys into ${dest}"
         else
             log_error "Failed to move ${tmp} into place — backup at ${bak}"
             rm -f "$tmp"
@@ -147,21 +309,232 @@ JSON
 }
 
 # =============================================================================
-# _install_ccstatusline — Orchestrate the two ccstatusline-related steps
+# _register_plugin_marketplaces — Run `claude plugin marketplace add` for each
+# entry in claude_code.marketplaces. Idempotent via known_marketplaces.json.
 # =============================================================================
-_install_ccstatusline() {
-    if ! cfg_enabled "claude_code.ccstatusline.enabled"; then
-        log_info "ccstatusline disabled in config — skipping"
+_register_plugin_marketplaces() {
+    if ! cfg_enabled "claude_code.register_marketplaces"; then
+        log_info "register_marketplaces disabled — skipping"
         return 0
     fi
 
-    print_header "ccstatusline"
-    _deploy_ccstatusline_config
-    _merge_claude_statusline
+    if ! command_exists claude; then
+        log_warn "claude CLI not found — cannot register marketplaces"
+        return 0
+    fi
+
+    local marketplaces=()
+    while IFS= read -r m; do
+        [[ -n "$m" ]] && marketplaces+=("$m")
+    done < <(cfg_list "claude_code.marketplaces")
+
+    if [[ ${#marketplaces[@]} -eq 0 ]]; then
+        log_info "no marketplaces declared in config — skipping"
+        return 0
+    fi
+
+    local known="${HOME}/.claude/plugins/known_marketplaces.json"
+    local repo
+    for repo in "${marketplaces[@]}"; do
+        # Idempotency: already registered?
+        if [[ -f "$known" ]] && command_exists jq; then
+            local already
+            already=$(jq -r --arg r "$repo" \
+                '[to_entries[] | select(.value.source.repo == $r)] | length' \
+                "$known" 2>/dev/null || echo 0)
+            if [[ "${already:-0}" -gt 0 ]]; then
+                log_info "marketplace ${repo} already registered — skipping"
+                continue
+            fi
+        fi
+
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            log_info "[DRY-RUN] Would run: claude plugin marketplace add ${repo}"
+            continue
+        fi
+
+        if claude plugin marketplace add "$repo" >/dev/null 2>&1; then
+            log_success "Registered marketplace: ${repo}"
+        else
+            log_warn "Failed to register marketplace: ${repo}"
+        fi
+    done
 }
 
 # =============================================================================
-# install_claude_code — Main entry point (signature unchanged)
+# _install_enabled_plugins — Ensure every plugin marked `true` in
+# configs/claude/settings.json is actually downloaded and present in
+# ~/.claude/plugins/cache/. Without this, enabledPlugins entries on a fresh
+# machine resolve to "not installed" errors until the user manually runs
+# `/plugin install` for each. Idempotent via installed_plugins.json.
+# =============================================================================
+_install_enabled_plugins() {
+    if ! cfg_enabled "claude_code.install_enabled_plugins"; then
+        log_info "install_enabled_plugins disabled — skipping"
+        return 0
+    fi
+
+    if ! command_exists claude; then
+        log_warn "claude CLI not found — cannot install plugins"
+        return 0
+    fi
+
+    if ! command_exists jq; then
+        log_warn "jq not found — cannot read enabledPlugins"
+        return 0
+    fi
+
+    local src="${ENV_SETUP_DIR}/configs/claude/settings.json"
+    if [[ ! -f "$src" ]]; then
+        log_warn "settings template not found: ${src}"
+        return 0
+    fi
+
+    local installed="${HOME}/.claude/plugins/installed_plugins.json"
+
+    local plugin
+    while IFS= read -r plugin; do
+        [[ -z "$plugin" ]] && continue
+
+        # Idempotency: skip if already in installed_plugins.json
+        if [[ -f "$installed" ]]; then
+            local already
+            already=$(jq -r --arg p "$plugin" \
+                '.plugins[$p] // [] | length' \
+                "$installed" 2>/dev/null || echo 0)
+            if [[ "${already:-0}" -gt 0 ]]; then
+                log_info "plugin ${plugin} already installed — skipping"
+                continue
+            fi
+        fi
+
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            log_info "[DRY-RUN] Would run: claude plugin install ${plugin}"
+            continue
+        fi
+
+        if claude plugin install "$plugin" >/dev/null 2>&1; then
+            log_success "Installed plugin: ${plugin}"
+        else
+            log_warn "Failed to install plugin: ${plugin}"
+        fi
+    done < <(jq -r '.enabledPlugins | to_entries[] | select(.value == true) | .key' "$src" 2>/dev/null)
+}
+
+# =============================================================================
+# _sync_mcp_servers — Future-proof sync of user-scoped MCP servers.
+# Source: configs/claude/mcp-servers.json — typically {"mcpServers": {}} until
+# the user starts adding entries. Merges the mcpServers object into
+# ~/.claude.json. No-op when source declares no servers.
+# =============================================================================
+_sync_mcp_servers() {
+    if ! cfg_enabled "claude_code.sync_mcp_servers"; then
+        log_info "sync_mcp_servers disabled — skipping"
+        return 0
+    fi
+
+    local src="${ENV_SETUP_DIR}/configs/claude/mcp-servers.json"
+    local dest="${HOME}/.claude.json"
+
+    if [[ ! -f "$src" ]]; then
+        log_info "no mcp-servers.json in repo — skipping"
+        return 0
+    fi
+
+    if ! command_exists jq; then
+        log_warn "jq not found — skipping MCP servers sync"
+        return 0
+    fi
+
+    # No-op when source declares zero servers (placeholder mode)
+    local count
+    count=$(jq -r '.mcpServers // {} | length' "$src" 2>/dev/null || echo 0)
+    if [[ "${count:-0}" -eq 0 ]]; then
+        log_info "no MCP servers declared in repo — skipping"
+        return 0
+    fi
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "[DRY-RUN] Would merge ${count} MCP server(s) into ${dest}"
+        return 0
+    fi
+
+    if [[ ! -f "$dest" ]]; then
+        log_warn "${dest} does not exist — run Claude Code at least once first; skipping MCP sync"
+        return 0
+    fi
+
+    # KEEP_EXISTING mode: bail out
+    if [[ "${KEEP_EXISTING:-false}" == "true" ]]; then
+        log_info "[SKIP] Keeping existing MCP servers (--keep-existing)"
+        return 0
+    fi
+
+    if ! jq empty "$dest" 2>/dev/null; then
+        log_error "${dest} is not valid JSON — skipping MCP sync. Fix manually."
+        return 0
+    fi
+
+    # Idempotency: compare merged result with current
+    local current expected
+    current=$(jq -S '.mcpServers // {}' "$dest" 2>/dev/null)
+    expected=$(jq -S --slurpfile src "$src" \
+        '(.mcpServers // {}) * ($src[0].mcpServers // {})' \
+        "$dest" 2>/dev/null) || {
+        log_error "jq dry-evaluation failed — skipping (no changes made)"
+        return 0
+    }
+    if [[ "$current" == "$expected" ]]; then
+        log_info "MCP servers already in sync — skipping"
+        return 0
+    fi
+
+    # Interactive mode: show what's changing and prompt
+    if [[ "${AUTO_YES:-false}" != "true" ]]; then
+        log_info "MCP servers merge preview (will apply to ${dest}):"
+        local added_keys
+        added_keys=$(jq -r --slurpfile src "$src" \
+            '(($src[0].mcpServers // {}) | keys) - ((.mcpServers // {}) | keys) | .[]' \
+            "$dest" 2>/dev/null)
+        if [[ -n "$added_keys" ]]; then
+            log_info "  adding:"
+            while IFS= read -r k; do log_info "    - ${k}"; done <<< "$added_keys"
+        fi
+        if ! ask_yes_no "Apply MCP merge to ${dest}?"; then
+            log_info "[SKIP] Keeping existing MCP servers"
+            return 0
+        fi
+    fi
+
+    # Backup before mutation
+    local ts bak
+    ts="$(date +%Y%m%d_%H%M%S)"
+    bak="${dest}.bak.${ts}"
+    if ! cp -p "$dest" "$bak"; then
+        log_error "Failed to create backup ${bak} — aborting MCP sync"
+        return 0
+    fi
+    log_info "Backed up ${dest} to ${bak}"
+
+    # Apply merge atomically
+    local tmp="${dest}.tmp.$$"
+    if jq --slurpfile src "$src" \
+        '.mcpServers = ((.mcpServers // {}) * ($src[0].mcpServers // {}))' \
+        "$dest" > "$tmp"; then
+        if mv "$tmp" "$dest"; then
+            log_success "Synced ${count} MCP server(s) into ${dest}"
+        else
+            log_error "Failed to move ${tmp} into place — backup at ${bak}"
+            rm -f "$tmp"
+        fi
+    else
+        log_error "jq merge failed — original preserved, backup at ${bak}"
+        rm -f "$tmp"
+    fi
+}
+
+# =============================================================================
+# install_claude_code — Main entry point
 # =============================================================================
 install_claude_code() {
     if ! cfg_enabled "claude_code.enabled"; then
@@ -171,4 +544,14 @@ install_claude_code() {
 
     _install_claude_native
     _install_ccstatusline
+
+    print_header "Claude Code config sync"
+    _sync_claude_global_md
+    _sync_claude_rules
+    _sync_claude_commands
+    _sync_claude_agents
+    _merge_claude_settings
+    _register_plugin_marketplaces
+    _install_enabled_plugins
+    _sync_mcp_servers
 }

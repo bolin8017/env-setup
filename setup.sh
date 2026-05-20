@@ -11,6 +11,7 @@ export ENV_SETUP_DIR="$SCRIPT_DIR"
 # =============================================================================
 CLI_DRY_RUN=""
 CLI_AUTO_YES=""
+CLI_KEEP_EXISTING=""
 CLI_CONFIG=""
 CLI_VERIFY_ONLY=""
 CLI_MODULES=""
@@ -24,6 +25,10 @@ parse_args() {
                 ;;
             --auto-yes|-y)
                 CLI_AUTO_YES="true"
+                shift
+                ;;
+            --keep-existing)
+                CLI_KEEP_EXISTING="true"
                 shift
                 ;;
             --config)
@@ -65,17 +70,25 @@ Usage: ./setup.sh [OPTIONS]
 
 Options:
   --dry-run              Print what would be done without making changes
-  --auto-yes, -y         Skip all interactive prompts (assume yes)
+  --auto-yes, -y         Overwrite all existing files without prompting
+  --keep-existing        Keep all existing files (skip if dest already exists);
+                         mutually exclusive with --auto-yes
   --config <path>        Use a custom config.yaml file
   --verify               Run verification only (no installation)
   --modules <list>       Comma-separated list of modules to run
                          e.g. --modules 01-core,06-shell
   --help, -h             Show this help message
 
+Overwrite-vs-keep modes (mainstream dpkg/chezmoi style):
+  default                Interactive — show diff summary and ask y/N for each file
+  --auto-yes             Force overwrite all (use when you want repo to win)
+  --keep-existing        Keep all local versions (use when you only want new files)
+
 Examples:
   ./setup.sh                          # Full installation (uses config.yaml)
   ./setup.sh --dry-run                # Preview without changes
-  ./setup.sh --auto-yes               # Non-interactive installation
+  ./setup.sh --auto-yes               # Non-interactive: overwrite everything
+  ./setup.sh --keep-existing          # Only deploy files that don't exist yet
   ./setup.sh --modules 01-core,06-shell  # Install only specific modules
   ./setup.sh --verify                 # Check what is already installed
 
@@ -119,6 +132,22 @@ load_config "${CLI_CONFIG:-${SCRIPT_DIR}/config.yaml}"
 [[ "${CLI_DRY_RUN:-}" == "true" ]] && DRY_RUN="true"
 AUTO_YES="${CFG_GENERAL_AUTO_YES:-${AUTO_YES:-false}}"
 [[ "${CLI_AUTO_YES:-}" == "true" ]] && AUTO_YES="true"
+KEEP_EXISTING="${KEEP_EXISTING:-false}"
+[[ "${CLI_KEEP_EXISTING:-}" == "true" ]] && KEEP_EXISTING="true"
+
+# Explicit CLI conflict — both flags passed together is meaningless
+if [[ "${CLI_AUTO_YES:-}" == "true" ]] && [[ "${CLI_KEEP_EXISTING:-}" == "true" ]]; then
+    log_error "--auto-yes and --keep-existing cannot be used together"
+    exit 1
+fi
+
+# CLI --keep-existing overrides any config auto_yes setting
+# (a user who explicitly asks to keep should always win over their config default)
+if [[ "${CLI_KEEP_EXISTING:-}" == "true" ]]; then
+    AUTO_YES="false"
+fi
+
+export KEEP_EXISTING
 
 # =============================================================================
 # Verify-only mode

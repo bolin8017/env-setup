@@ -163,6 +163,20 @@ tmux:
 # Claude Code — AI-powered coding assistant CLI
 # Installed via native installer (no Node.js dependency)
 # https://code.claude.com/docs/setup
+#
+# In addition to installing the CLI, this module syncs personal Claude Code
+# configuration from configs/claude/ in this repo onto the machine, so the
+# same setup follows you across hosts. The mapping is:
+#
+#   configs/claude/CLAUDE.md            -> ~/.claude/CLAUDE.md
+#   configs/claude/rules/*.md           -> ~/.claude/rules/
+#   configs/claude/commands/*.md        -> ~/.claude/commands/
+#   configs/claude/agents/*.md          -> ~/.claude/agents/
+#   configs/claude/settings.json        -> ~/.claude/settings.json  (whitelisted merge)
+#   configs/claude/mcp-servers.json     -> ~/.claude.json mcpServers field (jq merge)
+#
+# Marketplaces listed under `marketplaces:` are registered via
+# `claude plugin marketplace add` so enabledPlugins entries can resolve.
 # -----------------------------------------------------------------------------
 claude_code:
   enabled: true
@@ -170,12 +184,67 @@ claude_code:
   # ccstatusline — status line formatter for Claude Code
   # https://github.com/sirmalloc/ccstatusline
   # Runs on demand via `npx -y ccstatusline@latest`, so no package install
-  # is performed here. Two config files are deployed:
-  #   1. ~/.config/ccstatusline/settings.json (widget layout & options)
-  #   2. ~/.claude/settings.json statusLine block (jq-merged, other keys
-  #      preserved)
+  # is performed here. The widget template is deployed to
+  # ~/.config/ccstatusline/settings.json; the corresponding statusLine block
+  # in ~/.claude/settings.json is handled by the unified settings merge below.
   ccstatusline:
     enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Personal config sync — all flags are independent so individual pieces can
+  # be disabled per machine if needed.
+  # ---------------------------------------------------------------------------
+
+  # Deploy ~/.claude/CLAUDE.md from configs/claude/CLAUDE.md
+  # (global instructions: communication, hard rules, commit conventions)
+  sync_global_md: true
+
+  # Deploy ~/.claude/rules/*.md from configs/claude/rules/
+  # (full Conventional Commits spec, etc.)
+  sync_rules: true
+
+  # Deploy ~/.claude/commands/*.md from configs/claude/commands/
+  # (custom slash commands such as /init-rules)
+  sync_commands: true
+
+  # Deploy ~/.claude/agents/*.md from configs/claude/agents/
+  # (custom subagent definitions — directory may be empty)
+  sync_agents: true
+
+  # Whitelist of top-level keys to merge from configs/claude/settings.json into
+  # ~/.claude/settings.json. Keys not listed here are preserved verbatim on the
+  # machine (useful for experimental or auth-related fields). The merge is
+  # idempotent and creates a timestamped backup before any mutation.
+  settings_merge_keys:
+    - env
+    - statusLine
+    - enabledPlugins
+    - skipDangerousModePermissionPrompt
+    - teammateMode
+
+  # Register plugin marketplaces via `claude plugin marketplace add`.
+  # Without these, enabledPlugins entries cannot resolve to real plugins.
+  # Idempotent — already-registered marketplaces are skipped.
+  # Note: `claude-plugins-official` is auto-available in every Claude Code
+  # session and is included here as a safety net (the registration is a no-op
+  # if already present).
+  register_marketplaces: true
+  marketplaces:
+    - anthropics/claude-plugins-official
+    - obra/superpowers-marketplace
+
+  # Explicitly install every plugin marked `true` in configs/claude/settings.json
+  # via `claude plugin install`. Required on a fresh machine — without this,
+  # enabledPlugins entries are referenced but the plugins are never downloaded.
+  # Idempotent: skips plugins already in ~/.claude/plugins/installed_plugins.json.
+  install_enabled_plugins: true
+
+  # Sync user-scoped MCP servers from configs/claude/mcp-servers.json into
+  # ~/.claude.json's mcpServers field. The source file is a placeholder
+  # ({"mcpServers": {}}) until you start adding entries; this hook is wired
+  # up now so future `claude mcp add` workflows can be persisted by simply
+  # committing the change.
+  sync_mcp_servers: true
 
 # -----------------------------------------------------------------------------
 # User directories — create personal folders under $HOME
