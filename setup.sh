@@ -135,15 +135,17 @@ AUTO_YES="${CFG_GENERAL_AUTO_YES:-${AUTO_YES:-false}}"
 KEEP_EXISTING="${KEEP_EXISTING:-false}"
 [[ "${CLI_KEEP_EXISTING:-}" == "true" ]] && KEEP_EXISTING="true"
 
-# Explicit CLI conflict — both flags passed together is meaningless
+# Precedence — two distinct cases handled separately:
+#   1. CLI passes BOTH flags    → hard error (intent is contradictory)
+#   2. CLI --keep-existing wins → silently demote any auto_yes source (CLI
+#      or config). A user who explicitly asks to keep local files should
+#      never have them overwritten by a config default.
 if [[ "${CLI_AUTO_YES:-}" == "true" ]] && [[ "${CLI_KEEP_EXISTING:-}" == "true" ]]; then
     log_error "--auto-yes and --keep-existing cannot be used together"
     exit 1
 fi
 
-# CLI --keep-existing overrides any config auto_yes setting
-# (a user who explicitly asks to keep should always win over their config default)
-if [[ "${CLI_KEEP_EXISTING:-}" == "true" ]]; then
+if [[ "$KEEP_EXISTING" == "true" ]]; then
     AUTO_YES="false"
 fi
 

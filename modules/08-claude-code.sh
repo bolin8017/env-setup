@@ -239,17 +239,17 @@ _merge_claude_settings() {
         return 0
     fi
 
-    # Build jq filter that assigns each whitelisted key from $src[0]
-    local jq_filter='.'
-    local k
-    for k in "${keys[@]}"; do
-        jq_filter="${jq_filter} | .[\"${k}\"] = \$src[0][\"${k}\"]"
-    done
+    # Pass keys as data (--args) instead of building the jq filter via string
+    # concatenation. This avoids any quoting / injection surface if a key
+    # contains characters like " or \, and is the idiomatic jq pattern for
+    # "operate on a list of keys".
+    # shellcheck disable=SC2016  # $ARGS, $k, $src are jq variables, not shell
+    local jq_filter='reduce $ARGS.positional[] as $k (.; .[$k] = $src[0][$k])'
 
     # Idempotency check: would the merged result equal the current file?
     local current expected
     current=$(jq -S . "$dest" 2>/dev/null)
-    expected=$(jq -S --slurpfile src "$src" "$jq_filter" "$dest" 2>/dev/null) || {
+    expected=$(jq -S --slurpfile src "$src" "$jq_filter" "$dest" --args "${keys[@]}" 2>/dev/null) || {
         log_error "jq merge dry-evaluation failed — skipping (no changes made)"
         return 0
     }
@@ -295,7 +295,7 @@ _merge_claude_settings() {
 
     # Apply merge atomically
     local tmp="${dest}.tmp.$$"
-    if jq --slurpfile src "$src" "$jq_filter" "$dest" > "$tmp"; then
+    if jq --slurpfile src "$src" "$jq_filter" "$dest" --args "${keys[@]}" > "$tmp"; then
         if mv "$tmp" "$dest"; then
             log_success "Merged ${#keys[@]} whitelisted keys into ${dest}"
         else
