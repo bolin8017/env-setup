@@ -351,3 +351,6 @@ run_verification
 
 # Summary
 show_summary
+
+# Admin instructions for anything that needed sudo on a no-sudo machine
+show_missing_apt_summary

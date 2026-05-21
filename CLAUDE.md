@@ -62,6 +62,15 @@ env-setup/
 - **Modules are numbered for dependency order**: `01-core.sh` runs before
   `02-languages.sh` because language installers need Homebrew / build tools.
   Adding a new module means choosing the right number.
+- **Single sudo prompt with no-sudo defer**: `sudo_available()` in
+  `lib/package.sh` validates elevation once via `sudo -v` (password goes
+  straight to sudo's getpass; the scripts never read or store it). A
+  background loop refreshes the timestamp every 60s so long installs don't
+  re-prompt. If sudo is unavailable (not in sudoers, batch mode, no TTY),
+  apt-needing steps call `record_missing_apt_package` / `record_missing_apt_note`
+  and the run continues with user-space installs. `show_missing_apt_summary`
+  prints a consolidated admin instruction block at the end. macOS skips
+  this path because brew runs as the user.
 
 ## Commit Conventions
 

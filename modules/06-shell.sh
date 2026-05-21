@@ -217,10 +217,16 @@ set_default_shell() {
         return 1
     fi
 
-    # Ensure zsh is listed in /etc/shells
+    # Ensure zsh is listed in /etc/shells (needs sudo)
     if ! grep -qF "$zsh_path" /etc/shells 2>/dev/null; then
         log_info "Adding ${zsh_path} to /etc/shells..."
-        dry_run_cmd bash -c "echo '${zsh_path}' | sudo tee -a /etc/shells"
+        if sudo_available; then
+            dry_run_cmd bash -c "echo '${zsh_path}' | sudo tee -a /etc/shells"
+        else
+            record_missing_apt_note "Add zsh to /etc/shells: echo '${zsh_path}' | sudo tee -a /etc/shells"
+            log_warn "Cannot add zsh to /etc/shells without sudo; chsh will likely fail"
+            return 0
+        fi
     fi
 
     log_info "Changing default shell to zsh..."

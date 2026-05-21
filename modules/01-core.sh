@@ -86,19 +86,25 @@ _install_gh() {
         pkg_install gh
     elif is_linux; then
         log_info "Installing GitHub CLI..."
-        # GitHub CLI official install method for Linux
-        # shellcheck disable=SC2016  # single quotes are intentional (deferred expansion)
-        dry_run_cmd bash -c '
-            (type -p wget >/dev/null || sudo apt-get install wget -y) \
-            && sudo mkdir -p -m 755 /etc/apt/keyrings \
-            && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-               | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-               | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && sudo apt-get update \
-            && sudo apt-get install gh -y
-        '
+        if sudo_available; then
+            # GitHub CLI official install method for Linux
+            # shellcheck disable=SC2016  # single quotes are intentional (deferred expansion)
+            dry_run_cmd bash -c '
+                (type -p wget >/dev/null || sudo apt-get install wget -y) \
+                && sudo mkdir -p -m 755 /etc/apt/keyrings \
+                && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+                   | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+                && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+                && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+                   | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+                && sudo apt-get update \
+                && sudo apt-get install gh -y
+            '
+        else
+            record_missing_apt_note "GitHub CLI (gh): follow https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+            log_warn "GitHub CLI install deferred to administrator"
+            return 0
+        fi
     fi
 
     if [[ "${DRY_RUN:-false}" == "true" ]] || command_exists gh; then
@@ -149,10 +155,15 @@ _install_build_tools() {
 
         if [[ ${#missing[@]} -gt 0 ]]; then
             log_info "Installing missing build tools: ${missing[*]}"
-            pkg_update
-            dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                build-essential "${missing[@]}"
-            log_success "Build tools installed"
+            if sudo_available; then
+                pkg_update
+                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                    build-essential "${missing[@]}"
+                log_success "Build tools installed"
+            else
+                record_missing_apt_package build-essential "${missing[@]}"
+                log_warn "Build tools install deferred to administrator"
+            fi
         else
             log_success "All build tools already installed"
         fi
