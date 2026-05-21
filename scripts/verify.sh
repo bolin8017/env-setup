@@ -219,6 +219,8 @@ check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"  "Powerl
 check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"    "zsh-autosuggestions"
 check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
 check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-completions"        "zsh-completions"
+check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"                "fzf-tab"
+check_dir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-you-should-use"     "zsh-you-should-use"
 echo ""
 
 # =============================================================================

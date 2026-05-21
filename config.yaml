@@ -134,17 +134,56 @@ shell:
   powerlevel10k: true
 
   plugins:
-    # Oh My Zsh built-in plugins (no installation needed)
+    # Oh My Zsh built-in plugins (no installation needed — bundled with OMZ).
+    # Full list: https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins
     builtin:
-      - git           # git aliases and helpers
-      - web-search    # search Google/DuckDuckGo from the terminal
-      - extract       # one command to extract any archive format
+      # --- Core ---
+      - git                       # git aliases (gst, gco, gp, ...) and helpers
+      - web-search                # search Google/DuckDuckGo from the terminal
+      - extract                   # `extract <archive>` handles any format
 
-    # Third-party plugins (cloned into $ZSH_CUSTOM/plugins/)
+      # --- Quality-of-life ---
+      - sudo                      # double-tap ESC to prepend `sudo` to current line
+      - history-substring-search  # fish-like history: type prefix, press up/down
+      - colored-man-pages         # colourise `man` output
+      - command-not-found         # suggest apt package when command is missing (Linux)
+      - copybuffer                # Ctrl+O copies the current command line to clipboard
+      - copypath                  # `copypath` copies $PWD (or a file path) to clipboard
+      - dirhistory                # Alt+left/right for dir history, Alt+up/down for parent/child
+      - safe-paste                # prevent multi-line paste from auto-executing
+
+      # --- Tooling completions (match what this repo installs) ---
+      - docker                    # docker completion + aliases
+      - docker-compose            # docker-compose completion + aliases
+      - gh                        # GitHub CLI completion
+      - fzf                       # wires Ctrl+R / Ctrl+T / Alt+C key bindings to fzf
+
+      # --- Optional extras you may want to enable manually ---
+      # - aliases                 # `acs` lists all aliases grouped by plugin
+      # - npm                     # npm completion + aliases (heavy first-run cost)
+      # - pip                     # pip completion (slow on Python startup)
+      # - poetry                  # poetry completion
+      # - tmux                    # tmux helpers + auto-attach
+      # - kubectl                 # kubectl completion
+      # - vscode                  # `vsc` shortcut + project helpers
+
+    # Third-party plugins (cloned into $ZSH_CUSTOM/plugins/).
+    # Two accepted forms:
+    #   - "name"        -> defaults to github.com/zsh-users/<name>
+    #   - "owner/repo"  -> github.com/<owner>/<repo>
     external:
-      - zsh-autosuggestions       # fish-like inline suggestions
-      - zsh-syntax-highlighting   # real-time command colouring
+      # --- The classic zsh-users baseline (still the standard in 2026) ---
+      - zsh-autosuggestions       # fish-like inline suggestions (Ctrl+right to accept)
+      - zsh-syntax-highlighting   # real-time command colouring (must load LAST in plugins list)
       - zsh-completions           # extra completion definitions
+
+      # --- Modern additions (require owner/repo form) ---
+      - Aloxaf/fzf-tab            # fzf-powered interactive Tab completion
+      - MichaelAquilina/zsh-you-should-use  # reminds you when an alias exists
+
+      # --- Mutually-exclusive alternatives — pick one path, do not enable both ---
+      # - zdharma-continuum/fast-syntax-highlighting  # faster replacement for zsh-syntax-highlighting
+      # - marlonrichert/zsh-autocomplete              # real-time dropdown (conflicts with zsh-autosuggestions style)
 
 # -----------------------------------------------------------------------------
 # tmux — terminal multiplexer

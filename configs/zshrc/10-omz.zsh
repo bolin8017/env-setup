@@ -20,15 +20,37 @@ COMPLETION_WAITING_DOTS="true"
 # ---------------------------
 
 plugins=(
-    # Built-in plugins
+    # --- Built-in: core ---
     git
     web-search
     extract
 
-    # Custom plugins (installed separately)
-    zsh-autosuggestions
-    zsh-syntax-highlighting
+    # --- Built-in: quality-of-life ---
+    sudo
+    colored-man-pages
+    command-not-found
+    copybuffer
+    copypath
+    dirhistory
+    safe-paste
+
+    # --- Built-in: tooling completions ---
+    docker
+    docker-compose
+    gh
+    fzf
+
+    # --- External: must come BEFORE zsh-autosuggestions and zsh-syntax-highlighting ---
+    fzf-tab
     zsh-completions
+    zsh-you-should-use
+    zsh-autosuggestions
+
+    # zsh-syntax-highlighting MUST be the last plugin loaded
+    zsh-syntax-highlighting
+
+    # history-substring-search must come AFTER zsh-syntax-highlighting
+    history-substring-search
 )
 
 # Load Oh My Zsh

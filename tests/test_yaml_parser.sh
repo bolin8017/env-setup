@@ -169,8 +169,9 @@ assert_eq "true"  "$(cfg_get "tmux.tpm")"                  "real config: tpm ena
 assert_eq "true"  "$(cfg_get "claude_code.enabled")"       "real config: claude_code enabled"
 
 real_plugins="$(cfg_list "shell.plugins.external")"
-assert_eq "3" "$(echo "$real_plugins" | wc -l | tr -d ' ')" "real config: 3 external plugins"
+assert_eq "5" "$(echo "$real_plugins" | wc -l | tr -d ' ')" "real config: 5 external plugins"
 assert_contains "$real_plugins" "zsh-autosuggestions"     "real config: autosuggestions plugin"
+assert_contains "$real_plugins" "Aloxaf/fzf-tab"          "real config: owner/repo spec preserved verbatim"
 
 # =============================================================================
 suite "yaml_parse error handling"
