@@ -25,6 +25,11 @@ install_docker() {
         log_info "Open Docker Desktop app to complete setup"
     elif is_linux; then
         log_info "Installing Docker Engine..."
+        if ! sudo_available; then
+            record_missing_apt_note "Docker Engine: follow https://docs.docker.com/engine/install/ubuntu/ (also add your user to the docker group: sudo usermod -aG docker ${USER:-$(whoami)})"
+            log_warn "Docker install deferred to administrator"
+            return 0
+        fi
         pkg_update
         dry_run_cmd sudo apt-get install -y ca-certificates curl gnupg
         dry_run_cmd sudo install -m 0755 -d /etc/apt/keyrings

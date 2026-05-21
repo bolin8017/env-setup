@@ -86,13 +86,21 @@ _install_pyenv() {
         if is_macos; then
             pkg_install pyenv pyenv-virtualenv
         elif is_linux; then
-            # Install pyenv build dependencies
-            pkg_update
-            dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-                libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
-                libffi-dev liblzma-dev
-            # Install pyenv via official installer
+            # Install pyenv build dependencies (apt — needs sudo)
+            if sudo_available; then
+                pkg_update
+                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
+                    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+                    libffi-dev liblzma-dev
+            else
+                record_missing_apt_package \
+                    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
+                    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+                    libffi-dev liblzma-dev
+                log_warn "pyenv build dependencies deferred to administrator (pyenv itself will still install but Python builds will fail)"
+            fi
+            # pyenv itself installs into $HOME — no sudo required
             dry_run_cmd bash -c 'curl https://pyenv.run | bash'
         fi
     fi

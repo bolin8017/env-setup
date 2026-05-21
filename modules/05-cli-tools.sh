@@ -72,7 +72,7 @@ _install_eza() {
         if [[ -n "$ubuntu_ver" ]] && (( ubuntu_ver >= 24 )); then
             # Ubuntu 24.04+ has eza in the default repos
             pkg_install eza
-        else
+        elif sudo_available; then
             # Older Ubuntu: add the gierens.de repository
             log_info "Adding eza apt repository (gierens.de)..."
             dry_run_cmd sudo mkdir -p /etc/apt/keyrings
@@ -83,6 +83,9 @@ _install_eza() {
             dry_run_cmd sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             dry_run_cmd sudo apt-get update
             pkg_install eza
+        else
+            record_missing_apt_note "eza on Ubuntu < 24.04: follow https://github.com/eza-community/eza/blob/main/INSTALL.md (apt repo at deb.gierens.de)"
+            log_warn "eza install deferred to administrator"
         fi
     fi
 

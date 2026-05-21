@@ -151,6 +151,17 @@ setup.sh 讀取 config.yaml → 依序執行 8 個模組
 - Fragment 片段是 managed files，每次執行都會更新
 - `~/.config/zsh/custom/` 目錄永遠不會被觸碰
 
+### 無 sudo 環境（Ubuntu / WSL）
+
+在共用伺服器或受管理的工作機等沒有 sudo 權限的環境下：
+
+- 首次需要 sudo 時會跳一次 `sudo -v` 密碼提示；密碼由 sudo 直接從 TTY 讀取，env-setup 不會看到、紀錄或傳遞它
+- 通過後背景會定期刷新 sudo timestamp，後續安裝不會再被問
+- 若驗證失敗（不在 sudoers、密碼錯誤、Ctrl+C、`--auto-yes` / 無 TTY）會自動轉成「跳過 apt」模式，繼續完成所有 user-space 工具（nvm、pyenv、Oh My Zsh、Claude Code…）的安裝
+- 安裝結束時印出一段 admin 指令清單，可以拿給系統管理員裝缺漏的 apt 套件，再重跑 `./setup.sh` 即可繼續
+
+macOS 不會走這條路徑：brew 安裝以使用者身份執行，初次安裝 Homebrew 時由官方 installer 自行處理授權。
+
 ## 目錄結構
 
 ```
