@@ -38,8 +38,8 @@ source "${_PACKAGE_LIB_DIR}/dryrun.sh"
 # record_missing_apt_package / record_missing_apt_note. show_missing_apt_summary
 # prints the consolidated instructions for the administrator.
 
-declare -ga MISSING_APT_PACKAGES=()
-declare -ga MISSING_APT_NOTES=()
+declare -a MISSING_APT_PACKAGES=()
+declare -a MISSING_APT_NOTES=()
 
 _SUDO_CHECKED=""
 _SUDO_AVAILABLE=""
