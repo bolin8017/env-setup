@@ -126,6 +126,8 @@ check "Powerlevel10k dir exists"     test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/cus
 check "zsh-autosuggestions"          test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
 check "zsh-syntax-highlighting"      test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
 check "zsh-completions"              test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-completions"
+check "fzf-tab"                      test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+check "zsh-you-should-use"           test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-you-should-use"
 
 echo ""
 echo -e "${CYAN}--- Shell Config ---${NC}"

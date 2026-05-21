@@ -85,7 +85,49 @@ install_powerlevel10k() {
 }
 
 # =============================================================================
-# 4. install_zsh_plugins — Clone external plugins from config
+# 4a. _resolve_plugin_spec — Parse a plugin spec into URL + local dir name
+# =============================================================================
+# Accepts two forms in shell.plugins.external:
+#   - Bare name:        "zsh-autosuggestions"  -> defaults to zsh-users org
+#   - owner/repo form:  "Aloxaf/fzf-tab"       -> uses that owner
+#
+# Outputs (sets globals; bash can't return two values cleanly):
+#   _PLUGIN_REPO_URL    e.g. https://github.com/Aloxaf/fzf-tab.git
+#   _PLUGIN_DIR_NAME    e.g. fzf-tab  (always just the repo basename)
+#
+# Returns 0 on success, 1 on invalid spec (empty, extra slashes, etc.)
+# -----------------------------------------------------------------------------
+_PLUGIN_REPO_URL=""
+_PLUGIN_DIR_NAME=""
+
+_resolve_plugin_spec() {
+    local spec="$1"
+
+    # Trim leading/trailing whitespace
+    spec="${spec#"${spec%%[![:space:]]*}"}"
+    spec="${spec%"${spec##*[![:space:]]}"}"
+
+    [[ -z "$spec" ]] && return 1
+
+    # Count slashes by stripping non-slash chars
+    local slashes="${spec//[^\/]/}"
+    case "${#slashes}" in
+        0)
+            _PLUGIN_REPO_URL="https://github.com/zsh-users/${spec}.git"
+            _PLUGIN_DIR_NAME="$spec"
+            ;;
+        1)
+            _PLUGIN_REPO_URL="https://github.com/${spec}.git"
+            _PLUGIN_DIR_NAME="${spec#*/}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# =============================================================================
+# 4b. install_zsh_plugins — Clone external plugins from config
 # =============================================================================
 install_zsh_plugins() {
     local zsh_custom="${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}"
@@ -99,17 +141,22 @@ install_zsh_plugins() {
 
     local plugin
     for plugin in "${plugins[@]}"; do
-        local plugin_dir="${zsh_custom}/plugins/${plugin}"
-        local repo_url="https://github.com/zsh-users/${plugin}.git"
+        if ! _resolve_plugin_spec "$plugin"; then
+            log_error "Invalid plugin spec: '${plugin}' (expected 'name' or 'owner/repo')"
+            continue
+        fi
+
+        local plugin_dir="${zsh_custom}/plugins/${_PLUGIN_DIR_NAME}"
+        local repo_url="$_PLUGIN_REPO_URL"
 
         if [[ -d "$plugin_dir" ]]; then
-            log_info "${plugin} already installed, updating..."
+            log_info "${_PLUGIN_DIR_NAME} already installed, updating..."
             dry_run_cmd git -C "$plugin_dir" pull --quiet
-            log_success "${plugin} updated"
+            log_success "${_PLUGIN_DIR_NAME} updated"
         else
             log_info "Cloning ${plugin}..."
             dry_run_cmd git clone "$repo_url" "$plugin_dir"
-            log_success "${plugin} installed"
+            log_success "${_PLUGIN_DIR_NAME} installed"
         fi
     done
 }
