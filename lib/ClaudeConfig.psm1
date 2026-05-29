@@ -36,9 +36,10 @@ function Merge-McpServers {
     )
     $cur = $CurrentJson | ConvertFrom-Json
     $src = $SourceJson | ConvertFrom-Json
-    $srcServers = if ($src.PSObject.Properties['mcpServers']) { $src.mcpServers } else { [pscustomobject]@{} }
-    if (-not $cur.PSObject.Properties['mcpServers']) {
-        $cur | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{})
+    $srcServers = if ($src.PSObject.Properties['mcpServers'] -and $null -ne $src.mcpServers) { $src.mcpServers } else { [pscustomobject]@{} }
+    if ((-not $cur.PSObject.Properties['mcpServers']) -or ($null -eq $cur.mcpServers)) {
+        if ($cur.PSObject.Properties['mcpServers']) { $cur.mcpServers = [pscustomobject]@{} }
+        else { $cur | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{}) }
     }
     foreach ($p in $srcServers.PSObject.Properties) {
         if ($cur.mcpServers.PSObject.Properties[$p.Name]) { $cur.mcpServers.($p.Name) = $p.Value }

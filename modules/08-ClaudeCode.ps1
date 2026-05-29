@@ -48,6 +48,7 @@ function Sync-ClaudeSettings {
     # $scalar.Count then throws under StrictMode.
     $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $($keys.Count) whitelisted key(s) into $dest"; return }
+    if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing settings.json (KeepExisting)'; return }
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     if (-not (Test-Path $dest)) { Copy-Item -LiteralPath $src -Destination $dest; Write-Success "Created $dest from repo template"; return }
     $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
@@ -67,6 +68,7 @@ function Sync-ClaudeMcp {
     $count = if ($srcObj.PSObject.Properties['mcpServers']) { @($srcObj.mcpServers.PSObject.Properties).Count } else { 0 }
     if ($count -eq 0) { Write-Info 'no MCP servers declared in repo — skipping'; return }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $count MCP server(s) into $dest"; return }
+    if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing MCP servers (KeepExisting)'; return }
     if (-not (Test-Path $dest)) { Write-Warn "$dest not found — run Claude Code once first; skipping MCP sync"; return }
     $merged = Merge-McpServers -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src)
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
@@ -78,7 +80,9 @@ function Register-ClaudeMarketplaces {
     if (-not (Test-CfgEnabled 'claude_code.register_marketplaces')) { return }
     if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found — skipping marketplace registration'; return }
     foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
-        Invoke-OrDryRun -Description "claude plugin marketplace add $repo" -Action { claude plugin marketplace add $repo *> $null }
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace add $repo"; continue }
+        claude plugin marketplace add $repo *> $null
+        if ($LASTEXITCODE -eq 0) { Write-Success "Registered marketplace: $repo" } else { Write-Warn "Failed to register marketplace: $repo" }
     }
 }
 
@@ -90,9 +94,10 @@ function Install-ClaudePlugins {
     $settings = Get-Content -Raw $src | ConvertFrom-Json
     if (-not $settings.PSObject.Properties['enabledPlugins']) { return }
     foreach ($p in $settings.enabledPlugins.PSObject.Properties) {
-        if ($p.Value -eq $true) {
-            Invoke-OrDryRun -Description "claude plugin install $($p.Name)" -Action { claude plugin install $p.Name *> $null }
-        }
+        if ($p.Value -ne $true) { continue }
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin install $($p.Name)"; continue }
+        claude plugin install $p.Name *> $null
+        if ($LASTEXITCODE -eq 0) { Write-Success "Installed plugin: $($p.Name)" } else { Write-Warn "Failed to install plugin: $($p.Name)" }
     }
 }
 

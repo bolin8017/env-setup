@@ -65,8 +65,8 @@ env-setup/
 │   ├── omp/              # (Windows) Oh My Posh theme
 │   └── zellij/           # (Windows) zellij config + dev layout
 ├── scripts/              # Maintenance and helper scripts
-│   ├── verify.sh         # Post-install verification (Unix)
-│   └── verify.ps1        # Post-install verification (Windows)
+│   ├── verify.ps1        # Post-install verification (Windows)
+│   └── verify.sh         # Post-install verification (Unix)
 ├── PSScriptAnalyzerSettings.psd1  # Windows engine lint config
 └── .github/workflows/    # CI — Unix: shellcheck+dry-run; Windows: PSScriptAnalyzer+Pester+dry-run
 ```

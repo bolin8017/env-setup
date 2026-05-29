@@ -46,7 +46,7 @@ function Deploy-Config {
             $same = $false
             try { $same = -not (Compare-Object (Get-Content -LiteralPath $Source) (Get-Content -LiteralPath $Destination)) } catch { $same = $false }
             if ($same) { Write-Info "${Label}: identical to repo version — skipping"; return }
-            if (-not (Confirm-Action "Overwrite $Destination?")) { Write-Info "[SKIP] Keeping existing $Label"; return }
+            if (-not (Confirm-Action "Overwrite ${Destination}?")) { Write-Info "[SKIP] Keeping existing $Label"; return }
         }
     }
 
