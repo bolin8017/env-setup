@@ -38,7 +38,8 @@ env-setup/
 │   ├── Config.psm1       # (Windows) pure-PowerShell config.yaml reader
 │   ├── Package.psm1      # (Windows) scoop/winget + no-admin defer
 │   ├── DryRun.psm1       # (Windows) dry-run + deploy wrappers
-│   └── Backup.psm1       # (Windows) timestamped backups
+│   ├── Backup.psm1       # (Windows) timestamped backups
+│   └── WindowsTerminal.psm1  # (Windows) Windows Terminal settings merge
 ├── modules/              # Numbered scripts run in dependency order
 │   ├── 01-core.sh        # Homebrew, git config, build tools
 │   ├── 02-languages.sh   # Node (nvm), Python (pyenv), Conda
@@ -49,14 +50,19 @@ env-setup/
 │   ├── 07-tmux.sh        # tmux + TPM
 │   ├── 08-claude-code.sh # Claude Code CLI (native installer)
 │   └── 09-user-dirs.sh   # Create personal directories under $HOME
-│                         # (Windows modules NN-Name.ps1 are added per stage)
+│                         # Windows modules: 01-03, 05-07 as NN-Name.ps1 (08-09 pending)
 ├── configs/              # Dotfile templates and fragments
 │   ├── zshrc/            # .zshrc fragments (numbered for load order)
 │   ├── zshrc.base        # Skeleton .zshrc that sources fragments
 │   ├── aliases.zsh       # Custom shell aliases
 │   ├── tmux/             # tmux.conf + macOS overrides + dev layout
 │   ├── p10k/             # Powerlevel10k configuration
-│   └── ccstatusline/     # ccstatusline widget config (deployed by 08-claude-code)
+│   ├── ccstatusline/     # ccstatusline widget config (deployed by 08-claude-code)
+│   ├── pwsh/             # (Windows) $PROFILE fragments (numbered)
+│   ├── pwsh.profile.base # (Windows) skeleton $PROFILE that sources fragments
+│   ├── aliases.ps1       # (Windows) PowerShell function aliases
+│   ├── omp/              # (Windows) Oh My Posh theme
+│   └── zellij/           # (Windows) zellij config + dev layout
 ├── scripts/              # Maintenance and helper scripts
 │   └── verify.sh         # Post-install verification
 ├── PSScriptAnalyzerSettings.psd1  # Windows engine lint config
