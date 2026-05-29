@@ -1,5 +1,7 @@
 # Top-level code runs during Pester discovery, so $OnWindows is available to -Skip.
-$OnWindows = ($IsWindows -eq $true) -or ($null -eq $IsWindows -and $env:OS -eq 'Windows_NT')
+# Reuse the engine's own platform check instead of duplicating its logic.
+Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+$OnWindows = Test-IsWindows
 
 Describe 'setup.ps1 smoke' {
     # setup.ps1 calls Assert-Windows, so the dry-run only runs on Windows
