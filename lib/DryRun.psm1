@@ -4,7 +4,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module "$PSScriptRoot/Common.psm1" -Force
+# No -Force: a -Force re-import here would Remove-Module Common and strip its
+# functions from a parent script's scope (e.g. setup.ps1). Plain import is a
+# no-op once loaded; tests reload with -Force at their own BeforeAll.
+Import-Module "$PSScriptRoot/Common.psm1"
 
 function Invoke-OrDryRun {
     param(

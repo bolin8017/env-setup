@@ -31,3 +31,16 @@ Describe 'flag helpers read ENVSETUP_* env vars' {
         Confirm-Action 'anything?' | Should -BeTrue
     }
 }
+
+Describe 'dependent-module imports keep Common in the caller scope' {
+    # Regression: a -Force re-import of Common from inside Package/DryRun used to
+    # Remove-Module Common and strip its functions from the importing script
+    # (setup.ps1 then failed with "Assert-Windows is not recognized").
+    It 'Common functions stay callable after importing Config and Package' {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        Import-Module "$PSScriptRoot/../lib/Config.psm1" -Force
+        Import-Module "$PSScriptRoot/../lib/Package.psm1" -Force
+        { Test-IsWindows } | Should -Not -Throw
+        Get-Command Assert-Windows -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+    }
+}

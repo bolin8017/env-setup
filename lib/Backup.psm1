@@ -3,7 +3,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module "$PSScriptRoot/Common.psm1" -Force
+# No -Force: a -Force re-import here would Remove-Module Common and strip its
+# functions from a parent script's scope. Plain import is a no-op once loaded.
+Import-Module "$PSScriptRoot/Common.psm1"
 
 function Backup-File {
     param(
