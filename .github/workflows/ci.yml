@@ -60,3 +60,50 @@ jobs:
 
       - name: Validate YAML syntax
         run: python3 -c "import yaml; yaml.safe_load(open('config.yaml.example'))"
+
+  powershell-lint:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $targets = @('setup.ps1','bootstrap.ps1') +
+                     (Get-ChildItem lib -Filter *.psm1 -ErrorAction Ignore).FullName +
+                     (Get-ChildItem modules -Filter *.ps1 -ErrorAction Ignore).FullName
+          $targets = $targets | Where-Object { $_ }   # drop nulls (e.g. no modules/*.ps1 yet)
+          $results = $targets | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Error,Warning }
+          if ($results) { $results | Format-Table -AutoSize; throw "PSScriptAnalyzer found $($results.Count) issue(s)" }
+          Write-Host 'PSScriptAnalyzer clean'
+
+  powershell-tests:
+    name: Pester
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck -MinimumVersion 5.5.0
+
+      - name: Run Pester
+        shell: pwsh
+        run: |
+          $r = Invoke-Pester -Path tests -Output Detailed -PassThru
+          if ($r.FailedCount -gt 0) { throw "$($r.FailedCount) test(s) failed" }
+
+  powershell-dry-run:
+    name: Dry Run (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run dry-run
+        shell: pwsh
+        run: ./setup.ps1 -DryRun -AutoYes

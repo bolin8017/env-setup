@@ -35,6 +35,18 @@ vim config.yaml
 ./setup.sh --help                 # 顯示所有選項
 ```
 
+### 原生 Windows（PowerShell）— 開發中
+
+原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。目前**基礎引擎**（設定讀取、套件抽象、dry-run、備份、Pester 測試、`windows-latest` CI）已就緒；各安裝模組（scoop/winget 套件、Oh My Posh、PSReadLine、zellij、Claude Code 等）正分階段加入。
+
+引擎就緒後在 PowerShell 7（pwsh）執行：
+
+```powershell
+irm https://raw.githubusercontent.com/bolin8017/env-setup/main/bootstrap.ps1 | iex
+```
+
+重度 Linux 開發仍建議留在 WSL2（在 WSL2 裡用上面的 `bootstrap.sh`）。
+
 ## 安裝內容
 
 | 類別 | 工具 |
@@ -234,6 +246,7 @@ alias proj="cd $WORK_DIR/project"
 | Ubuntu 22.04 | ✅ |
 | Ubuntu 24.04 | ✅ |
 | WSL2 (Ubuntu) | ✅ |
+| Windows 11（原生 PowerShell） | 🚧 開發中 |
 
 ## License
 
