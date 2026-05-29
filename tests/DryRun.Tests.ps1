@@ -66,5 +66,15 @@ Describe 'DryRun.psm1' {
             Deploy-Config -Source $src -Destination $dst
             Get-Content $dst | Should -Be 'same line'
         }
+        It 'prompts then overwrites a differing destination without crashing on the prompt' {
+            # Regression: the prompt string used "$Destination?" which PowerShell
+            # read as the (unset) variable $Destination? and threw under StrictMode.
+            # Mock Confirm-Action so no Read-Host; the interpolation must still work.
+            $src = Join-Path $TestDrive 'psrc'; Set-Content $src 'new'
+            $dst = Join-Path $TestDrive 'pdst'; Set-Content $dst 'old'
+            Mock -ModuleName DryRun Confirm-Action { $true }
+            Deploy-Config -Source $src -Destination $dst
+            Get-Content $dst | Should -Be 'new'
+        }
     }
 }

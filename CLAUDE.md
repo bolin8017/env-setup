@@ -39,7 +39,8 @@ env-setup/
 │   ├── Package.psm1      # (Windows) scoop/winget + no-admin defer
 │   ├── DryRun.psm1       # (Windows) dry-run + deploy wrappers
 │   ├── Backup.psm1       # (Windows) timestamped backups
-│   └── WindowsTerminal.psm1  # (Windows) Windows Terminal settings merge
+│   ├── WindowsTerminal.psm1  # (Windows) Windows Terminal settings merge
+│   └── ClaudeConfig.psm1     # (Windows) Claude Code settings/mcp JSON merge
 ├── modules/              # Numbered scripts run in dependency order
 │   ├── 01-core.sh        # Homebrew, git config, build tools
 │   ├── 02-languages.sh   # Node (nvm), Python (pyenv), Conda
@@ -50,7 +51,7 @@ env-setup/
 │   ├── 07-tmux.sh        # tmux + TPM
 │   ├── 08-claude-code.sh # Claude Code CLI (native installer)
 │   └── 09-user-dirs.sh   # Create personal directories under $HOME
-│                         # Windows modules: 01-03, 05-07 as NN-Name.ps1 (08-09 pending)
+│                         # Windows modules: 01-03, 05-09 as NN-Name.ps1 (all stages done)
 ├── configs/              # Dotfile templates and fragments
 │   ├── zshrc/            # .zshrc fragments (numbered for load order)
 │   ├── zshrc.base        # Skeleton .zshrc that sources fragments
@@ -64,7 +65,8 @@ env-setup/
 │   ├── omp/              # (Windows) Oh My Posh theme
 │   └── zellij/           # (Windows) zellij config + dev layout
 ├── scripts/              # Maintenance and helper scripts
-│   └── verify.sh         # Post-install verification
+│   ├── verify.ps1        # Post-install verification (Windows)
+│   └── verify.sh         # Post-install verification (Unix)
 ├── PSScriptAnalyzerSettings.psd1  # Windows engine lint config
 └── .github/workflows/    # CI — Unix: shellcheck+dry-run; Windows: PSScriptAnalyzer+Pester+dry-run
 ```
