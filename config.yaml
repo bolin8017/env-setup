@@ -299,3 +299,30 @@ user_dirs:
     - Downloads
     - Tools
     - Documents/repositories
+
+# -----------------------------------------------------------------------------
+# Windows / PowerShell — native Windows engine (ignored by setup.sh; read by
+# setup.ps1). Has no effect on macOS/Linux/WSL runs.
+# -----------------------------------------------------------------------------
+windows:
+  # Configure Windows Terminal (font, color scheme, default profile) via a
+  # whitelisted settings.json merge. Set false to leave Windows Terminal alone.
+  windows_terminal: true
+
+  # Also assemble a Windows PowerShell 5.1 profile (default: only pwsh 7).
+  powershell5_profile: false
+
+  powershell:
+    # PowerShell modules installed from PSGallery. PSReadLine is built in;
+    # listed here only if you want it pinned/updated.
+    modules:
+      - Terminal-Icons          # file-type icons in Get-ChildItem
+      - PSFzf                   # fzf Ctrl+R / Ctrl+T bindings
+      - posh-git                # git status + completion
+
+    # Oh My Posh theme file deployed from configs/omp/ (basename only).
+    omp_theme: "envsetup.omp.json"
+
+  multiplexer:
+    # zellij — the tmux role on native Windows.
+    zellij: true
