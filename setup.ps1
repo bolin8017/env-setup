@@ -36,6 +36,32 @@ Options:
 '@ | Write-Output
 }
 
+function Test-ModuleInFilter {
+    # Mirror setup.sh::_module_in_filter — match a filter entry by full name OR
+    # numeric prefix, so `-Modules 06` selects `06-Shell` like `--modules 06`.
+    # Escape the entry so a value like `[0` is matched as a literal prefix rather
+    # than an invalid -like wildcard pattern (which would throw and abort the run).
+    param([string]$Name, [string[]]$Filter)
+    if ($Filter.Count -eq 0) { return $true }
+    foreach ($entry in $Filter) {
+        if ($entry -eq $Name) { return $true }
+        $prefix = [System.Management.Automation.WildcardPattern]::Escape($entry)
+        if ($Name -like ($prefix + '-*')) { return $true }
+    }
+    return $false
+}
+
+function Show-Welcome {
+    Write-Host ''
+    Write-Host '  env-setup — Windows PowerShell engine' -ForegroundColor Blue
+    Write-Host "  Dry-run: $($env:ENVSETUP_DRY_RUN)" -ForegroundColor Cyan
+    Write-Host ''
+}
+
+# Tests dot-source this script with ENVSETUP_SETUP_NORUN set to exercise the
+# helper functions above without running the installer.
+if ($env:ENVSETUP_SETUP_NORUN) { return }
+
 if ($Help) { Show-Usage; exit 0 }
 
 Assert-Windows
@@ -75,23 +101,6 @@ $ModuleList = @(
 $filter = if ($Modules) { @($Modules.Split(',').Trim()) } else { @() }
 $installed = @(); $skipped = @(); $failed = @()
 
-function Test-ModuleInFilter {
-    # Mirror setup.sh::_module_in_filter — match a filter entry by full name OR
-    # numeric prefix, so `-Modules 06` selects `06-Shell` like `--modules 06`.
-    param([string]$Name, [string[]]$Filter)
-    if ($Filter.Count -eq 0) { return $true }
-    foreach ($entry in $Filter) {
-        if ($entry -eq $Name -or $Name -like "$entry-*") { return $true }
-    }
-    return $false
-}
-
-function Show-Welcome {
-    Write-Host ''
-    Write-Host '  env-setup — Windows PowerShell engine' -ForegroundColor Blue
-    Write-Host "  Dry-run: $($env:ENVSETUP_DRY_RUN)" -ForegroundColor Cyan
-    Write-Host ''
-}
 Show-Welcome
 
 foreach ($m in $ModuleList) {

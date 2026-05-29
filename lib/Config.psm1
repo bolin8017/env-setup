@@ -21,8 +21,9 @@ function Remove-YamlQuote {
 
 function Remove-InlineComment {
     # Cut at the first '#' preceded by whitespace and sitting OUTSIDE any quoted
-    # span. Quote-aware, like the awk parser in lib/yaml.sh — so a value such as
-    # "#ff0000" or "a # b" keeps its '#'.
+    # span, so a value such as "#ff0000" or "a # b" keeps its '#'. This is the
+    # quote-aware intent of lib/yaml.sh done correctly per character (the awk
+    # version mishandles ' #' inside a quoted value; this one does not).
     param([string]$Line)
     $quote = $null
     for ($i = 0; $i -lt $Line.Length; $i++) {

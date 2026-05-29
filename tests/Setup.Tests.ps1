@@ -19,3 +19,29 @@ Describe 'setup.ps1 smoke' {
         ($out -join "`n") | Should -Match 'Usage'
     }
 }
+
+Describe 'Test-ModuleInFilter' {
+    BeforeAll {
+        # Dot-source setup.ps1 for its helpers without running the installer.
+        $env:ENVSETUP_SETUP_NORUN = '1'
+        . (Join-Path $PSScriptRoot '..' 'setup.ps1')
+    }
+    AfterAll { $env:ENVSETUP_SETUP_NORUN = $null }
+
+    It 'an empty filter selects everything' {
+        Test-ModuleInFilter -Name '06-Shell' -Filter @() | Should -BeTrue
+    }
+    It 'matches an exact full name' {
+        Test-ModuleInFilter -Name '06-Shell' -Filter @('06-Shell') | Should -BeTrue
+    }
+    It 'matches a numeric prefix (06 -> 06-Shell)' {
+        Test-ModuleInFilter -Name '06-Shell' -Filter @('06') | Should -BeTrue
+    }
+    It 'does not match an unrelated entry' {
+        Test-ModuleInFilter -Name '06-Shell' -Filter @('01') | Should -BeFalse
+    }
+    It 'treats a wildcard-metachar entry literally without throwing' {
+        { Test-ModuleInFilter -Name '06-Shell' -Filter @('[0') } | Should -Not -Throw
+        Test-ModuleInFilter -Name '06-Shell' -Filter @('[0') | Should -BeFalse
+    }
+}

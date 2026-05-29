@@ -39,8 +39,11 @@ function Install-Pkg {
     if (-not (Test-ScoopAvailable)) {
         throw "scoop not available — cannot install $Name (run 01-Core first)"
     }
+    # scoop is a PowerShell shim whose $LASTEXITCODE is unreliable (and reading it
+    # unset throws under StrictMode), so we don't gate on it here. Robust per-tool
+    # failure detection lands in Stage 2, where modules exercise this against a
+    # real scoop and the check can be validated.
     scoop install $Name
-    if ($LASTEXITCODE -ne 0) { throw "scoop install $Name failed (exit $LASTEXITCODE)" }
 }
 
 function Install-App {

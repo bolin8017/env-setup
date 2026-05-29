@@ -31,10 +31,12 @@ function Sync-Repo {
     if (Test-Path (Join-Path $InstallDir '.git')) {
         Write-Host 'Updating existing installation...'
         git -C $InstallDir pull --ff-only
+        if ($LASTEXITCODE -ne 0) { throw "git pull failed (exit $LASTEXITCODE) — resolve $InstallDir by hand" }
     } else {
         Write-Host 'Cloning env-setup...'
         New-Item -ItemType Directory -Path (Split-Path $InstallDir -Parent) -Force | Out-Null
         git clone $RepoUrl $InstallDir
+        if ($LASTEXITCODE -ne 0) { throw "git clone failed (exit $LASTEXITCODE)" }
     }
 }
 
