@@ -16,5 +16,10 @@
         # Dry-run is centralized via ENVSETUP_DRY_RUN / Invoke-OrDryRun rather than
         # per-function -WhatIf. These are internal helpers, not public cmdlets.
         'PSUseShouldProcessForStateChangingFunctions'
+
+        # Module entry points install MULTIPLE items, so plural nouns are correct
+        # (Install-Languages, Install-PythonTools, Install-CliTools); they also
+        # must match the Install-<ModuleName> strings in setup.ps1's module list.
+        'PSUseSingularNouns'
     )
 }
