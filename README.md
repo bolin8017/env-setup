@@ -35,11 +35,11 @@ vim config.yaml
 ./setup.sh --help                 # 顯示所有選項
 ```
 
-### 原生 Windows（PowerShell）— 開發中
+### 原生 Windows（PowerShell）
 
-原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。目前已涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）。Claude Code 同步與收尾在 Stage 4。
+原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）、Claude Code（原生安裝 + 設定同步）、個人目錄與安裝後驗證。
 
-引擎就緒後在 PowerShell 7（pwsh）執行：
+在 PowerShell 7 執行：
 
 ```powershell
 irm https://raw.githubusercontent.com/bolin8017/env-setup/main/bootstrap.ps1 | iex
@@ -246,7 +246,7 @@ alias proj="cd $WORK_DIR/project"
 | Ubuntu 22.04 | ✅ |
 | Ubuntu 24.04 | ✅ |
 | WSL2 (Ubuntu) | ✅ |
-| Windows 11（原生 PowerShell） | 🚧 開發中 |
+| Windows 11（原生 PowerShell） | ✅ |
 
 ## License
 
