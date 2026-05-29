@@ -1,0 +1,5 @@
+// env-setup zellij configuration.
+// Full reference: https://zellij.dev/documentation/
+pane_frames false
+copy_on_select true
+default_layout "compact"

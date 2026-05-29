@@ -37,7 +37,7 @@ vim config.yaml
 
 ### 原生 Windows（PowerShell）— 開發中
 
-原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。目前**基礎引擎**（設定讀取、套件抽象、dry-run、備份、Pester 測試、`windows-latest` CI）已就緒；各安裝模組（scoop/winget 套件、Oh My Posh、PSReadLine、zellij、Claude Code 等）正分階段加入。
+原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。目前已涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）。Claude Code 同步與收尾在 Stage 4。
 
 引擎就緒後在 PowerShell 7（pwsh）執行：
 
