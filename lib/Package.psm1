@@ -5,7 +5,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module "$PSScriptRoot/Common.psm1" -Force
-Import-Module "$PSScriptRoot/DryRun.psm1" -Force
 
 $script:MissingAdminPackages = [System.Collections.Generic.List[string]]::new()
 
@@ -24,22 +23,30 @@ function Test-Elevated {
         $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
         $p  = [System.Security.Principal.WindowsPrincipal]::new($id)
         return $p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
-    } catch { return $false }
+    } catch {
+        Write-Warn "Could not determine elevation (assuming not elevated): $_"
+        return $false
+    }
 }
 
 function Test-ScoopAvailable { return (Test-Command 'scoop') }
 
 function Install-Pkg {
-    # CLI tools via scoop — never needs admin.
+    # CLI tools via scoop — never needs admin. Throws on failure so the calling
+    # module is honestly recorded as Failed (never silently reported Installed).
     param([Parameter(Mandatory)][string]$Name)
-    if (-not (Test-DryRun) -and -not (Test-ScoopAvailable)) {
-        Write-Warn "scoop not available — cannot install $Name"; return
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: scoop install $Name"; return }
+    if (-not (Test-ScoopAvailable)) {
+        throw "scoop not available — cannot install $Name (run 01-Core first)"
     }
-    Invoke-OrDryRun -Description "scoop install $Name" -Action { scoop install $Name }
+    scoop install $Name
+    if ($LASTEXITCODE -ne 0) { throw "scoop install $Name failed (exit $LASTEXITCODE)" }
 }
 
 function Install-App {
-    # Apps via winget. If elevation is unavailable, defer and continue.
+    # Apps via winget. If elevation is unavailable, defer and continue; otherwise
+    # run winget and throw on a non-zero exit (native commands don't honor
+    # $ErrorActionPreference, so check $LASTEXITCODE explicitly).
     param(
         [Parameter(Mandatory)][string]$Id,
         [switch]$RequiresAdmin
@@ -49,9 +56,9 @@ function Install-App {
         Write-Warn "Deferring $Id to an administrator (winget needs elevation)"
         return
     }
-    Invoke-OrDryRun -Description "winget install --id $Id -e" -Action {
-        winget install --id $Id -e --accept-source-agreements --accept-package-agreements
-    }
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: winget install --id $Id -e"; return }
+    winget install --id $Id -e --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) { throw "winget install $Id failed (exit $LASTEXITCODE)" }
 }
 
 function Show-MissingAdminSummary {

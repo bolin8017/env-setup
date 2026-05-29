@@ -70,8 +70,21 @@ $ModuleList = @(
     @{ Name = '09-UserDirs';    Fn = 'Install-UserDirs' }
 )
 
-$filter = if ($Modules) { $Modules.Split(',').Trim() } else { @() }
+# @() guards the single-value case: 'X'.Split(',').Trim() returns a scalar, and
+# $scalar.Count throws under StrictMode. Always treat the filter as an array.
+$filter = if ($Modules) { @($Modules.Split(',').Trim()) } else { @() }
 $installed = @(); $skipped = @(); $failed = @()
+
+function Test-ModuleInFilter {
+    # Mirror setup.sh::_module_in_filter — match a filter entry by full name OR
+    # numeric prefix, so `-Modules 06` selects `06-Shell` like `--modules 06`.
+    param([string]$Name, [string[]]$Filter)
+    if ($Filter.Count -eq 0) { return $true }
+    foreach ($entry in $Filter) {
+        if ($entry -eq $Name -or $Name -like "$entry-*") { return $true }
+    }
+    return $false
+}
 
 function Show-Welcome {
     Write-Host ''
@@ -82,7 +95,7 @@ function Show-Welcome {
 Show-Welcome
 
 foreach ($m in $ModuleList) {
-    if ($filter.Count -gt 0 -and $filter -notcontains $m.Name) {
+    if (-not (Test-ModuleInFilter -Name $m.Name -Filter $filter)) {
         $skipped += "$($m.Name) (filtered)"; continue
     }
     $file = Join-Path $RepoDir "modules/$($m.Name).ps1"
@@ -100,6 +113,7 @@ foreach ($m in $ModuleList) {
         $installed += $m.Name
     } catch {
         Write-Err "Module $($m.Name) failed: $($_.Exception.Message)"
+        Write-Err "  at $($_.InvocationInfo.PositionMessage)"
         $failed += $m.Name
     }
 }

@@ -57,3 +57,45 @@ Describe 'Import-Config env overrides' {
         Get-CfgValue 'languages.node.version' | Should -Be '22.0.0'
     }
 }
+
+Describe 'ConvertFrom-SimpleYaml edge cases' {
+    BeforeAll {
+        $edge = @'
+general:
+
+  auto_yes: true        # inline comment on a value
+
+shell:
+  plugins:
+    builtin:
+      - git              # inline comment on a list item
+      - extract
+  oh_my_zsh: true        # sibling key AFTER a list
+theme:
+  name: "a # b"          # quoted value containing # must survive
+'@
+        $f = Join-Path $TestDrive 'edge.yaml'
+        Set-Content -Path $f -Value $edge -Encoding utf8
+        Import-Config -Path $f
+    }
+    It 'tolerates blank lines and strips inline comments on values' {
+        Get-CfgValue 'general.auto_yes' | Should -Be 'true'
+    }
+    It 'strips inline comments on list items' {
+        Get-CfgList 'shell.plugins.builtin' | Should -Be @('git', 'extract')
+    }
+    It 'keeps a sibling key that follows a list (list does not swallow it)' {
+        Test-CfgEnabled 'shell.oh_my_zsh' | Should -BeTrue
+    }
+    It 'preserves a # inside a quoted value (quote-aware comment strip)' {
+        Get-CfgValue 'theme.name' | Should -Be 'a # b'
+    }
+}
+
+Describe 'Import-Config on the repo config.yaml' {
+    It 'parses the real config (which contains blank lines) without throwing' {
+        $repo = Join-Path $PSScriptRoot '..' 'config.yaml'
+        { Import-Config -Path $repo } | Should -Not -Throw
+        Test-CfgEnabled 'windows.windows_terminal' | Should -BeTrue
+    }
+}

@@ -58,5 +58,13 @@ Describe 'DryRun.psm1' {
             Deploy-Config -Source $src -Destination $dst
             Get-Content $dst | Should -Be 'new'
         }
+        It 'skips when destination is byte-identical to source' {
+            # No env flags (not AutoYes/KeepExisting): the identical-content check
+            # short-circuits before any Confirm-Action prompt would fire.
+            $src = Join-Path $TestDrive 'idsrc'; Set-Content $src 'same line'
+            $dst = Join-Path $TestDrive 'iddst'; Set-Content $dst 'same line'
+            Deploy-Config -Source $src -Destination $dst
+            Get-Content $dst | Should -Be 'same line'
+        }
     }
 }

@@ -1,6 +1,6 @@
-# Config.psm1 — pure-PowerShell reader for the restricted config.yaml subset.
-# Parity with lib/yaml.sh + lib/config.sh: scalars, nested maps (2-space indent),
-# lists (`- item` one level deeper than their key), comments, optional quotes.
+# Config.psm1 — pure-PowerShell reader for the restricted config.yaml subset
+# used by lib/yaml.sh + lib/config.sh: scalars, nested maps (2-space indent),
+# lists (`- item` one level deeper than their key), `#` comments, optional quotes.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -19,8 +19,29 @@ function Remove-YamlQuote {
     return $Value
 }
 
+function Remove-InlineComment {
+    # Cut at the first '#' preceded by whitespace and sitting OUTSIDE any quoted
+    # span. Quote-aware, like the awk parser in lib/yaml.sh — so a value such as
+    # "#ff0000" or "a # b" keeps its '#'.
+    param([string]$Line)
+    $quote = $null
+    for ($i = 0; $i -lt $Line.Length; $i++) {
+        $ch = $Line[$i]
+        if ($quote) {
+            if ($ch -eq $quote) { $quote = $null }
+        }
+        elseif ($ch -eq '"' -or $ch -eq "'") { $quote = $ch }
+        elseif ($ch -eq '#' -and $i -gt 0 -and [char]::IsWhiteSpace($Line[$i - 1])) {
+            return $Line.Substring(0, $i)
+        }
+    }
+    return $Line
+}
+
 function ConvertFrom-SimpleYaml {
-    param([Parameter(Mandatory)][string[]]$Lines)
+    # AllowEmptyString: Get-Content yields '' for blank config lines and the loop
+    # skips them. Without it, a Mandatory [string[]] rejects the whole array.
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]]$Lines)
 
     $root = [ordered]@{}
     # Frame: Indent = level at which this container's keys/items appear.
@@ -34,10 +55,7 @@ function ConvertFrom-SimpleYaml {
         $leading = ($raw -replace '^( *).*$', '$1').Length
         $indent  = [int]([math]::Floor($leading / 2))
 
-        $line = $raw.Trim()
-        # Strip an inline comment that follows whitespace. Our config never puts
-        # '#' inside a value, matching the awk parser's assumption.
-        $line = ($line -replace '\s+#.*$', '').Trim()
+        $line = (Remove-InlineComment $raw.Trim()).Trim()
         if ($line -eq '') { continue }
 
         while ($stack.Peek().Indent -gt $indent) { [void]$stack.Pop() }
@@ -98,12 +116,15 @@ function Set-CfgPath {
 }
 
 function Set-CfgEnvOverride {
-    # Legacy env overrides, mirroring lib/config.sh::_apply_env_overrides.
+    # Legacy env overrides — the subset of lib/config.sh::_apply_env_overrides
+    # with a native-Windows target. SKIP_DOCKER and SKIP_TMUX_CONFIG are omitted
+    # (no Docker; zellij replaces tmux, gated by windows.multiplexer.zellij).
     if ($env:AUTO_YES)       { Set-CfgPath 'general.auto_yes' $env:AUTO_YES }
     if ($env:NODE_VERSION)   { Set-CfgPath 'languages.node.version' $env:NODE_VERSION }
     if ($env:PYTHON_VERSION) { Set-CfgPath 'languages.python.version' $env:PYTHON_VERSION }
-    if ($env:SKIP_CONDA -eq 'true')     { Set-CfgPath 'languages.conda.enabled' 'false' }
-    if ($env:SKIP_CLI_TOOLS -eq 'true') { Set-CfgPath 'cli_tools.enabled' 'false' }
+    if ($env:SKIP_CONDA -eq 'true')       { Set-CfgPath 'languages.conda.enabled' 'false' }
+    if ($env:SKIP_CLI_TOOLS -eq 'true')   { Set-CfgPath 'cli_tools.enabled' 'false' }
+    if ($env:SKIP_SHELL_SETUP -eq 'true') { Set-CfgPath 'shell.enabled' 'false' }
 }
 
 function Import-Config {
