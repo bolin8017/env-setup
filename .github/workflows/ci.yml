@@ -77,6 +77,7 @@ jobs:
           $targets = @('setup.ps1','bootstrap.ps1') +
                      (Get-ChildItem lib -Filter *.psm1 -ErrorAction Ignore).FullName +
                      (Get-ChildItem modules -Filter *.ps1 -ErrorAction Ignore).FullName
+          $targets = $targets | Where-Object { $_ }   # drop nulls (e.g. no modules/*.ps1 yet)
           $results = $targets | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Error,Warning }
           if ($results) { $results | Format-Table -AutoSize; throw "PSScriptAnalyzer found $($results.Count) issue(s)" }
           Write-Host 'PSScriptAnalyzer clean'

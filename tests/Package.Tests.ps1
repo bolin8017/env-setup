@@ -32,8 +32,9 @@ Describe 'Install-App no-admin defer' {
     BeforeEach { Clear-MissingAdmin }
     It 'records the package when RequiresAdmin and not elevated' {
         $env:ENVSETUP_DRY_RUN = $null        # not dry-run
-        # Test-Elevated is $false off-Windows, so the defer branch runs and
-        # winget is never invoked.
+        # Force the not-elevated path regardless of the runner's real elevation
+        # (GitHub's Windows runner runs elevated), so winget is never invoked.
+        Mock -ModuleName Package Test-Elevated { $false }
         Install-App -Id 'Some.App' -RequiresAdmin
         (Get-MissingAdminPackage) | Should -Be @('Some.App')
     }

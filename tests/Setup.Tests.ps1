@@ -31,6 +31,9 @@ Describe 'Test-ModuleInFilter' {
     It 'an empty filter selects everything' {
         Test-ModuleInFilter -Name '06-Shell' -Filter @() | Should -BeTrue
     }
+    It 'a $null filter selects everything (regression: if-expression yields $null)' {
+        Test-ModuleInFilter -Name '06-Shell' -Filter $null | Should -BeTrue
+    }
     It 'matches an exact full name' {
         Test-ModuleInFilter -Name '06-Shell' -Filter @('06-Shell') | Should -BeTrue
     }

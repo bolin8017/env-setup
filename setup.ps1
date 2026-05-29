@@ -42,7 +42,7 @@ function Test-ModuleInFilter {
     # Escape the entry so a value like `[0` is matched as a literal prefix rather
     # than an invalid -like wildcard pattern (which would throw and abort the run).
     param([string]$Name, [string[]]$Filter)
-    if ($Filter.Count -eq 0) { return $true }
+    if (-not $Filter) { return $true }   # $null or empty → select everything
     foreach ($entry in $Filter) {
         if ($entry -eq $Name) { return $true }
         $prefix = [System.Management.Automation.WildcardPattern]::Escape($entry)
@@ -96,9 +96,12 @@ $ModuleList = @(
     @{ Name = '09-UserDirs';    Fn = 'Install-UserDirs' }
 )
 
-# @() guards the single-value case: 'X'.Split(',').Trim() returns a scalar, and
-# $scalar.Count throws under StrictMode. Always treat the filter as an array.
-$filter = if ($Modules) { @($Modules.Split(',').Trim()) } else { @() }
+# Assign the filter directly as an array. `$x = if (...) { } else { @() }` would
+# yield $null (an empty array emits nothing from a block), and binding @()/$null
+# to a [string[]] param then crashes on .Count under StrictMode. Also wrap in @()
+# so a single value ('X'.Split(',').Trim() returns a scalar) stays an array.
+$filter = @()
+if ($Modules) { $filter = @($Modules.Split(',').Trim()) }
 $installed = @(); $skipped = @(); $failed = @()
 
 Show-Welcome
