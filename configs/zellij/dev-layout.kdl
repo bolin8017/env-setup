@@ -1,0 +1,14 @@
+// env-setup dev layout — editor pane beside a shell (analog of tmux dev-layout).
+// Launch with: zellij --layout dev-layout
+layout {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    pane split_direction="vertical" {
+        pane name="editor"
+        pane name="shell" size="40%"
+    }
+    pane size=2 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+}

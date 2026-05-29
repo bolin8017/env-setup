@@ -1,0 +1,13 @@
+# env-setup managed PowerShell profile.
+# Sources numbered fragments from ~/.config/powershell/fragments in order.
+# Put your own tweaks in ~/.config/powershell/custom/*.ps1 (never overwritten).
+
+$fragmentsDir = Join-Path $HOME '.config/powershell/fragments'
+if (Test-Path $fragmentsDir) {
+    Get-ChildItem -Path $fragmentsDir -Filter *.ps1 | Sort-Object Name | ForEach-Object { . $_.FullName }
+}
+
+$customDir = Join-Path $HOME '.config/powershell/custom'
+if (Test-Path $customDir) {
+    Get-ChildItem -Path $customDir -Filter *.ps1 | Sort-Object Name | ForEach-Object { . $_.FullName }
+}
