@@ -1,8 +1,8 @@
 # env-setup
 
-一鍵設定完整開發環境的自動化工具，支援 **macOS** 和 **Ubuntu**（含 WSL）。
+一鍵設定完整開發環境的自動化工具，支援 **macOS**、**Ubuntu**（含 WSL）與**原生 Windows**（PowerShell）。
 
-透過一份 `config.yaml` 設定清單驅動，修改設定後執行一個指令即可完成所有安裝。
+透過一份 `config.yaml` 設定清單驅動，修改設定後執行一個指令即可完成所有安裝。macOS／Linux／WSL 走 Bash 引擎（`setup.sh`），原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1`），兩者共用同一份設定。
 
 ## 快速開始
 
@@ -39,11 +39,25 @@ vim config.yaml
 
 原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）、Claude Code（原生安裝 + 設定同步）、個人目錄與安裝後驗證。
 
-在 PowerShell 7 執行：
+全新系統（一行安裝，在 PowerShell 7 執行）：
 
 ```powershell
 irm https://raw.githubusercontent.com/bolin8017/env-setup/main/bootstrap.ps1 | iex
 ```
+
+手動安裝與常用指令：
+
+```powershell
+git clone https://github.com/bolin8017/env-setup.git
+cd env-setup
+
+./setup.ps1                          # 完整安裝
+./setup.ps1 -DryRun -AutoYes         # 預覽安裝內容，不實際執行
+./setup.ps1 -Modules 06-Shell        # 只執行指定模組
+./scripts/verify.ps1                 # 安裝驗證
+```
+
+非系統管理員也能執行：scoop 與多數 winget 套件以使用者身分安裝，需要提權的 winget 套件會被延後，並在結束時印出一段管理員指令清單（對應 Unix 的無 sudo 流程）。
 
 重度 Linux 開發仍建議留在 WSL2（在 WSL2 裡用上面的 `bootstrap.sh`）。
 
@@ -61,6 +75,8 @@ irm https://raw.githubusercontent.com/bolin8017/env-setup/main/bootstrap.ps1 | i
 | **AI 工具** | Claude Code CLI |
 
 每個項目都可以在 `config.yaml` 中個別開關。
+
+**原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／pyenv-win，並設定 PSReadLine 預測與 Windows Terminal 字型。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
 
 ## 設定
 
@@ -123,8 +139,12 @@ claude_code:
 
 ## 架構
 
+本專案是兩個平行引擎：macOS／Linux／WSL 用 Bash 引擎，原生 Windows 用 PowerShell 引擎。兩者互不呼叫，共用同一份 `config.yaml` 與 `configs/` 資產。
+
+**Bash 引擎（macOS／Linux／WSL）**
+
 ```
-setup.sh 讀取 config.yaml → 依序執行 8 個模組
+setup.sh 讀取 config.yaml → 依序執行模組
  │
  ├─ 01-core         Homebrew → Git → gh → build tools
  ├─ 02-languages    nvm/Node.js → pyenv/Python → Conda
@@ -133,8 +153,26 @@ setup.sh 讀取 config.yaml → 依序執行 8 個模組
  ├─ 05-cli-tools    11 個 CLI 工具
  ├─ 06-shell        Zsh → Oh My Zsh → P10k → plugins → .zshrc 組裝
  ├─ 07-tmux         tmux → TPM → config → plugins
- └─ 08-claude-code  Claude Code CLI（原生安裝）
+ ├─ 08-claude-code  Claude Code CLI（原生安裝 + 設定同步）
+ └─ 09-user-dirs    在 $HOME 下建立個人目錄
 ```
+
+**PowerShell 引擎（原生 Windows）**
+
+```
+setup.ps1 讀取 config.yaml → 依序執行模組
+ │
+ ├─ 01-Core         scoop/winget → Git → gh
+ ├─ 02-Languages    nvm-windows/Node.js → pyenv-win/Python
+ ├─ 03-PythonTools  Jupyter → Poetry → uv
+ ├─ 05-CliTools     現代 CLI 工具
+ ├─ 06-Shell        PowerShell 7 → Oh My Posh → PSReadLine → 模組 → $PROFILE 組裝 → WT 字型
+ ├─ 07-Multiplexer  zellij + dev layout
+ ├─ 08-ClaudeCode   Claude Code CLI（原生安裝 + 設定同步）
+ └─ 09-UserDirs     在 $HOME 下建立個人目錄
+```
+
+PowerShell 沒有 Bash/awk YAML 解析器，因此 `lib/Config.psm1` 提供同一份設定子集的純 PowerShell 讀取器。跨模組旗標透過 `ENVSETUP_*` 環境變數傳遞（對應 Bash 引擎匯出的 `DRY_RUN`／`AUTO_YES`／`KEEP_EXISTING`）。原生 Windows 沒有 Docker 模組。
 
 ### .zshrc Fragment 系統
 
@@ -176,34 +214,35 @@ macOS 不會走這條路徑：brew 安裝以使用者身份執行，初次安裝
 
 ## 目錄結構
 
+`*.sh` / `*.psm1` 為兩個引擎的同名手足，`setup.sh` 與 `setup.ps1` 為各自入口。
+
 ```
 env-setup/
-├── setup.sh                  # 主入口
-├── config.yaml               # 設定檔
-├── bootstrap.sh              # 全新系統一行安裝
-├── lib/                      # 共用函式庫
-│   ├── common.sh             #   平台偵測、logging
-│   ├── yaml.sh               #   YAML 解析器
-│   ├── config.sh             #   設定載入
-│   ├── package.sh            #   跨平台套件管理
-│   ├── dryrun.sh             #   dry-run + deploy_config
-│   └── backup.sh             #   備份/還原
+├── setup.sh                  # 主入口（Unix）
+├── setup.ps1                 # 主入口（Windows）
+├── bootstrap.sh              # 全新系統一行安裝（Unix）
+├── bootstrap.ps1             # 全新系統一行安裝（Windows）
+├── config.yaml               # 設定檔（兩平台共用）
+├── lib/                      # Bash 引擎（*.sh）+ Windows 引擎（*.psm1）
+│   ├── common.sh / Common.psm1     #   平台偵測、logging
+│   ├── yaml.sh                      #   YAML 解析器（Bash）
+│   ├── config.sh / Config.psm1      #   設定載入／純 PowerShell 讀取器
+│   ├── package.sh / Package.psm1    #   套件管理（brew/apt｜scoop/winget）
+│   ├── dryrun.sh / DryRun.psm1      #   dry-run + deploy
+│   ├── backup.sh / Backup.psm1      #   備份/還原
+│   ├── WindowsTerminal.psm1         #   Windows Terminal 設定合併
+│   └── ClaudeConfig.psm1            #   Claude Code 設定 JSON 合併
 ├── modules/                  # 安裝模組（按依賴順序編號）
-│   ├── 01-core.sh
-│   ├── 02-languages.sh
-│   ├── 03-python-tools.sh
-│   ├── 04-docker.sh
-│   ├── 05-cli-tools.sh
-│   ├── 06-shell.sh
-│   ├── 07-tmux.sh
-│   └── 08-claude-code.sh
+│   ├── 01-core.sh  …  09-user-dirs.sh        # Unix（含 04-docker）
+│   └── 01-Core.ps1 …  09-UserDirs.ps1        # Windows（無 docker）
 ├── configs/                  # 設定檔模板
-│   ├── zshrc/                #   .zshrc fragments
-│   ├── tmux/                 #   tmux 設定
-│   ├── p10k/                 #   Powerlevel10k 設定
-│   └── aliases.zsh           #   shell aliases
-├── scripts/verify.sh         # 安裝驗證
-└── .github/workflows/        # CI（ShellCheck + 整合測試）
+│   ├── zshrc/ , tmux/ , p10k/ , aliases.zsh  #   Unix
+│   └── pwsh/ , omp/ , zellij/ , aliases.ps1  #   Windows
+├── scripts/
+│   ├── verify.sh             # 安裝驗證（Unix）
+│   └── verify.ps1            # 安裝驗證（Windows）
+├── PSScriptAnalyzerSettings.psd1   # Windows 引擎 lint 設定
+└── .github/workflows/        # CI（Unix：ShellCheck + dry-run｜Windows：PSScriptAnalyzer + Pester + dry-run）
 ```
 
 ## 備份與還原
