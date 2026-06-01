@@ -8,6 +8,26 @@ Import-Module "$PSScriptRoot/../lib/Common.psm1"
 Import-Module "$PSScriptRoot/../lib/Config.psm1"
 Import-Module "$PSScriptRoot/../lib/Package.psm1"
 
+function Resolve-PyenvVersion {
+    # pyenv-win needs an exact patch version. Given a major.minor request like
+    # "3.12" plus the lines of `pyenv install --list`, return the newest matching
+    # "3.12.<patch>" (stable only). Returns $Requested unchanged if it already
+    # carries a patch component or nothing matches. Pure, so it is unit-testable.
+    param(
+        [Parameter(Mandatory)][string]$Requested,
+        [string[]]$Available = @()
+    )
+    if ($Requested -notmatch '^\d+\.\d+$') { return $Requested }
+    $rx = '^' + [regex]::Escape($Requested) + '\.\d+$'
+    $match = $Available |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -match $rx } |
+        Sort-Object { [version]$_ } |
+        Select-Object -Last 1
+    if ($match) { return $match }
+    return $Requested
+}
+
 function Install-Languages {
     Write-Header 'Languages'
 
@@ -24,7 +44,19 @@ function Install-Languages {
         $pyver = Get-CfgValue 'languages.python.version'
         if ($pyver) {
             if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: pyenv install $pyver; pyenv global $pyver" }
-            else { pyenv install $pyver; pyenv global $pyver }
+            else {
+                # pyenv-win, unlike *nix pyenv, won't resolve "3.12" to its newest
+                # patch ("definition not found: 3.12"). Map major.minor to an exact
+                # patch from the available list before installing.
+                if ($pyver -match '^\d+\.\d+$') {
+                    $resolved = Resolve-PyenvVersion -Requested $pyver -Available (pyenv install --list)
+                    if ($resolved -ne $pyver) { Write-Info "Resolved Python $pyver -> $resolved" }
+                    else { Write-Warn "pyenv-win has no $pyver.* definition — run 'pyenv update' or pin an exact version in config.yaml" }
+                    $pyver = $resolved
+                }
+                pyenv install $pyver
+                pyenv global $pyver
+            }
         }
     }
 

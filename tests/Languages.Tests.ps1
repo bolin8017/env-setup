@@ -28,3 +28,24 @@ languages:
         Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'pyenv' }
     }
 }
+
+Describe 'Resolve-PyenvVersion' {
+    BeforeAll {
+        $script:list = @(' 3.11.8', '3.11.9', '3.12.9', '3.12.10', '3.12.0a1', '3.13.1', '  ')
+    }
+    It 'resolves a major.minor to the newest stable patch' {
+        Resolve-PyenvVersion -Requested '3.12' -Available $script:list | Should -Be '3.12.10'
+    }
+    It 'sorts numerically, not lexically (3.12.10 > 3.12.9)' {
+        Resolve-PyenvVersion -Requested '3.12' -Available @('3.12.9', '3.12.10') | Should -Be '3.12.10'
+    }
+    It 'leaves an exact patch version untouched' {
+        Resolve-PyenvVersion -Requested '3.11.7' -Available $script:list | Should -Be '3.11.7'
+    }
+    It 'returns the request unchanged when nothing matches' {
+        Resolve-PyenvVersion -Requested '3.9' -Available $script:list | Should -Be '3.9'
+    }
+    It 'ignores prereleases' {
+        Resolve-PyenvVersion -Requested '3.12' -Available @('3.12.0a1', '3.12.0') | Should -Be '3.12.0'
+    }
+}
