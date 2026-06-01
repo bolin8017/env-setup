@@ -46,6 +46,96 @@ function Update-PyenvVersionCache {
     }
 }
 
+function Resolve-JunctionFreePath {
+    # Return the real filesystem location of $Path, resolving a directory
+    # junction/symlink when present. scoop assembles pyenv-win out of junctions
+    # (its `current` link, plus the persisted `install_cache`/`versions` dirs),
+    # and an unelevated `msiexec /a` is refused traversal of those junctions on
+    # Windows 11 (ERROR_UNTRUSTED_MOUNT_POINT). Resolving to the junction-free
+    # path lets the administrative install proceed. A plain directory (e.g. a
+    # git-clone pyenv) is returned unchanged. Pure, so it is unit-testable with
+    # a temp junction.
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return $Path }
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        $target = $item.ResolveLinkTarget($true)
+        if ($target) { return $target.FullName }
+    }
+    return $item.FullName
+}
+
+function Install-PyenvPython {
+    # Install one CPython version with pyenv-win, working around a scoop +
+    # Windows 11 incompatibility.
+    #
+    # pyenv-win installs CPython by running, for each component MSI:
+    #     msiexec /quiet /a <core>.msi TargetDir=<PYENV>\versions\<ver>
+    # an *unelevated administrative install*. Installed via scoop, that path is
+    # reached through directory junctions (scoop's `current` link and the
+    # persisted `install_cache`/`versions` dirs). Windows 11 refuses an
+    # unelevated process traversal of a junction (ERROR_UNTRUSTED_MOUNT_POINT,
+    # 0x800701C0); msiexec then fails with MSI 2203 "cannot open database" and
+    # pyenv reports:  :: [Error] :: error installing "core" component MSI.
+    #
+    # pyenv's earlier `/layout` download is plain file I/O and still succeeds, so
+    # the component MSIs are left cached. We detect the missing interpreter and
+    # finish the install ourselves against the junction-FREE real paths, mirroring
+    # pyenv-win's own steps (admin-install each component, ensurepip, create the
+    # pythonX[.Y] aliases, rehash). On setups without junctions (git-clone pyenv,
+    # older Windows, or a future pyenv that avoids /a) `pyenv install` already
+    # produced python.exe and the workaround is skipped.
+    param([Parameter(Mandatory)][string]$Version)
+
+    pyenv install $Version
+
+    $root = $env:PYENV
+    if (-not $root) { $root = Join-Path (scoop prefix pyenv) 'pyenv-win' }
+    $dst = Join-Path (Resolve-JunctionFreePath (Join-Path $root 'versions')) $Version
+    if (Test-Path (Join-Path $dst 'python.exe')) { return }   # pyenv's own install worked
+
+    Write-Warn "pyenv MSI install was blocked by a scoop junction (Win11); finishing on junction-free paths"
+    $src = Join-Path (Resolve-JunctionFreePath (Join-Path $root 'install_cache')) $Version
+    if (-not (Test-Path $src)) {
+        Write-Warn "No cached component MSIs at ${src} - cannot finish Python $Version"
+        return
+    }
+    $null = New-Item -ItemType Directory -Path $dst -Force
+
+    # Install the same components pyenv would: skip its four non-components
+    # (appendpath/launcher/path/pip) and the optional debug/symbol payloads.
+    foreach ($msi in (Get-ChildItem $src -Filter '*.msi' -ErrorAction SilentlyContinue)) {
+        if ($msi.BaseName -match '^(appendpath|launcher|path|pip)$|_d$|_pdb$') { continue }
+        $msiArgs = '/quiet /a "{0}" TargetDir="{1}"' -f $msi.FullName, $dst
+        $proc = Start-Process msiexec -Wait -PassThru -ArgumentList $msiArgs
+        if ($proc.ExitCode -ne 0) { Write-Warn "  component $($msi.BaseName) -> exit $($proc.ExitCode)" }
+        $copied = Join-Path $dst $msi.Name      # /a copies the source msi into TargetDir
+        if (Test-Path $copied) { Remove-Item $copied -Force }
+    }
+
+    $python = Join-Path $dst 'python.exe'
+    if (-not (Test-Path $python)) { Write-Warn "Python $Version still missing after workaround"; return }
+
+    # msiexec /a does not run ensurepip; bootstrap pip as pyenv would. A non-zero
+    # exit must not abort the run, so swallow it and verify via pip.exe below.
+    try { & $python -E -s -m ensurepip -U --default-pip *> $null }
+    catch { Write-Warn "ensurepip raised an error: $_" }
+    if (Test-Path (Join-Path $dst 'Scripts\pip.exe')) { Write-Info "pip ready for Python $Version" }
+    else { Write-Warn "pip not bootstrapped for Python $Version" }
+
+    # pyenv's pythonX / pythonXY / pythonX.Y aliases (pyenv-install.vbs).
+    $pythonw = Join-Path $dst 'pythonw.exe'
+    $parts = $Version.Split('.')
+    if ($parts.Count -ge 2) {
+        foreach ($suffix in @($parts[0], ($parts[0] + $parts[1]), ($parts[0] + '.' + $parts[1]))) {
+            Copy-Item $python (Join-Path $dst "python$suffix.exe") -Force
+            if (Test-Path $pythonw) { Copy-Item $pythonw (Join-Path $dst "pythonw$suffix.exe") -Force }
+        }
+    }
+    try { pyenv rehash } catch { Write-Warn "pyenv rehash: $_" }
+    Write-Info "Python $Version installed via junction-free workaround"
+}
+
 function Install-Languages {
     Write-Header 'Languages'
 
@@ -77,7 +167,7 @@ function Install-Languages {
                         $pyver = $resolved
                     }
                 }
-                if ($pyver) { pyenv install $pyver; pyenv global $pyver }
+                if ($pyver) { Install-PyenvPython -Version $pyver; pyenv global $pyver }
             }
         }
     }
