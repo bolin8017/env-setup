@@ -49,3 +49,22 @@ Describe 'Resolve-PyenvVersion' {
         Resolve-PyenvVersion -Requested '3.12' -Available @('3.12.0a1', '3.12.0') | Should -Be '3.12.0'
     }
 }
+
+Describe 'Resolve-JunctionFreePath' {
+    It 'returns a plain directory unchanged' {
+        $d = Join-Path $TestDrive 'plain'
+        New-Item -ItemType Directory -Path $d | Out-Null
+        Resolve-JunctionFreePath -Path $d | Should -Be ((Get-Item $d).FullName)
+    }
+    It 'resolves a directory junction to its real target' {
+        $real = Join-Path $TestDrive 'real'
+        New-Item -ItemType Directory -Path $real | Out-Null
+        $link = Join-Path $TestDrive 'link'
+        New-Item -ItemType Junction -Path $link -Target $real | Out-Null
+        Resolve-JunctionFreePath -Path $link | Should -Be ((Get-Item $real).FullName)
+    }
+    It 'returns a non-existent path unchanged' {
+        $p = Join-Path $TestDrive 'does-not-exist'
+        Resolve-JunctionFreePath -Path $p | Should -Be $p
+    }
+}
