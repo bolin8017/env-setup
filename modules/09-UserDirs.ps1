@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module "$PSScriptRoot/../lib/Common.psm1"
 Import-Module "$PSScriptRoot/../lib/Config.psm1"
-Import-Module "$PSScriptRoot/../lib/DryRun.psm1"
+Import-Module "$PSScriptRoot/../lib/DryRun.psm1" -DisableNameChecking  # WinPS 5.1: 'Deploy' is an unapproved verb
 
 function Install-UserDirs {
     Write-Header 'User directories'
