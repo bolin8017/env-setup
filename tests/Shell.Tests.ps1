@@ -46,3 +46,14 @@ windows:
     }
     It 'does not throw under dry-run' { { Install-Shell } | Should -Not -Throw }
 }
+
+Describe 'Enable-SessionFonts' {
+    It 'compiles the native signature and is a no-op for a missing font path' {
+        { Enable-SessionFonts -Path (Join-Path $TestDrive 'does-not-exist.ttf') } | Should -Not -Throw
+    }
+    It 'accepts multiple paths without throwing' {
+        { Enable-SessionFonts -Path @(
+            (Join-Path $TestDrive 'a.ttf'), (Join-Path $TestDrive 'b.ttf')
+        ) } | Should -Not -Throw
+    }
+}
