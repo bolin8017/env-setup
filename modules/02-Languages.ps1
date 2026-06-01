@@ -50,17 +50,24 @@ function Install-Languages {
                 # patch from the available list before installing.
                 if ($pyver -match '^\d+\.\d+$') {
                     # pyenv-win ships a cached version DB that can predate recent
-                    # patch releases (so "3.12" finds no 3.12.x). Refresh it first;
-                    # best-effort — if it fails, the resolver just warns below.
-                    Write-Info 'Refreshing pyenv-win version list (pyenv update)...'
-                    pyenv update *> $null
+                    # patch releases. Try to refresh it, but its updater is an
+                    # htmlfile-based VBScript that throws on some machines — catch
+                    # it so a broken 'pyenv update' can't abort the whole module.
+                    try {
+                        Write-Info 'Refreshing pyenv-win version list (pyenv update)...'
+                        pyenv update *> $null
+                    } catch { Write-Warn "pyenv update failed (using the cached list): $_" }
+
                     $resolved = Resolve-PyenvVersion -Requested $pyver -Available (pyenv install --list)
-                    if ($resolved -ne $pyver) { Write-Info "Resolved Python $pyver -> $resolved" }
-                    else { Write-Warn "pyenv-win has no $pyver.* definition — run 'pyenv update' or pin an exact version in config.yaml" }
-                    $pyver = $resolved
+                    if ($resolved -eq $pyver) {
+                        Write-Warn "No pyenv-win definition for $pyver.* — skipping Python install. Pin an exact version in config.yaml (e.g. 3.12.x) or repair 'pyenv update'."
+                        $pyver = $null
+                    } else {
+                        Write-Info "Resolved Python $pyver -> $resolved"
+                        $pyver = $resolved
+                    }
                 }
-                pyenv install $pyver
-                pyenv global $pyver
+                if ($pyver) { pyenv install $pyver; pyenv global $pyver }
             }
         }
     }
