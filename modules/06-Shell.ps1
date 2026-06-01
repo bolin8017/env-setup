@@ -89,10 +89,27 @@ function Install-NerdFont {
     }
 }
 
+function Initialize-PSGallery {
+    # The first Install-Module on Windows PowerShell 5.1 interactively prompts to
+    # bootstrap the NuGet provider and to trust PSGallery, which hangs an
+    # unattended bootstrap. Provision both non-interactively up front; pwsh 7
+    # ships the provider so this is effectively a no-op there.
+    if (Test-DryRun) { return }
+    try {
+        if (-not (Get-PackageProvider -Name NuGet -ErrorAction Ignore)) {
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+        }
+        if ((Get-PSRepository -Name PSGallery -ErrorAction Ignore).InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        }
+    } catch { Write-Warn "Could not pre-provision NuGet/PSGallery (module installs may prompt): $_" }
+}
+
 function Install-Shell {
     Write-Header 'Shell (PowerShell 7 + Oh My Posh)'
     Install-App -Id 'Microsoft.PowerShell'
     Install-App -Id 'JanDeDobbeleer.OhMyPosh'
+    Initialize-PSGallery
     foreach ($m in (Get-CfgList 'windows.powershell.modules')) { Install-PsModule -Name $m }
 
     $cfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs')).Path
