@@ -16,6 +16,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Windows PowerShell 5.1 defaults the console to the OEM code page, so the
+# em-dashes in our banners render as "??". Force UTF-8 output (pwsh 7 already
+# defaults to it); guarded because some hosts disallow setting it.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() }
+    catch { Write-Verbose "Could not set console to UTF-8: $_" }
+}
+
 $RepoDir = $PSScriptRoot
 Import-Module "$RepoDir/lib/Common.psm1" -Force
 Import-Module "$RepoDir/lib/Config.psm1" -Force

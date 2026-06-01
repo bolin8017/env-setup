@@ -28,3 +28,19 @@ Describe 'Install-CliTools dispatch' {
         Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'bat' }      # disabled
     }
 }
+
+Describe 'Install-CliTools skips Windows-unavailable tools' {
+    BeforeEach {
+        # tree/httpie have no scoop manifest on Windows; they must not be installed.
+        $yaml = "cli_tools:`n  tree: true`n  httpie: true`n  ripgrep: true`n"
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content $f $yaml
+        Import-Config -Path $f
+        Mock Install-Pkg { }
+    }
+    It 'does not scoop-install tree or httpie but still installs ripgrep' {
+        Install-CliTools
+        Should -Invoke Install-Pkg -Times 1 -ParameterFilter { $Name -eq 'ripgrep' }
+        Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'tree' }
+        Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'httpie' }
+    }
+}
