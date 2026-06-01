@@ -23,9 +23,13 @@ function Test-Command {
 }
 
 function Test-IsWindows {
-    # $IsWindows exists on pwsh 6+; it is $null on Windows PowerShell 5.1, which
-    # only ever runs on Windows. Treat both "true" and "5.1-on-Windows" as Windows.
-    if ($null -ne $IsWindows) { return [bool]$IsWindows }
+    # $IsWindows exists only on pwsh 6+. On Windows PowerShell 5.1 it is *unset*
+    # (not $null) — and under Set-StrictMode -Version Latest, reading an unset
+    # variable is a terminating error (VariableIsUndefined). Probe with
+    # Get-Variable instead of referencing $IsWindows directly, then fall back to
+    # $env:OS (5.1 only ever runs on Windows, where $env:OS is 'Windows_NT').
+    $isWin = Get-Variable -Name IsWindows -ValueOnly -ErrorAction Ignore
+    if ($null -ne $isWin) { return [bool]$isWin }
     return ($env:OS -eq 'Windows_NT')
 }
 
