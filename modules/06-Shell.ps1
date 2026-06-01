@@ -15,7 +15,13 @@ function Install-PsModule {
     param([Parameter(Mandatory)][string]$Name)
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: Install-Module $Name -Scope CurrentUser"; return }
     if (Get-Module -ListAvailable $Name) { return }
-    try { Install-Module $Name -Scope CurrentUser -Force -AcceptLicense }
+    # -AcceptLicense was added in PowerShellGet 1.6.0. Windows PowerShell 5.1 ships
+    # 1.0.0.1, which rejects it ("A parameter cannot be found that matches parameter
+    # name 'AcceptLicense'") and the install fails. Pass it only where supported so
+    # both 5.1 and pwsh 7 install cleanly.
+    $params = @{ Scope = 'CurrentUser'; Force = $true }
+    if ((Get-Command Install-Module).Parameters.ContainsKey('AcceptLicense')) { $params['AcceptLicense'] = $true }
+    try { Install-Module $Name @params }
     catch { Write-Warn "Failed to install module ${Name}: $_" }
 }
 
