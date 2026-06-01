@@ -28,6 +28,24 @@ function Resolve-PyenvVersion {
     return $Requested
 }
 
+function Update-PyenvVersionCache {
+    # pyenv-win refreshes its installable-version list with 'pyenv update', but
+    # that uses an htmlfile COM object unsupported on current Windows 11
+    # ("htmlfile: this method is not supported"), so it fails and the list goes
+    # stale. Replace the cache file directly from the maintained source — no
+    # htmlfile. Best-effort: on failure pyenv keeps its existing list.
+    try {
+        $cache = Join-Path (scoop prefix pyenv) 'pyenv-win\.versions_cache.xml'
+        [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $url = 'https://raw.githubusercontent.com/pyenv-win/pyenv-win/master/pyenv-win/.versions_cache.xml'
+        Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $cache
+        Write-Info 'Refreshed pyenv-win version list (.versions_cache.xml)'
+    } catch {
+        Write-Warn "Could not refresh the pyenv version list (using the existing one): $_"
+    }
+}
+
 function Install-Languages {
     Write-Header 'Languages'
 
@@ -49,18 +67,10 @@ function Install-Languages {
                 # patch ("definition not found: 3.12"). Map major.minor to an exact
                 # patch from the available list before installing.
                 if ($pyver -match '^\d+\.\d+$') {
-                    # pyenv-win ships a cached version DB that can predate recent
-                    # patch releases. Try to refresh it, but its updater is an
-                    # htmlfile-based VBScript that throws on some machines — catch
-                    # it so a broken 'pyenv update' can't abort the whole module.
-                    try {
-                        Write-Info 'Refreshing pyenv-win version list (pyenv update)...'
-                        pyenv update *> $null
-                    } catch { Write-Warn "pyenv update failed (using the cached list): $_" }
-
+                    Update-PyenvVersionCache
                     $resolved = Resolve-PyenvVersion -Requested $pyver -Available (pyenv install --list)
                     if ($resolved -eq $pyver) {
-                        Write-Warn "No pyenv-win definition for $pyver.* — skipping Python install. Pin an exact version in config.yaml (e.g. 3.12.x) or repair 'pyenv update'."
+                        Write-Warn "No pyenv-win definition for $pyver.* — the version list may be stale. Pin an exact version in config.yaml."
                         $pyver = $null
                     } else {
                         Write-Info "Resolved Python $pyver -> $resolved"
