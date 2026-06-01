@@ -49,6 +49,11 @@ function Install-Languages {
                 # patch ("definition not found: 3.12"). Map major.minor to an exact
                 # patch from the available list before installing.
                 if ($pyver -match '^\d+\.\d+$') {
+                    # pyenv-win ships a cached version DB that can predate recent
+                    # patch releases (so "3.12" finds no 3.12.x). Refresh it first;
+                    # best-effort — if it fails, the resolver just warns below.
+                    Write-Info 'Refreshing pyenv-win version list (pyenv update)...'
+                    pyenv update *> $null
                     $resolved = Resolve-PyenvVersion -Requested $pyver -Available (pyenv install --list)
                     if ($resolved -ne $pyver) { Write-Info "Resolved Python $pyver -> $resolved" }
                     else { Write-Warn "pyenv-win has no $pyver.* definition — run 'pyenv update' or pin an exact version in config.yaml" }

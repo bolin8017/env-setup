@@ -40,6 +40,15 @@ Describe 'Install-App no-admin defer' {
     }
 }
 
+Describe 'Test-WingetSucceeded' {
+    It 'treats a fresh install (0) as success' { Test-WingetSucceeded 0 | Should -BeTrue }
+    It 'treats "already current" 0x8A15002B (-1978335189) as success' {
+        Test-WingetSucceeded -1978335189 | Should -BeTrue
+    }
+    It 'treats a real failure code as failure' { Test-WingetSucceeded 1 | Should -BeFalse }
+    It 'treats another winget error code as failure' { Test-WingetSucceeded -1978335212 | Should -BeFalse }
+}
+
 Describe 'Install-Pkg surfaces failure instead of silently succeeding' {
     AfterEach { $env:ENVSETUP_DRY_RUN = $null }
     It 'is a no-op under dry-run' {

@@ -49,10 +49,20 @@ function Install-Pkg {
     scoop install $Name
 }
 
+function Test-WingetSucceeded {
+    # winget exits 0 on a fresh install. When the package is already present it
+    # tries to upgrade, and if nothing newer exists it exits 0x8A15002B
+    # (-1978335189, "No newer package versions are available") — success for an
+    # idempotent re-run, not a failure.
+    param([Parameter(Mandatory)][int]$ExitCode)
+    return ($ExitCode -eq 0 -or $ExitCode -eq -1978335189)
+}
+
 function Install-App {
     # Apps via winget. If elevation is unavailable, defer and continue; otherwise
-    # run winget and throw on a non-zero exit (native commands don't honor
-    # $ErrorActionPreference, so check $LASTEXITCODE explicitly).
+    # run winget and throw on a real failure (native commands don't honor
+    # $ErrorActionPreference, so check $LASTEXITCODE explicitly via
+    # Test-WingetSucceeded, which tolerates the "already current" exit code).
     param(
         [Parameter(Mandatory)][string]$Id,
         [switch]$RequiresAdmin
@@ -64,7 +74,7 @@ function Install-App {
     }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: winget install --id $Id -e"; return }
     winget install --id $Id -e --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) { throw "winget install $Id failed (exit $LASTEXITCODE)" }
+    if (-not (Test-WingetSucceeded $LASTEXITCODE)) { throw "winget install $Id failed (exit $LASTEXITCODE)" }
 }
 
 function Show-MissingAdminSummary {
@@ -81,4 +91,4 @@ function Show-MissingAdminSummary {
 
 Export-ModuleMember -Function `
     Clear-MissingAdmin, Add-MissingAdminPackage, Get-MissingAdminPackage, `
-    Test-Elevated, Test-ScoopAvailable, Install-Pkg, Install-App, Show-MissingAdminSummary
+    Test-Elevated, Test-ScoopAvailable, Test-WingetSucceeded, Install-Pkg, Install-App, Show-MissingAdminSummary
