@@ -53,6 +53,31 @@ function Set-WindowsTerminalFont {
     Write-Success 'Configured Windows Terminal font'
 }
 
+function Enable-SessionFonts {
+    # Make freshly-registered fonts usable in the CURRENT login session without a
+    # sign-out. Copying the .ttf and writing the HKCU registry key persists the
+    # font, but the live GDI/DirectWrite font tables are only rebuilt at next
+    # logon — so a fresh box keeps showing "couldn't find MesloLGS NF" until the
+    # user signs out. AddFontResourceW loads each file into the session font
+    # table; a WM_FONTCHANGE broadcast asks running apps to re-enumerate.
+    # Best-effort and idempotent.
+    param([Parameter(Mandatory)][string[]]$Path)
+    if (-not ([System.Management.Automation.PSTypeName]'EnvSetup.NativeFont').Type) {
+        Add-Type -Namespace EnvSetup -Name NativeFont -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("gdi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern int AddFontResourceW(string lpFileName);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint Msg, System.IntPtr wParam, System.IntPtr lParam, uint flags, uint timeout, out System.IntPtr result);
+'@
+    }
+    foreach ($p in $Path) {
+        if (Test-Path -LiteralPath $p) { [void][EnvSetup.NativeFont]::AddFontResourceW($p) }
+    }
+    # HWND_BROADCAST = 0xFFFF, WM_FONTCHANGE = 0x001D, SMTO_ABORTIFHUNG = 0x0002
+    $res = [IntPtr]::Zero
+    [void][EnvSetup.NativeFont]::SendMessageTimeout([IntPtr]0xFFFF, 0x001D, [IntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$res)
+}
+
 function Install-NerdFont {
     # The Oh My Posh prompt and the Windows Terminal face we set both need
     # MesloLGS NF, but nothing here installed it — so a fresh box shows
@@ -82,8 +107,10 @@ function Install-NerdFont {
             $face = [IO.Path]::GetFileNameWithoutExtension($f)
             New-ItemProperty -Path $regKey -Name "$face (TrueType)" -Value $dest -PropertyType String -Force | Out-Null
         }
-        if ($added -gt 0) { Write-Success "Installed MesloLGS NF ($added file(s)) — restart the terminal to apply" }
-        else { Write-Info 'MesloLGS NF already installed' }
+        # Activate in the current session so glyphs render without a sign-out.
+        Enable-SessionFonts -Path ($files | ForEach-Object { Join-Path $fontDir $_ })
+        if ($added -gt 0) { Write-Success "Installed MesloLGS NF ($added file(s)) — open a new terminal to apply" }
+        else { Write-Info 'MesloLGS NF already installed (re-activated for this session)' }
     } catch {
         Write-Warn "Could not install MesloLGS NF (prompt glyphs may not render): $_"
     }
