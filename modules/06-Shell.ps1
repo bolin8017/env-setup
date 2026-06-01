@@ -53,6 +53,42 @@ function Set-WindowsTerminalFont {
     Write-Success 'Configured Windows Terminal font'
 }
 
+function Install-NerdFont {
+    # The Oh My Posh prompt and the Windows Terminal face we set both need
+    # MesloLGS NF, but nothing here installed it — so a fresh box shows
+    # "couldn't find MesloLGS NF" and renders prompt glyphs as tofu. Install the
+    # exact "MesloLGS NF" family (Powerlevel10k's fonts, whose face name matches
+    # what Set-WindowsTerminalFont writes) per-user: no admin, no name guessing.
+    if (Test-DryRun) { Write-Info '[DRY-RUN] Would install the MesloLGS NF Nerd Font'; return }
+    if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA — skipping Nerd Font install'; return }
+    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $regKey  = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+    $base    = 'https://github.com/romkatv/powerlevel10k-media/raw/master'
+    $files   = 'MesloLGS NF Regular.ttf', 'MesloLGS NF Bold.ttf',
+               'MesloLGS NF Italic.ttf', 'MesloLGS NF Bold Italic.ttf'
+    try {
+        # WinPS 5.1 defaults to TLS 1.0 for web requests; GitHub requires 1.2.
+        [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        New-Item -ItemType Directory -Path $fontDir -Force | Out-Null
+        $added = 0
+        foreach ($f in $files) {
+            $dest = Join-Path $fontDir $f
+            if (-not (Test-Path -LiteralPath $dest)) {
+                Invoke-WebRequest -UseBasicParsing -Uri "$base/$([uri]::EscapeDataString($f))" -OutFile $dest
+                $added++
+            }
+            # Register per-user so Windows Terminal resolves the face by name.
+            $face = [IO.Path]::GetFileNameWithoutExtension($f)
+            New-ItemProperty -Path $regKey -Name "$face (TrueType)" -Value $dest -PropertyType String -Force | Out-Null
+        }
+        if ($added -gt 0) { Write-Success "Installed MesloLGS NF ($added file(s)) — restart the terminal to apply" }
+        else { Write-Info 'MesloLGS NF already installed' }
+    } catch {
+        Write-Warn "Could not install MesloLGS NF (prompt glyphs may not render): $_"
+    }
+}
+
 function Install-Shell {
     Write-Header 'Shell (PowerShell 7 + Oh My Posh)'
     Install-App -Id 'Microsoft.PowerShell'
@@ -67,5 +103,6 @@ function Install-Shell {
 
     Build-Profile -ProfilePath $PROFILE.CurrentUserAllHosts -FragmentsDir (Join-Path $HOME '.config/powershell/fragments')
 
+    Install-NerdFont
     if (Test-CfgEnabled 'windows.windows_terminal') { Set-WindowsTerminalFont }
 }
