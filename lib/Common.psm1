@@ -42,6 +42,9 @@ function Assert-Windows {
 function Test-DryRun       { return ($env:ENVSETUP_DRY_RUN -eq 'true') }
 function Test-AutoYes      { return ($env:ENVSETUP_AUTO_YES -eq 'true') }
 function Test-KeepExisting { return ($env:ENVSETUP_KEEP_EXISTING -eq 'true') }
+function Test-KeepTools    { return ($env:ENVSETUP_KEEP_TOOLS -eq 'true') }
+function Test-Purge        { return ($env:ENVSETUP_PURGE -eq 'true') }
+function Test-NoRestore    { return ($env:ENVSETUP_NO_RESTORE -eq 'true') }
 
 function Confirm-Action {
     param([Parameter(Mandatory)][string]$Prompt)
@@ -53,4 +56,5 @@ function Confirm-Action {
 Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
     Test-Command, Test-IsWindows, Assert-Windows, `
-    Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action
+    Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
+    Test-KeepTools, Test-Purge, Test-NoRestore
