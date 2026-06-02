@@ -24,7 +24,14 @@ order (09→01). It is detection-driven (acts on what is present, not on
 packages only with `--purge`), and restores pre-install dotfiles from
 `~/.env-setup/backups/` unless `--no-restore` is given. Safety primitives
 (protected-path guard, managed-file/dir removal) live in `lib/uninstall.sh`.
-The Windows counterpart `uninstall.ps1` is specified for a follow-up plan.
+
+`uninstall.ps1` is the Windows teardown counterpart: it sources the same
+`modules/*.ps1` and calls each `Uninstall-<Module>` in reverse order (09→01,
+no 04-Docker). Same conservative defaults and flags (`-KeepTools` / `-Purge` /
+`-NoRestore`). Windows keeps per-file `.bak.*` backups rather than a central
+snapshot, so "restore" means restoring the newest `.bak.*` (settings.json,
+~/.claude.json, Windows Terminal settings) unless `-NoRestore` is given. Safety
+primitives live in `lib/Uninstall.psm1`.
 
 ## Directory Structure
 
@@ -35,6 +42,7 @@ env-setup/
 ├── setup.sh              # Main entrypoint (Unix) — orchestrates module execution
 ├── setup.ps1             # Main entrypoint (Windows) — PowerShell module runner
 ├── uninstall.sh          # Teardown entrypoint (Unix) — reverse module runner
+├── uninstall.ps1         # Teardown entrypoint (Windows) — reverse module runner
 ├── config.yaml           # User configuration (sensible defaults)
 ├── config.yaml.example   # Fully commented reference config
 ├── lib/                  # Bash engine (*.sh) + Windows engine (*.psm1) siblings
@@ -49,6 +57,7 @@ env-setup/
 │   ├── Config.psm1       # (Windows) pure-PowerShell config.yaml reader
 │   ├── Package.psm1      # (Windows) scoop/winget + no-admin defer
 │   ├── DryRun.psm1       # (Windows) dry-run + deploy wrappers
+│   ├── Uninstall.psm1    # (Windows) protected-path guard + managed file/dir removal
 │   ├── Backup.psm1       # (Windows) timestamped backups
 │   ├── WindowsTerminal.psm1  # (Windows) Windows Terminal settings merge
 │   └── ClaudeConfig.psm1     # (Windows) Claude Code settings/mcp JSON merge
@@ -163,14 +172,18 @@ For the native-Windows PowerShell engine (run in pwsh 7):
 Invoke-Pester -Path tests -Output Detailed
 
 # Lint all PowerShell scripts
-$t = @('setup.ps1','bootstrap.ps1') + (Get-ChildItem lib -Filter *.psm1).FullName + (Get-ChildItem modules -Filter *.ps1 -ErrorAction Ignore).FullName
+$t = @('setup.ps1','uninstall.ps1','bootstrap.ps1') + (Get-ChildItem lib -Filter *.psm1).FullName + (Get-ChildItem modules -Filter *.ps1 -ErrorAction Ignore).FullName
 $t | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Error,Warning }
 
 # Dry-run (prints actions without executing)
 ./setup.ps1 -DryRun -AutoYes
 
+# Dry-run uninstall (prints what would be removed)
+./uninstall.ps1 -DryRun -AutoYes
+
 # Run a single module
 ./setup.ps1 -Modules 06-Shell -DryRun
+./uninstall.ps1 -Modules 06-Shell -DryRun
 ```
 
 ## Branch Rules
