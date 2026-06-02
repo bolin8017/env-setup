@@ -123,4 +123,28 @@ _out="$(uninstall_core 2>&1)"
 assert_contains "$_out" "Uninstall: Core" "uninstall_core prints its header"
 DRY_RUN="false"
 
+suite "claude settings strip (no jq → skip gracefully)"
+
+if command -v jq >/dev/null 2>&1; then
+    # Load config so cfg_list "claude_code.settings_merge_keys" resolves
+    source "$PROJECT_ROOT/lib/yaml.sh"
+    source "$PROJECT_ROOT/lib/config.sh"
+    setup_logging
+    load_config "$PROJECT_ROOT/config.yaml" >/dev/null 2>&1
+    source "$PROJECT_ROOT/modules/08-claude-code.sh"
+
+    mkdir -p "$HOME/.claude"
+    # 'env' is a whitelisted key; build it to MATCH the repo so the strip is
+    # eligible to remove it. 'authToken' is user-owned and must survive.
+    _repo_env="$(jq -c '.env' "$PROJECT_ROOT/configs/claude/settings.json")"
+    jq -n --argjson env "$_repo_env" '{env:$env, authToken:"keepme"}' > "$HOME/.claude/settings.json"
+    DRY_RUN="false"
+    _uninstall_claude_settings >/dev/null 2>&1
+    _after="$(cat "$HOME/.claude/settings.json")"
+    assert_contains "$_after" "keepme" "user-owned authToken survives settings strip"
+    assert_not_contains "$_after" "\"env\"" "whitelisted env key (== repo) is stripped"
+else
+    assert_true 0 "jq absent — settings strip test skipped"
+fi
+
 print_test_summary
