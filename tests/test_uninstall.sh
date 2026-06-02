@@ -87,4 +87,28 @@ remove_managed_dir "$HOME/Documents" "docs" >/dev/null
 assert_dir_exists "$HOME/Documents" "refuses to remove a protected dir"
 PROTECTED_EXTRA=""
 
+suite "remove_fragment and strip_block_from_file"
+
+_frags="$HOME/.config/zsh/fragments"
+mkdir -p "$_frags"
+
+# Marker present → removed
+printf 'export PYENV_ROOT=/home/u/.pyenv\n' > "$_frags/15-pyenv.zsh"
+remove_fragment "15-pyenv.zsh" "PYENV_ROOT" >/dev/null
+assert_file_not_exists "$_frags/15-pyenv.zsh" "removes fragment when marker matches"
+
+# Marker absent → preserved
+printf 'something else\n' > "$_frags/16-nvm.zsh"
+remove_fragment "16-nvm.zsh" "NVM_DIR" >/dev/null
+assert_file_exists "$_frags/16-nvm.zsh" "preserves fragment when marker is missing"
+
+# strip_block_from_file removes the conda block, keeps surrounding lines
+_rc="$HOME/.bashrc"
+printf 'before\n# >>> conda initialize >>>\nX\nY\n# <<< conda initialize <<<\nafter\n' > "$_rc"
+strip_block_from_file "$_rc" "# >>> conda initialize >>>" "# <<< conda initialize <<<" >/dev/null
+_body="$(cat "$_rc")"
+assert_contains "$_body" "before" "keeps lines before the block"
+assert_contains "$_body" "after" "keeps lines after the block"
+assert_not_contains "$_body" "conda initialize" "removes the conda block"
+
 print_test_summary

@@ -126,3 +126,50 @@ remove_managed_dir() {
     dry_run_rm "$dir"
     log_success "Removed ${label}"
 }
+
+# =============================================================================
+# remove_fragment <name> [<marker>]
+# Removes ~/.config/zsh/fragments/<name>. When <marker> is given, only removes
+# the file if it contains that marker (guards auto-generated fragments).
+# =============================================================================
+remove_fragment() {
+    local name="$1" marker="${2:-}"
+    local frag="$HOME/.config/zsh/fragments/${name}"
+
+    if [[ ! -f "$frag" ]]; then
+        log_info "[SKIP] fragment ${name} not present"
+        return 0
+    fi
+    if [[ -n "$marker" ]] && ! grep -q "$marker" "$frag" 2>/dev/null; then
+        log_warn "fragment ${name}: marker '${marker}' absent — preserved"
+        return 0
+    fi
+    dry_run_rm "$frag"
+    log_success "Removed fragment ${name}"
+}
+
+# =============================================================================
+# strip_block_from_file <file> <begin_marker> <end_marker>
+# Removes an auto-inserted block (inclusive of both marker lines). No-op when
+# the file or the begin marker is absent. Honours DRY_RUN.
+# =============================================================================
+strip_block_from_file() {
+    local file="$1" begin="$2" end="$3"
+
+    [[ -f "$file" ]] || { log_info "[SKIP] ${file} not present"; return 0; }
+    grep -qF "$begin" "$file" 2>/dev/null || { log_info "[SKIP] no managed block in ${file}"; return 0; }
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo "[DRY-RUN] Would strip block from ${file}"
+        return 0
+    fi
+
+    local tmp
+    tmp="$(mktemp)"
+    awk -v b="$begin" -v e="$end" '
+        index($0, b) { skip = 1 }
+        !skip        { print }
+        index($0, e) { skip = 0 }
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+    log_success "Stripped managed block from ${file}"
+}
