@@ -89,6 +89,25 @@ function Show-MissingAdminSummary {
     Write-Host '  Then re-run setup.ps1 to continue.'
 }
 
+function Remove-Pkg {
+    # Uninstall a scoop CLI package (no admin). Mirrors Install-Pkg.
+    param([Parameter(Mandatory)][string]$Name)
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: scoop uninstall $Name"; return }
+    if (-not (Test-ScoopAvailable)) { Write-Warn "scoop not available — cannot uninstall $Name"; return }
+    scoop uninstall $Name
+}
+
+function Remove-App {
+    # Uninstall a winget app. Mirrors Install-App. winget exits non-zero when the
+    # app is already absent; that is fine for an idempotent teardown, so we log
+    # rather than throw.
+    param([Parameter(Mandatory)][string]$Id)
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: winget uninstall --id $Id -e"; return }
+    winget uninstall --id $Id -e --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { Write-Warn "winget uninstall $Id exited $LASTEXITCODE (may already be absent)" }
+}
+
 Export-ModuleMember -Function `
     Clear-MissingAdmin, Add-MissingAdminPackage, Get-MissingAdminPackage, `
-    Test-Elevated, Test-ScoopAvailable, Test-WingetSucceeded, Install-Pkg, Install-App, Show-MissingAdminSummary
+    Test-Elevated, Test-ScoopAvailable, Test-WingetSucceeded, Install-Pkg, Install-App, Show-MissingAdminSummary, `
+    Remove-Pkg, Remove-App
