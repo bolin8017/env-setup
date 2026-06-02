@@ -10,6 +10,7 @@ Import-Module "$PSScriptRoot/../lib/Package.psm1"
 Import-Module "$PSScriptRoot/../lib/DryRun.psm1" -DisableNameChecking  # WinPS 5.1: 'Deploy' is an unapproved verb
 Import-Module "$PSScriptRoot/../lib/Backup.psm1"
 Import-Module "$PSScriptRoot/../lib/WindowsTerminal.psm1"
+Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"
 
 function Install-PsModule {
     param([Parameter(Mandatory)][string]$Name)
@@ -165,4 +166,66 @@ function Install-Shell {
 
     Install-NerdFont
     if (Test-CfgEnabled 'windows.windows_terminal') { Set-WindowsTerminalFont }
+}
+
+function Remove-NerdFont {
+    # Reverse Install-NerdFont: delete the per-user MesloLGS NF files + registry keys.
+    if (-not $env:LOCALAPPDATA) { return }
+    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $regKey  = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+    $files = 'MesloLGS NF Regular.ttf', 'MesloLGS NF Bold.ttf',
+             'MesloLGS NF Italic.ttf', 'MesloLGS NF Bold Italic.ttf'
+    foreach ($f in $files) {
+        $face = [IO.Path]::GetFileNameWithoutExtension($f)
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would remove font $f + registry key"; continue }
+        $dest = Join-Path $fontDir $f
+        if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue }
+        Remove-ItemProperty -Path $regKey -Name "$face (TrueType)" -ErrorAction SilentlyContinue
+    }
+    Write-Success 'Removed MesloLGS NF font (open a new terminal to apply)'
+}
+
+function Uninstall-Shell {
+    Write-Header 'Uninstall: Shell'
+    $cfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs')).Path
+
+    # C — $PROFILE targets
+    foreach ($target in (Get-ProfileTargetPaths)) {
+        Remove-ManagedFile -Dest $target -RepoSrc (Join-Path $cfg 'pwsh.profile.base') -Label "PowerShell profile ($target)"
+    }
+
+    # C — fragments + aliases
+    $fragments = Join-Path $HOME '.config/powershell/fragments'
+    Get-ChildItem (Join-Path $cfg 'pwsh') -Filter *.ps1 -ErrorAction Ignore | ForEach-Object {
+        Remove-ManagedFile -Dest (Join-Path $fragments $_.Name) -RepoSrc $_.FullName -Label "fragment $($_.Name)"
+    }
+    Remove-ManagedFile -Dest (Join-Path $HOME '.config/powershell/aliases.ps1') `
+        -RepoSrc (Join-Path $cfg 'aliases.ps1') -Label 'aliases.ps1'
+
+    # C — Oh My Posh theme
+    $ompName = Get-CfgValue 'windows.powershell.omp_theme'
+    if (-not $ompName) { $ompName = 'envsetup.omp.json' }
+    Remove-ManagedFile -Dest (Join-Path $HOME ".config/oh-my-posh/$ompName") `
+        -RepoSrc (Join-Path $cfg "omp/$ompName") -Label 'Oh My Posh theme'
+
+    # C — restore Windows Terminal settings from the install's .bak
+    if ($env:LOCALAPPDATA) {
+        $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
+        Restore-NewestBak -Path $wt
+    }
+
+    # T — PSGallery modules + Nerd Font
+    if (-not (Test-KeepTools)) {
+        foreach ($m in (Get-CfgList 'windows.powershell.modules')) {
+            if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: Uninstall-Module $m" }
+            else { try { Uninstall-Module $m -AllVersions -ErrorAction SilentlyContinue } catch { Write-Warn "Uninstall-Module ${m}: $_" } }
+        }
+        Remove-NerdFont
+    }
+
+    # P — apps
+    if (Test-Purge) {
+        Remove-App -Id 'JanDeDobbeleer.OhMyPosh'
+        Remove-App -Id 'Microsoft.PowerShell'
+    }
 }
