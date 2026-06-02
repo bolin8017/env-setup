@@ -48,4 +48,26 @@ function Merge-McpServers {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers
+function Remove-ManagedSettingsKeys {
+    # Inverse of Merge-ClaudeSettings: given the user's settings JSON, the repo's
+    # settings JSON, and the whitelist keys, return JSON with each whitelisted key
+    # removed ONLY when its value still equals the repo's. User-owned keys and
+    # locally-changed values are preserved. Pure → unit-testable.
+    param(
+        [Parameter(Mandatory)][string]$CurrentJson,
+        [Parameter(Mandatory)][string]$SourceJson,
+        [string[]]$WhitelistKeys = @()
+    )
+    $cur = $CurrentJson | ConvertFrom-Json
+    $src = $SourceJson  | ConvertFrom-Json
+    foreach ($k in $WhitelistKeys) {
+        if (-not $cur.PSObject.Properties[$k]) { continue }
+        if (-not $src.PSObject.Properties[$k]) { continue }
+        $curV = $cur.$k | ConvertTo-Json -Depth 32 -Compress
+        $srcV = $src.$k | ConvertTo-Json -Depth 32 -Compress
+        if ($curV -eq $srcV) { $cur.PSObject.Properties.Remove($k) }
+    }
+    return ($cur | ConvertTo-Json -Depth 32)
+}
+
+Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Remove-ManagedSettingsKeys
