@@ -30,6 +30,12 @@ function New-DirOrDryRun {
     if (-not (Test-Path -LiteralPath $Path)) { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
 }
 
+function Remove-OrDryRun {
+    param([Parameter(Mandatory)][string]$Path)
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would remove: $Path"; return }
+    if (Test-Path -LiteralPath $Path) { Remove-Item -LiteralPath $Path -Recurse -Force }
+}
+
 function Deploy-Config {
     param(
         [Parameter(Mandatory)][string]$Source,
@@ -56,4 +62,4 @@ function Deploy-Config {
     Write-Success "Deployed $Label"
 }
 
-Export-ModuleMember -Function Invoke-OrDryRun, Copy-OrDryRun, New-DirOrDryRun, Deploy-Config
+Export-ModuleMember -Function Invoke-OrDryRun, Copy-OrDryRun, New-DirOrDryRun, Deploy-Config, Remove-OrDryRun
