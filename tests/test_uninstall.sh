@@ -111,4 +111,16 @@ assert_contains "$_body" "before" "keeps lines before the block"
 assert_contains "$_body" "after" "keeps lines after the block"
 assert_not_contains "$_body" "conda initialize" "removes the conda block"
 
+suite "uninstall_core is defined and dry-runs cleanly"
+
+# shellcheck source=/dev/null
+source "$PROJECT_ROOT/modules/01-core.sh"
+if declare -f uninstall_core >/dev/null; then assert_true 0 "uninstall_core defined"
+else assert_true 1 "uninstall_core defined"; fi
+
+DRY_RUN="true"
+_out="$(uninstall_core 2>&1)"
+assert_contains "$_out" "Uninstall: Core" "uninstall_core prints its header"
+DRY_RUN="false"
+
 print_test_summary
