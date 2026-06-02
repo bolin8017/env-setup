@@ -77,7 +77,7 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $targets = @('setup.ps1','bootstrap.ps1') +
+          $targets = @('setup.ps1','uninstall.ps1','bootstrap.ps1') +
                      (Get-ChildItem lib -Filter *.psm1 -ErrorAction Ignore).FullName +
                      (Get-ChildItem modules -Filter *.ps1 -ErrorAction Ignore).FullName +
                      (Get-ChildItem scripts -Filter *.ps1 -ErrorAction Ignore).FullName
@@ -111,3 +111,7 @@ jobs:
       - name: Run dry-run
         shell: pwsh
         run: ./setup.ps1 -DryRun -AutoYes
+
+      - name: Run uninstall dry-run
+        shell: pwsh
+        run: ./uninstall.ps1 -DryRun -AutoYes

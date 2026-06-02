@@ -20,4 +20,20 @@ function Backup-File {
     return $bak
 }
 
-Export-ModuleMember -Function Backup-File
+function Restore-NewestBak {
+    # Restore <Path> from the most recent <Path>.bak.* sibling. No-op when no
+    # backup exists. Honours DryRun and NoRestore.
+    param([Parameter(Mandatory)][string]$Path)
+    if (Test-NoRestore) { return }
+    $dir  = Split-Path $Path -Parent
+    $leaf = Split-Path $Path -Leaf
+    if (-not (Test-Path -LiteralPath $dir)) { return }
+    $bak = Get-ChildItem -LiteralPath $dir -Filter "$leaf.bak.*" -ErrorAction Ignore |
+           Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $bak) { Write-Info "No backup to restore for $Path"; return }
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would restore $Path from $($bak.Name)"; return }
+    Copy-Item -LiteralPath $bak.FullName -Destination $Path -Force
+    Write-Success "Restored $Path from $($bak.Name)"
+}
+
+Export-ModuleMember -Function Backup-File, Restore-NewestBak

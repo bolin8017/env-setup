@@ -28,3 +28,19 @@ function Install-PythonTools {
         if (Test-DryRun) { Write-Info '[DRY-RUN] Would run: pipx install jupyterlab' } else { pipx install jupyterlab }
     }
 }
+
+function Uninstall-PythonTools {
+    Write-Header 'Uninstall: Python tools'
+    if (-not (Test-KeepTools)) {
+        if (Test-Command 'pipx') {
+            if (Test-DryRun) {
+                Write-Info '[DRY-RUN] Would run: pipx uninstall poetry; pipx uninstall jupyterlab'
+            } else {
+                pipx uninstall poetry 2>$null
+                pipx uninstall jupyterlab 2>$null
+            }
+        }
+        Remove-Pkg -Name 'uv'
+        Remove-Pkg -Name 'pipx'
+    }
+}

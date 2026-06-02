@@ -76,6 +76,19 @@ cd env-setup
 
 非系統管理員也能執行：scoop 與多數 winget 套件以使用者身分安裝，需要提權的 winget 套件會被延後，並在結束時印出一段管理員指令清單（對應 Unix 的無 sudo 流程）。
 
+解除安裝（在 PowerShell 7 執行）：
+
+```powershell
+./uninstall.ps1                       # 移除設定 + 使用者空間工具（scoop/PSGallery 模組）
+./uninstall.ps1 -DryRun -AutoYes      # 預覽會移除什麼，不實際執行
+./uninstall.ps1 -KeepTools            # 只移除設定，保留所有工具
+./uninstall.ps1 -Purge                # 額外移除 winget 應用（PowerShell 7、Oh My Posh、git/gh、CLI 工具）
+./uninstall.ps1 -NoRestore            # 不從 .bak 還原 settings，純移除
+./uninstall.ps1 -Modules 06-Shell     # 只解除指定模組
+```
+
+永不移除：個人資料夾、Claude 憑證與歷史。Windows Terminal 與 Claude 設定會在有 `.bak` 備份時自動還原（除非加 `-NoRestore`）。
+
 重度 Linux 開發仍建議留在 WSL2（在 WSL2 裡用上面的 `bootstrap.sh`）。
 
 ## 安裝內容
