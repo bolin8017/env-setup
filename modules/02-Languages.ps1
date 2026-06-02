@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 Import-Module "$PSScriptRoot/../lib/Common.psm1"
 Import-Module "$PSScriptRoot/../lib/Config.psm1"
 Import-Module "$PSScriptRoot/../lib/Package.psm1"
+Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"
 
 function Resolve-PyenvVersion {
     # pyenv-win needs an exact patch version. Given a major.minor request like
@@ -173,4 +174,13 @@ function Install-Languages {
     }
 
     Write-Info 'nvm/pyenv PATH wiring is added with the PowerShell profile in Stage 3.'
+}
+
+function Uninstall-Languages {
+    Write-Header 'Uninstall: Languages'
+    if (-not (Test-KeepTools)) {
+        Remove-Pkg -Name 'pyenv'   # pyenv-win
+        Remove-Pkg -Name 'nvm'     # nvm-windows
+        Remove-ManagedDir -Dir (Join-Path $HOME '.pyenv') -Label 'pyenv-win data'
+    }
 }
