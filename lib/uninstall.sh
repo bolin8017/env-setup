@@ -101,3 +101,28 @@ remove_managed_file() {
     dry_run_rm "$dest"
     log_success "Removed ${label}"
 }
+
+# =============================================================================
+# remove_managed_dir <dir> [<label>]
+# Removes a directory env-setup cloned/created (e.g. ~/.oh-my-zsh, ~/.nvm).
+# Confirmation-gated (ask_yes_no honours AUTO_YES). Protected paths refused.
+# =============================================================================
+remove_managed_dir() {
+    local dir="$1"
+    local label="${2:-$(basename "$dir")}"
+
+    if [[ ! -d "$dir" ]]; then
+        log_info "[SKIP] ${label} not present"
+        return 0
+    fi
+    if is_protected_path "$dir"; then
+        log_warn "Refusing to remove protected path: ${dir}"
+        return 0
+    fi
+    if ! ask_yes_no "Remove ${label} (${dir})?"; then
+        log_info "[SKIP] Keeping ${label}"
+        return 0
+    fi
+    dry_run_rm "$dir"
+    log_success "Removed ${label}"
+}

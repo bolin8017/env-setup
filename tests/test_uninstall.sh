@@ -71,4 +71,20 @@ remove_managed_file "$HOME/Documents/managed" "$_repo" "in-protected" >/dev/null
 assert_file_exists "$HOME/Documents/managed" "refuses to remove inside a protected path"
 PROTECTED_EXTRA=""
 
+suite "remove_managed_dir"
+
+AUTO_YES="true"   # skip the confirmation prompt
+_d="$HOME/.toolclone"
+mkdir -p "$_d/sub"; echo x > "$_d/sub/f"
+remove_managed_dir "$_d" "toolclone" >/dev/null
+assert_file_not_exists "$_d" "removes a tool directory (auto-yes)"
+
+remove_managed_dir "$HOME/.absent" "absent"; assert_true $? "missing dir is a no-op"
+
+PROTECTED_EXTRA="$HOME/Documents"
+mkdir -p "$HOME/Documents"
+remove_managed_dir "$HOME/Documents" "docs" >/dev/null
+assert_dir_exists "$HOME/Documents" "refuses to remove a protected dir"
+PROTECTED_EXTRA=""
+
 print_test_summary
