@@ -11,6 +11,7 @@ Import-Module "$PSScriptRoot/../lib/Config.psm1"
 Import-Module "$PSScriptRoot/../lib/DryRun.psm1" -DisableNameChecking  # WinPS 5.1: 'Deploy' is an unapproved verb
 Import-Module "$PSScriptRoot/../lib/Backup.psm1"
 Import-Module "$PSScriptRoot/../lib/ClaudeConfig.psm1"
+Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"
 
 $script:ClaudeCfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs/claude')).Path
 
@@ -123,4 +124,92 @@ function Install-ClaudeCode {
     Register-ClaudeMarketplaces
     Install-ClaudePlugins
     Install-Ccstatusline
+}
+
+function Get-NewestBakPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $dir  = Split-Path $Path -Parent
+    $leaf = Split-Path $Path -Leaf
+    if (-not (Test-Path -LiteralPath $dir)) { return $null }
+    $b = Get-ChildItem -LiteralPath $dir -Filter "$leaf.bak.*" -ErrorAction Ignore |
+         Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($b) { return $b.FullName } else { return $null }
+}
+
+function Uninstall-ClaudeSettings {
+    $dest = Join-Path $HOME '.claude/settings.json'
+    $src  = Join-Path $script:ClaudeCfg 'settings.json'
+    if (-not (Test-Path $dest)) { Write-Info '[SKIP] settings.json not present'; return }
+
+    $bak = Get-NewestBakPath $dest
+    if ($bak -and -not (Test-NoRestore)) {
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would restore settings.json from $bak"; return }
+        Copy-Item -LiteralPath $bak -Destination $dest -Force
+        Write-Success "Restored settings.json from $(Split-Path $bak -Leaf)"; return
+    }
+    if (-not (Test-Path $src)) { return }
+    $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would strip $($keys.Count) env-setup key(s) from settings.json"; return }
+    $stripped = Remove-ManagedSettingsKeys -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
+    Set-Content -LiteralPath $dest -Value $stripped -Encoding utf8
+    Write-Success 'Stripped env-setup keys from settings.json'
+}
+
+function Uninstall-ClaudeMcp {
+    $dest = Join-Path $HOME '.claude.json'
+    if (-not (Test-Path $dest)) { return }
+    $bak = Get-NewestBakPath $dest
+    if ($bak -and -not (Test-NoRestore)) {
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would restore ~/.claude.json from $bak"; return }
+        Copy-Item -LiteralPath $bak -Destination $dest -Force
+        Write-Success 'Restored ~/.claude.json from backup'; return
+    }
+    Write-Info 'No ~/.claude.json backup — leaving MCP servers intact'
+}
+
+function Uninstall-ClaudeCode {
+    Write-Header 'Uninstall: Claude Code'
+
+    # C — managed config files (user-edited copies preserved by Remove-ManagedFile)
+    Remove-ManagedFile -Dest (Join-Path $HOME '.claude/CLAUDE.md') `
+        -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
+    foreach ($sub in @('rules', 'commands', 'agents')) {
+        $srcDir = Join-Path $script:ClaudeCfg $sub
+        if (-not (Test-Path $srcDir)) { continue }
+        Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
+            Remove-ManagedFile -Dest (Join-Path $HOME ".claude/$sub/$($_.Name)") -RepoSrc $_.FullName -Label "$sub/$($_.Name)"
+        }
+    }
+
+    Uninstall-ClaudeSettings
+    Uninstall-ClaudeMcp
+
+    $cc = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
+    if ($cc) {
+        Remove-ManagedFile -Dest (Join-Path $HOME '.config/ccstatusline/settings.json') -RepoSrc $cc.Path -Label 'ccstatusline settings.json'
+    }
+
+    # T — plugins/marketplaces + CLI binary
+    if (-not (Test-KeepTools)) {
+        if (Test-Command 'claude') {
+            $s = Join-Path $script:ClaudeCfg 'settings.json'
+            if (Test-Path $s) {
+                $settings = Get-Content -Raw $s | ConvertFrom-Json
+                if ($settings.PSObject.Properties['enabledPlugins']) {
+                    foreach ($p in $settings.enabledPlugins.PSObject.Properties) {
+                        if ($p.Value -ne $true) { continue }
+                        if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin uninstall $($p.Name)" }
+                        else { claude plugin uninstall $p.Name *> $null }
+                    }
+                }
+            }
+            foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
+                if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace remove $repo" }
+                else { claude plugin marketplace remove $repo *> $null }
+            }
+        }
+        $launcher = Join-Path $HOME '.local/bin/claude.exe'
+        if (Test-Path -LiteralPath $launcher) { Remove-OrDryRun -Path $launcher }
+        Write-Info 'Claude CLI removed where found; ~/.claude data (auth/history) preserved.'
+    }
 }
