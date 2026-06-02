@@ -41,3 +41,14 @@ function Install-CliTools {
         }
     }
 }
+
+function Uninstall-CliTools {
+    Write-Header 'Uninstall: CLI tools'
+    if (Test-Purge) {
+        foreach ($key in $script:CliToolMap.Keys) {
+            Remove-Pkg -Name (Get-CliScoopPackage -Key $key)
+        }
+    } else {
+        Write-Info 'CLI tools are scoop packages — use -Purge to remove them'
+    }
+}
