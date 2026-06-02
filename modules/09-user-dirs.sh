@@ -74,3 +74,44 @@ install_user_dirs() {
 
     log_success "User directories ready"
 }
+
+# =============================================================================
+# uninstall_user_dirs — Reclaim only the EMPTY directories env-setup created.
+# Non-empty directories (real user data) are always preserved. Uses rmdir, which
+# physically cannot delete a non-empty directory. Skipped under --keep-tools.
+# =============================================================================
+uninstall_user_dirs() {
+    print_header "Uninstall: User Directories"
+
+    if [[ "${KEEP_TOOLS:-false}" == "true" ]]; then
+        log_info "Skipping user-dir reclamation (--keep-tools)"
+        return 0
+    fi
+
+    local -a paths=()
+    local p
+    while IFS= read -r p; do
+        [[ -n "$p" ]] && paths+=("$p")
+    done < <(cfg_list "user_dirs.paths")
+
+    for p in "${paths[@]}"; do
+        local target="${HOME}/${p}"
+        if [[ ! -d "$target" ]]; then
+            log_info "[SKIP] ${p} not present"
+            continue
+        fi
+        if [[ -n "$(ls -A "$target" 2>/dev/null)" ]]; then
+            log_info "${p} contains data — left intact"
+            continue
+        fi
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            echo "[DRY-RUN] Would rmdir empty: ${target}"
+        elif rmdir "$target" 2>/dev/null; then
+            log_success "Removed empty dir ${p}"
+        else
+            log_info "${p} not removable — left intact"
+        fi
+    done
+
+    log_success "User directories uninstall complete"
+}
