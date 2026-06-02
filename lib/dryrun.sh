@@ -46,6 +46,17 @@ dry_run_mkdir() {
 }
 
 # =============================================================================
+# dry_run_rm — Remove a path recursively (or print what would be removed)
+# =============================================================================
+dry_run_rm() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY-RUN] Would remove: $*"
+        return 0
+    fi
+    rm -rf "$@"
+}
+
+# =============================================================================
 # deploy_config — Copy a config file with overwrite protection.
 # Modes (mainstream dpkg/chezmoi style):
 #   KEEP_EXISTING=true → skip if dest exists
