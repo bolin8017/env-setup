@@ -30,3 +30,14 @@ function Install-Core {
         Write-Info 'build_tools: skipped on Windows (pyenv-win uses prebuilt CPython).'
     }
 }
+
+function Uninstall-Core {
+    Write-Header 'Uninstall: Core'
+    if (Test-Purge) {
+        Write-Warn 'git and gh are widely depended on — removing them per -Purge'
+        Remove-App -Id 'GitHub.cli'
+        Remove-App -Id 'Git.Git'
+    } else {
+        Write-Info 'git/gh are system tools — use -Purge to remove them'
+    }
+}
