@@ -47,6 +47,27 @@ windows:
     It 'does not throw under dry-run' { { Install-Shell } | Should -Not -Throw }
 }
 
+Describe 'Get-ProfileTargetPaths' {
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'targets pwsh 7 (PowerShell) by default, not Windows PowerShell 5.1' {
+        $f = Join-Path $TestDrive 'p1.yaml'
+        Set-Content -Path $f -Value "windows:`n  powershell5_profile: false`n"
+        Import-Config -Path $f
+        $paths = Get-ProfileTargetPaths
+        @($paths | Where-Object { $_ -match '[\\/]PowerShell[\\/]profile\.ps1$' }).Count | Should -Be 1
+        @($paths | Where-Object { $_ -match 'WindowsPowerShell' }).Count | Should -Be 0
+    }
+    It 'also targets Windows PowerShell 5.1 when powershell5_profile is true' {
+        $f = Join-Path $TestDrive 'p2.yaml'
+        Set-Content -Path $f -Value "windows:`n  powershell5_profile: true`n"
+        Import-Config -Path $f
+        $paths = Get-ProfileTargetPaths
+        @($paths).Count | Should -Be 2
+        @($paths | Where-Object { $_ -match 'WindowsPowerShell[\\/]profile\.ps1$' }).Count | Should -Be 1
+    }
+}
+
 Describe 'Enable-SessionFonts' {
     It 'compiles the native signature and is a no-op for a missing font path' {
         { Enable-SessionFonts -Path (Join-Path $TestDrive 'does-not-exist.ttf') } | Should -Not -Throw

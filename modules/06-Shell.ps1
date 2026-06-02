@@ -42,6 +42,21 @@ function Build-Profile {
     Deploy-Config -Source (Join-Path $cfg 'aliases.ps1') -Destination $aliasDest -Label 'aliases.ps1'
 }
 
+function Get-ProfileTargetPaths {
+    # env-setup targets pwsh 7, so deploy the profile to pwsh 7's AllHosts path
+    # regardless of which shell runs setup. Pinning to the Documents folder (not
+    # $PROFILE — which is the *running* shell's path) means a bootstrap pasted
+    # into Windows PowerShell 5.1 still lands the profile in pwsh 7's tree
+    # instead of leaving pwsh 7 bare. windows.powershell5_profile additionally
+    # deploys the Windows PowerShell 5.1 profile.
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    $paths = @(Join-Path $docs 'PowerShell/profile.ps1')
+    if (Test-CfgEnabled 'windows.powershell5_profile') {
+        $paths += (Join-Path $docs 'WindowsPowerShell/profile.ps1')
+    }
+    return $paths
+}
+
 function Set-WindowsTerminalFont {
     if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA — skipping Windows Terminal config'; return }
     $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
@@ -145,7 +160,8 @@ function Install-Shell {
     New-DirOrDryRun -Path (Join-Path $HOME '.config/oh-my-posh')
     Deploy-Config -Source (Join-Path $cfg "omp/$ompName") -Destination (Join-Path $HOME ".config/oh-my-posh/$ompName") -Label 'Oh My Posh theme'
 
-    Build-Profile -ProfilePath $PROFILE.CurrentUserAllHosts -FragmentsDir (Join-Path $HOME '.config/powershell/fragments')
+    $fragments = Join-Path $HOME '.config/powershell/fragments'
+    foreach ($target in (Get-ProfileTargetPaths)) { Build-Profile -ProfilePath $target -FragmentsDir $fragments }
 
     Install-NerdFont
     if (Test-CfgEnabled 'windows.windows_terminal') { Set-WindowsTerminalFont }
