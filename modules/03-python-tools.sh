@@ -73,3 +73,39 @@ install_python_tools() {
         _install_uv
     fi
 }
+
+# =============================================================================
+# uninstall_python_tools — Reverse install_python_tools: jupyter / poetry / uv.
+# All user-space (T); only brew-managed uv on macOS is system-level (P).
+# =============================================================================
+uninstall_python_tools() {
+    print_header "Uninstall: Python Tools"
+
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        # Jupyter
+        if command_exists jupyter || command_exists pip3 || command_exists python3; then
+            dry_run_cmd python3 -m pip uninstall -y jupyterlab notebook 2>/dev/null || true
+            log_success "Removed Jupyter (jupyterlab, notebook)"
+        fi
+
+        # Poetry — official uninstaller, then sweep leftover paths
+        if command_exists poetry; then
+            dry_run_cmd bash -c 'curl -sSL https://install.python-poetry.org | python3 - --uninstall' || true
+        fi
+        dry_run_rm "$HOME/.local/bin/poetry" "$HOME/.local/share/pypoetry"
+
+        # uv — self-uninstall, then sweep leftover paths
+        if command_exists uv; then
+            dry_run_cmd uv self uninstall 2>/dev/null || true
+        fi
+        dry_run_rm "$HOME/.local/bin/uv" "$HOME/.local/bin/uvx" \
+                   "$HOME/.local/share/uv" "$HOME/.cache/uv"
+    fi
+
+    # P — macOS brew install path for uv
+    if [[ "${PURGE:-false}" == "true" ]] && is_macos; then
+        pkg_remove uv
+    fi
+
+    log_success "Python tools uninstall complete"
+}

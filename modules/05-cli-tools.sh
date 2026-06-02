@@ -195,3 +195,33 @@ install_cli_tools() {
 
     log_success "CLI tools module complete"
 }
+
+# =============================================================================
+# uninstall_cli_tools — Remove the shell-integration fragment (C); under --purge
+# also uninstall the 11 CLI tools and the eza apt repo (P).
+# =============================================================================
+uninstall_cli_tools() {
+    print_header "Uninstall: CLI Tools"
+
+    # C — shell integration fragment
+    remove_fragment "50-tools.zsh"
+
+    # P — the tools themselves
+    if [[ "${PURGE:-false}" == "true" ]]; then
+        local entry cfg_key brew_pkg apt_pkg check_cmd
+        for entry in "${CLI_TOOLS[@]}"; do
+            IFS=':' read -r cfg_key brew_pkg apt_pkg check_cmd <<< "$entry"
+            if is_macos; then
+                pkg_remove "$brew_pkg"
+            else
+                pkg_remove "$apt_pkg"
+            fi
+        done
+        # eza apt repo added on older Ubuntu
+        if is_linux && sudo_available; then
+            dry_run_cmd sudo rm -f /etc/apt/sources.list.d/gierens.list /etc/apt/keyrings/gierens.gpg
+        fi
+    fi
+
+    log_success "CLI tools uninstall complete"
+}

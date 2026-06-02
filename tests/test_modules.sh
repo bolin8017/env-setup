@@ -63,6 +63,34 @@ for module in "${!MODULE_MAP[@]}"; do
 done
 
 # =============================================================================
+suite "Uninstall entry functions are defined after sourcing"
+# =============================================================================
+
+declare -A UNINSTALL_MAP=(
+    ["01-core"]="uninstall_core"
+    ["02-languages"]="uninstall_languages"
+    ["03-python-tools"]="uninstall_python_tools"
+    ["04-docker"]="uninstall_docker"
+    ["05-cli-tools"]="uninstall_cli_tools"
+    ["06-shell"]="uninstall_shell"
+    ["07-tmux"]="uninstall_tmux"
+    ["08-claude-code"]="uninstall_claude_code"
+    ["09-user-dirs"]="uninstall_user_dirs"
+)
+
+# Every module file was already sourced by the install-functions suite above,
+# so both install_* and uninstall_* are in scope — no re-source needed (and
+# re-sourcing 05-cli-tools.sh would trip its `readonly CLI_TOOLS`).
+for module in "${!UNINSTALL_MAP[@]}"; do
+    fn="${UNINSTALL_MAP[$module]}"
+    if declare -f "$fn" &>/dev/null; then
+        (( _TEST_TOTAL += 1 )); echo -e "  ${_T_GREEN}PASS${_T_NC}  ${module}.sh defines ${fn}()"; (( _TEST_PASS += 1 ))
+    else
+        (( _TEST_TOTAL += 1 )); echo -e "  ${_T_RED}FAIL${_T_NC}  ${module}.sh does NOT define ${fn}()"; (( _TEST_FAIL += 1 ))
+    fi
+done
+
+# =============================================================================
 suite "Modules referenced in setup.sh match actual files"
 # =============================================================================
 

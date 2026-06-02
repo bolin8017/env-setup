@@ -52,3 +52,31 @@ install_docker() {
         log_info "Log out and back in for Docker group permissions"
     fi
 }
+
+# =============================================================================
+# uninstall_docker — Docker is system-level; removed only under --purge.
+# =============================================================================
+uninstall_docker() {
+    print_header "Uninstall: Docker"
+
+    if [[ "${PURGE:-false}" != "true" ]]; then
+        log_info "Docker removal requires --purge (system-level; no user config deployed)"
+        return 0
+    fi
+
+    if is_macos; then
+        pkg_remove_cask docker
+    elif is_linux; then
+        if sudo_available && command_exists apt-get; then
+            dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y \
+                docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            dry_run_cmd sudo gpasswd -d "${USER:-$(whoami)}" docker 2>/dev/null || true
+            dry_run_cmd sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
+        else
+            record_missing_apt_note "Remove Docker: sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+            log_warn "Docker removal deferred to administrator"
+        fi
+    fi
+
+    log_success "Docker uninstall complete"
+}

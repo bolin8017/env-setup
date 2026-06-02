@@ -17,6 +17,15 @@ runs `modules/*.ps1` (added incrementally per stage). The two engines never
 call each other — `setup.sh` for macOS/Linux/WSL, `setup.ps1` for native
 Windows.
 
+`uninstall.sh` is the teardown counterpart. It sources the same modules and
+calls each module's co-located `uninstall_<module>` function in **reverse**
+order (09→01). It is detection-driven (acts on what is present, not on
+`config.yaml`), conservative by default (config + user-space tools; system
+packages only with `--purge`), and restores pre-install dotfiles from
+`~/.env-setup/backups/` unless `--no-restore` is given. Safety primitives
+(protected-path guard, managed-file/dir removal) live in `lib/uninstall.sh`.
+The Windows counterpart `uninstall.ps1` is specified for a follow-up plan.
+
 ## Directory Structure
 
 ```
@@ -25,6 +34,7 @@ env-setup/
 ├── bootstrap.ps1         # One-liner remote installer (Windows / PowerShell)
 ├── setup.sh              # Main entrypoint (Unix) — orchestrates module execution
 ├── setup.ps1             # Main entrypoint (Windows) — PowerShell module runner
+├── uninstall.sh          # Teardown entrypoint (Unix) — reverse module runner
 ├── config.yaml           # User configuration (sensible defaults)
 ├── config.yaml.example   # Fully commented reference config
 ├── lib/                  # Bash engine (*.sh) + Windows engine (*.psm1) siblings
@@ -34,6 +44,7 @@ env-setup/
 │   ├── package.sh        # Cross-platform package management (brew/apt)
 │   ├── dryrun.sh         # Dry-run wrappers for commands and file ops
 │   ├── backup.sh         # Backup and restore shell/tool configs
+│   ├── uninstall.sh      # Removal primitives: protected-path guard, managed-file/dir
 │   ├── Common.psm1       # (Windows) logging, $IsWindows guard, helpers
 │   ├── Config.psm1       # (Windows) pure-PowerShell config.yaml reader
 │   ├── Package.psm1      # (Windows) scoop/winget + no-admin defer
@@ -130,10 +141,13 @@ Scope examples: `core`, `shell`, `tmux`, `docker`, `cli-tools`, `bootstrap`, `ci
 bash tests/run_all.sh
 
 # Lint all shell scripts
-shellcheck -x setup.sh bootstrap.sh lib/*.sh modules/*.sh scripts/*.sh
+shellcheck -x setup.sh uninstall.sh bootstrap.sh lib/*.sh modules/*.sh scripts/*.sh
 
 # Dry-run (prints actions without executing)
 bash setup.sh --dry-run
+
+# Dry-run uninstall (prints what would be removed)
+bash uninstall.sh --dry-run --auto-yes
 
 # Run a single module
 bash modules/06-shell.sh

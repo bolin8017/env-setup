@@ -230,3 +230,42 @@ install_languages() {
         _install_conda
     fi
 }
+
+# =============================================================================
+# uninstall_languages — Reverse install_languages: remove the generated shell
+# fragments + conda init block (C), the tool trees ~/.nvm ~/.pyenv ~/miniconda3
+# (T), and brew-managed pyenv/miniconda on macOS (P).
+# =============================================================================
+uninstall_languages() {
+    print_header "Uninstall: Languages"
+
+    # C — auto-generated fragments this module wrote
+    remove_fragment "15-pyenv.zsh" "PYENV_ROOT"
+    remove_fragment "16-nvm.zsh" "NVM_DIR"
+    remove_fragment "17-conda.zsh" "conda"
+
+    # C — conda init block in shared rc files
+    if command_exists conda; then
+        set +u
+        dry_run_cmd conda init --reverse --all 2>/dev/null || true
+        set -u
+    else
+        strip_block_from_file "$HOME/.bashrc" "# >>> conda initialize >>>" "# <<< conda initialize <<<"
+        strip_block_from_file "$HOME/.zshrc"  "# >>> conda initialize >>>" "# <<< conda initialize <<<"
+    fi
+
+    # T — user-space tool trees
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        remove_managed_dir "$HOME/.nvm" "nvm"
+        remove_managed_dir "$HOME/.pyenv" "pyenv"
+        remove_managed_dir "$HOME/miniconda3" "Miniconda"
+    fi
+
+    # P — macOS brew-managed language tooling
+    if [[ "${PURGE:-false}" == "true" ]] && is_macos; then
+        pkg_remove pyenv pyenv-virtualenv
+        pkg_remove_cask miniconda
+    fi
+
+    log_success "Languages uninstall complete"
+}

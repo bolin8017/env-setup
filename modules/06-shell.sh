@@ -249,3 +249,65 @@ install_shell() {
 
     log_success "Shell module complete"
 }
+
+# =============================================================================
+# _remove_shell_config — Remove deployed fragments, aliases, .zshrc skeleton,
+# and .p10k.zsh (each only if unmodified). Preserves ~/.config/zsh/custom.
+# =============================================================================
+_remove_shell_config() {
+    local cfg_dir="${ENV_SETUP_DIR}/configs"
+    local frag_dest="${HOME}/.config/zsh/fragments"
+
+    # Repo fragments
+    local frag
+    shopt -s nullglob
+    for frag in "${cfg_dir}/zshrc"/*.zsh; do
+        remove_managed_file "${frag_dest}/$(basename "$frag")" "$frag" "fragment $(basename "$frag")"
+    done
+    shopt -u nullglob
+
+    remove_managed_file "${HOME}/.config/zsh/aliases.zsh" "${cfg_dir}/aliases.zsh" "aliases.zsh"
+    # shellcheck disable=SC2088  # tilde is intentional display label
+    remove_managed_file "${HOME}/.zshrc"   "${cfg_dir}/zshrc.base"     "~/.zshrc"
+    # shellcheck disable=SC2088  # tilde is intentional display label
+    remove_managed_file "${HOME}/.p10k.zsh" "${cfg_dir}/p10k/.p10k.zsh" "~/.p10k.zsh"
+
+    # Drop the fragments dir if it is now empty (keeps custom/ intact)
+    if [[ "${DRY_RUN:-false}" != "true" ]]; then
+        rmdir "$frag_dest" 2>/dev/null || true
+    fi
+}
+
+# =============================================================================
+# uninstall_shell — Reverse install_shell.
+# =============================================================================
+uninstall_shell() {
+    print_header "Uninstall: Shell"
+
+    _remove_shell_config
+
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        local zsh_custom="${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}"
+
+        # External plugin clones
+        local p name
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            name="${p##*/}"
+            remove_managed_dir "${zsh_custom}/plugins/${name}" "zsh plugin ${name}"
+        done < <(cfg_list "shell.plugins.external")
+
+        remove_managed_dir "${zsh_custom}/themes/powerlevel10k" "Powerlevel10k"
+        remove_managed_dir "${HOME}/.oh-my-zsh" "Oh My Zsh"
+    fi
+
+    if [[ "${PURGE:-false}" == "true" ]]; then
+        if [[ "$SHELL" == */zsh ]] && command_exists bash; then
+            log_info "Reverting default shell to bash..."
+            dry_run_cmd chsh -s /bin/bash || log_warn "chsh failed — revert manually"
+        fi
+        pkg_remove zsh
+    fi
+
+    log_success "Shell uninstall complete"
+}

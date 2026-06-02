@@ -35,6 +35,23 @@ vim config.yaml
 ./setup.sh --help                 # 顯示所有選項
 ```
 
+### 解除安裝
+
+解除安裝採保守預設：只移除 env-setup 部署的設定檔與使用者空間工具，
+不碰 apt/brew 系統套件、不刪個人資料夾。若安裝時有備份，會自動還原安裝前的設定。
+
+```bash
+./uninstall.sh                    # 移除設定檔 + 使用者空間工具（nvm/pyenv/oh-my-zsh…）
+./uninstall.sh --dry-run          # 預覽會移除什麼，不實際執行
+./uninstall.sh --keep-tools       # 只移除設定檔，保留所有工具
+./uninstall.sh --purge            # 額外移除系統套件（git/docker/zsh…）與還原預設 shell
+./uninstall.sh --no-restore       # 不從備份還原，純移除
+./uninstall.sh --modules 06-shell # 只解除指定模組
+./uninstall.sh --help             # 顯示所有選項
+```
+
+永不移除：個人資料夾、Claude 憑證與歷史、`~/.env-setup/backups` 備份。
+
 ### 原生 Windows（PowerShell）
 
 原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）、Claude Code（原生安裝 + 設定同步）、個人目錄與安裝後驗證。

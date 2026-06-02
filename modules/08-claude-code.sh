@@ -555,3 +555,157 @@ install_claude_code() {
     _install_enabled_plugins
     _sync_mcp_servers
 }
+
+# =============================================================================
+# _latest_bak <basefile> — echo the newest <basefile>.bak.* (empty if none).
+# =============================================================================
+_latest_bak() {
+    local base="$1" newest="" f
+    shopt -s nullglob
+    for f in "${base}".bak.*; do
+        [[ -z "$newest" || "$f" -nt "$newest" ]] && newest="$f"
+    done
+    shopt -u nullglob
+    echo "$newest"
+}
+
+# =============================================================================
+# _uninstall_claude_settings — Restore ~/.claude/settings.json from the newest
+# install-created .bak; failing that, delete only the whitelisted keys whose
+# value still equals the repo's. Never touches other (user/auth) keys.
+# =============================================================================
+_uninstall_claude_settings() {
+    local dest="${HOME}/.claude/settings.json"
+    local src="${ENV_SETUP_DIR}/configs/claude/settings.json"
+
+    [[ -f "$dest" ]] || { log_info "[SKIP] settings.json not present"; return 0; }
+
+    local bak
+    bak="$(_latest_bak "$dest")"
+    if [[ -n "$bak" ]]; then
+        log_info "Restoring settings.json from ${bak}"
+        dry_run_cp "$bak" "$dest"
+        return 0
+    fi
+
+    command_exists jq || { log_warn "jq not found — leaving settings.json"; return 0; }
+    jq empty "$dest" 2>/dev/null || { log_warn "settings.json is invalid JSON — leaving it"; return 0; }
+
+    local keys=() k
+    while IFS= read -r k; do [[ -n "$k" ]] && keys+=("$k"); done \
+        < <(cfg_list "claude_code.settings_merge_keys")
+    [[ ${#keys[@]} -eq 0 ]] && return 0
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo "[DRY-RUN] Would strip env-setup keys from ${dest} (where equal to repo)"
+        return 0
+    fi
+
+    local tmp="${dest}.tmp.$$"
+    # shellcheck disable=SC2016  # $k, $src, $ARGS are jq variables, not shell
+    if jq --slurpfile src "$src" \
+        'reduce ($ARGS.positional[]) as $k (.; if (.[$k] == $src[0][$k]) then del(.[$k]) else . end)' \
+        "$dest" --args "${keys[@]}" > "$tmp"; then
+        mv "$tmp" "$dest"
+        log_success "Stripped env-setup keys from settings.json"
+    else
+        rm -f "$tmp"
+        log_warn "jq strip failed — settings.json left intact"
+    fi
+}
+
+# =============================================================================
+# _uninstall_claude_mcp — Restore ~/.claude.json from the newest install .bak;
+# failing that, remove only the repo-declared mcpServers keys.
+# =============================================================================
+_uninstall_claude_mcp() {
+    local dest="${HOME}/.claude.json"
+    local src="${ENV_SETUP_DIR}/configs/claude/mcp-servers.json"
+
+    [[ -f "$dest" ]] || return 0
+    [[ -f "$src" ]] || return 0
+    command_exists jq || return 0
+
+    local bak
+    bak="$(_latest_bak "$dest")"
+    if [[ -n "$bak" ]]; then
+        log_info "Restoring ~/.claude.json from ${bak}"
+        dry_run_cp "$bak" "$dest"
+        return 0
+    fi
+
+    local count
+    count=$(jq -r '.mcpServers // {} | length' "$src" 2>/dev/null || echo 0)
+    [[ "${count:-0}" -eq 0 ]] && return 0
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo "[DRY-RUN] Would remove repo-declared MCP servers from ${dest}"
+        return 0
+    fi
+
+    local tmp="${dest}.tmp.$$"
+    if jq --slurpfile src "$src" \
+        '.mcpServers = ((.mcpServers // {}) | with_entries(select(.key as $k | (($src[0].mcpServers // {}) | has($k)) | not)))' \
+        "$dest" > "$tmp"; then
+        mv "$tmp" "$dest"
+        log_success "Removed env-setup MCP servers from ~/.claude.json"
+    else
+        rm -f "$tmp"
+        log_warn "jq MCP strip failed — ~/.claude.json left intact"
+    fi
+}
+
+# =============================================================================
+# _remove_claude_cli — Remove the native-installer launcher + version store.
+# The ~/.claude data tree (auth/history/projects) is intentionally preserved.
+# =============================================================================
+_remove_claude_cli() {
+    dry_run_rm "${HOME}/.local/bin/claude"
+    remove_managed_dir "${HOME}/.local/share/claude" "Claude CLI store"
+    log_success "Removed Claude CLI binary (config/auth preserved)"
+}
+
+# =============================================================================
+# uninstall_claude_code — Reverse install_claude_code (surgical).
+# =============================================================================
+uninstall_claude_code() {
+    print_header "Uninstall: Claude Code"
+
+    local cdir="${ENV_SETUP_DIR}/configs/claude"
+
+    # C — managed config files (user-edited copies are preserved by remove_managed_file)
+    remove_managed_file "${HOME}/.claude/CLAUDE.md" "${cdir}/CLAUDE.md" "global CLAUDE.md"
+    local f
+    shopt -s nullglob
+    for f in "${cdir}/rules"/*.md;    do remove_managed_file "${HOME}/.claude/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
+    for f in "${cdir}/commands"/*.md; do remove_managed_file "${HOME}/.claude/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
+    for f in "${cdir}/agents"/*.md;   do remove_managed_file "${HOME}/.claude/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
+    shopt -u nullglob
+
+    _uninstall_claude_settings
+    _uninstall_claude_mcp
+
+    remove_managed_file "${HOME}/.config/ccstatusline/settings.json" \
+        "${ENV_SETUP_DIR}/configs/ccstatusline/settings.json" "ccstatusline settings.json"
+    if [[ "${DRY_RUN:-false}" != "true" ]]; then
+        rmdir "${HOME}/.config/ccstatusline" 2>/dev/null || true
+    fi
+
+    # T — plugins/marketplaces + CLI binary
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        if command_exists claude && command_exists jq; then
+            local plugin repo
+            while IFS= read -r plugin; do
+                [[ -z "$plugin" ]] && continue
+                dry_run_cmd claude plugin uninstall "$plugin" >/dev/null 2>&1 || true
+            done < <(jq -r '.enabledPlugins | to_entries[] | select(.value == true) | .key' "${cdir}/settings.json" 2>/dev/null)
+            while IFS= read -r repo; do
+                [[ -z "$repo" ]] && continue
+                dry_run_cmd claude plugin marketplace remove "$repo" >/dev/null 2>&1 || true
+            done < <(cfg_list "claude_code.marketplaces")
+        fi
+        _remove_claude_cli
+    fi
+
+    log_success "Claude Code uninstall complete"
+}

@@ -190,3 +190,32 @@ install_core() {
         _install_build_tools
     fi
 }
+
+# =============================================================================
+# uninstall_core — Reverse install_core (Homebrew fragment; --purge: git/gh/
+# build tools). The platform package manager itself is never auto-removed.
+# =============================================================================
+uninstall_core() {
+    print_header "Uninstall: Core"
+
+    # C — config layer
+    remove_fragment "41-homebrew.zsh" "brew shellenv"
+
+    # P — system packages
+    if [[ "${PURGE:-false}" == "true" ]]; then
+        log_warn "git and gh are widely depended on — removing them per --purge"
+        pkg_remove gh git
+        if is_linux && sudo_available && command_exists apt-get; then
+            dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y build-essential
+            dry_run_cmd sudo rm -f /etc/apt/sources.list.d/github-cli.list \
+                                   /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        fi
+        if is_macos; then
+            log_info "Homebrew is the package manager — not auto-removed. To remove manually:"
+            # shellcheck disable=SC2016  # literal command shown to the user, not expanded
+            log_info '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"'
+        fi
+    fi
+
+    log_success "Core uninstall complete"
+}

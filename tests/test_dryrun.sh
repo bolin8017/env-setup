@@ -128,4 +128,24 @@ else
 fi
 
 # =============================================================================
+suite "dry_run_rm"
+# =============================================================================
+
+# Real removal when DRY_RUN is off
+DRY_RUN="false"
+_rmfile="${TEST_TMPDIR}/to_remove.txt"
+echo "x" > "$_rmfile"
+dry_run_rm "$_rmfile"
+assert_file_not_exists "$_rmfile" "dry_run_rm removes the file when DRY_RUN=false"
+
+# Prints, does not remove, when DRY_RUN is on
+DRY_RUN="true"
+_keepfile="${TEST_TMPDIR}/keep.txt"
+echo "x" > "$_keepfile"
+_out="$(dry_run_rm "$_keepfile")"
+assert_contains "$_out" "[DRY-RUN] Would remove" "dry_run_rm prints in dry-run mode"
+assert_file_exists "$_keepfile" "dry_run_rm does not remove the file in dry-run mode"
+DRY_RUN="false"
+
+# =============================================================================
 print_test_summary

@@ -38,6 +38,16 @@ jobs:
       - name: Run verification
         run: bash scripts/verify.sh
 
+      - name: Uninstall (default scope, keep packages)
+        run: bash uninstall.sh --keep-tools --auto-yes --no-restore
+
+      - name: Assert managed dotfiles are gone
+        run: |
+          if [[ -f "$HOME/.zshrc" ]]; then
+            echo "zshrc still present after uninstall" && exit 1
+          fi
+          echo "managed dotfiles removed"
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
