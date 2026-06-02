@@ -234,3 +234,50 @@ pkg_install_cask() {
         dry_run_cmd brew install --cask "$pkg"
     done
 }
+
+# =============================================================================
+# pkg_remove — Uninstall one or more packages (apt purge / brew uninstall)
+# Mirrors pkg_install: sudo-aware on Linux, defers on no-sudo machines.
+# =============================================================================
+pkg_remove() {
+    local pkg
+    local had_failure=false
+    for pkg in "$@"; do
+        if is_macos; then
+            dry_run_cmd brew uninstall "$pkg" || had_failure=true
+        elif is_linux; then
+            if ! sudo_available; then
+                record_missing_apt_note "Remove (needs admin): sudo apt-get purge -y ${pkg}"
+                log_warn "Deferring removal of ${pkg} to administrator (no sudo)"
+                had_failure=true
+                continue
+            fi
+            if command_exists apt-get; then
+                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y "$pkg"
+            elif command_exists dnf; then
+                dry_run_cmd sudo dnf remove -y "$pkg"
+            elif command_exists yum; then
+                dry_run_cmd sudo yum remove -y "$pkg"
+            else
+                log_error "No supported package manager found"
+                return 1
+            fi
+        fi
+    done
+    [[ "$had_failure" == "true" ]] && return 1
+    return 0
+}
+
+# =============================================================================
+# pkg_remove_cask — Uninstall a macOS cask application
+# =============================================================================
+pkg_remove_cask() {
+    if ! is_macos; then
+        log_warn "Cask removal is only supported on macOS (skipping: $*)"
+        return 0
+    fi
+    local pkg
+    for pkg in "$@"; do
+        dry_run_cmd brew uninstall --cask "$pkg" || true
+    done
+}
