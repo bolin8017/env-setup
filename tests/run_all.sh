@@ -23,6 +23,7 @@ tests=(
     "test_common.sh"
     "test_dryrun.sh"
     "test_modules.sh"
+    "test_uninstall.sh"
     "test_config_consistency.sh"
     "test_fragments.sh"
     "test_user_dirs.sh"
