@@ -166,4 +166,25 @@ uninstall_user_dirs >/dev/null 2>&1
 assert_file_not_exists "$HOME/Downloads" "empty user dir is reclaimed"
 assert_dir_exists "$HOME/Documents" "non-empty user dir is preserved"
 
+suite "uninstall.sh CLI"
+
+_help="$(bash "$PROJECT_ROOT/uninstall.sh" --help 2>&1)"
+assert_contains "$_help" "--keep-tools" "help lists --keep-tools"
+assert_contains "$_help" "--purge" "help lists --purge"
+assert_contains "$_help" "--no-restore" "help lists --no-restore"
+
+bash "$PROJECT_ROOT/uninstall.sh" --bogus >/dev/null 2>&1
+assert_false $? "unknown flag exits non-zero"
+
+suite "uninstall.sh dry-run end-to-end"
+
+_dr="$(bash "$PROJECT_ROOT/uninstall.sh" --dry-run --auto-yes 2>&1)"
+assert_contains "$_dr" "Uninstall" "dry-run prints module headers"
+assert_contains "$_dr" "dry run" "dry-run prints the dry-run notice"
+# Nothing in the fake HOME should have been deleted by a dry run
+mkdir -p "$HOME/.config/zsh/fragments"
+echo x > "$HOME/.config/zsh/fragments/50-tools.zsh"
+bash "$PROJECT_ROOT/uninstall.sh" --dry-run --auto-yes >/dev/null 2>&1
+assert_file_exists "$HOME/.config/zsh/fragments/50-tools.zsh" "dry-run removes nothing"
+
 print_test_summary
