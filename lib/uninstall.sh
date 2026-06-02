@@ -71,3 +71,33 @@ is_protected_path() {
 
     return 1
 }
+
+# =============================================================================
+# remove_managed_file <dest> <repo_src> [<label>]
+# Removes dest only when it is byte-identical to the repo source (i.e. env-setup
+# deployed it and the user never edited it). A modified file is preserved and
+# reported — never deleted. Protected paths are refused.
+# =============================================================================
+remove_managed_file() {
+    local dest="$1" repo_src="$2"
+    local label="${3:-$(basename "$dest")}"
+
+    if [[ ! -e "$dest" ]]; then
+        log_info "[SKIP] ${label} not present"
+        return 0
+    fi
+    if is_protected_path "$dest"; then
+        log_warn "Refusing to remove protected path: ${dest}"
+        return 0
+    fi
+    if [[ -z "$repo_src" || ! -f "$repo_src" ]]; then
+        log_warn "${label}: cannot verify (no repo source) — preserved"
+        return 0
+    fi
+    if ! cmp -s "$repo_src" "$dest" 2>/dev/null; then
+        log_warn "${label} modified locally — preserved (remove manually if desired)"
+        return 0
+    fi
+    dry_run_rm "$dest"
+    log_success "Removed ${label}"
+}

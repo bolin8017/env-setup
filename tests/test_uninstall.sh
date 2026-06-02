@@ -43,4 +43,32 @@ is_protected_path "$HOME/Documents/repos/x"; assert_true $? "path under extra pr
 is_protected_path "$HOME/Tools"; assert_false $? "non-listed dir not protected"
 PROTECTED_EXTRA=""
 
+suite "remove_managed_file"
+
+_repo="${TEST_TMPDIR}/repo_src.txt"
+printf 'line1\nline2\n' > "$_repo"
+
+# Identical copy → removed
+_dest="$HOME/.identical"
+cp "$_repo" "$_dest"
+remove_managed_file "$_dest" "$_repo" "identical" >/dev/null
+assert_file_not_exists "$_dest" "removes a file identical to repo source"
+
+# Locally modified → preserved
+_dest2="$HOME/.modified"
+printf 'line1\nCHANGED\n' > "$_dest2"
+remove_managed_file "$_dest2" "$_repo" "modified" >/dev/null
+assert_file_exists "$_dest2" "preserves a locally-modified file"
+
+# Missing dest → no-op success
+remove_managed_file "$HOME/.nope" "$_repo" "missing"; assert_true $? "missing dest is a no-op"
+
+# Protected dest → refused
+PROTECTED_EXTRA="$HOME/Documents"
+mkdir -p "$HOME/Documents"; echo y > "$HOME/Documents/keep"
+cp "$_repo" "$HOME/Documents/managed"
+remove_managed_file "$HOME/Documents/managed" "$_repo" "in-protected" >/dev/null
+assert_file_exists "$HOME/Documents/managed" "refuses to remove inside a protected path"
+PROTECTED_EXTRA=""
+
 print_test_summary
