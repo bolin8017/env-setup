@@ -22,7 +22,7 @@ jobs:
         run: sudo apt-get install -y shellcheck
 
       - name: Run ShellCheck
-        run: shellcheck -x setup.sh bootstrap.sh lib/*.sh modules/*.sh scripts/*.sh
+        run: shellcheck -x setup.sh uninstall.sh bootstrap.sh lib/*.sh modules/*.sh scripts/*.sh
 
   unit-tests:
     name: Unit Tests
@@ -48,6 +48,9 @@ jobs:
 
       - name: Run dry-run
         run: bash setup.sh --dry-run --auto-yes
+
+      - name: Run uninstall dry-run
+        run: bash uninstall.sh --dry-run --auto-yes
 
   yaml-validate:
     name: Validate YAML Config
