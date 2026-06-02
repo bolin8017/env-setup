@@ -170,3 +170,34 @@ install_tmux() {
 
     log_success "tmux module complete"
 }
+
+# =============================================================================
+# uninstall_tmux — Reverse install_tmux: config files (C), TPM + plugins (T),
+# tmux/xclip packages (P).
+# =============================================================================
+uninstall_tmux() {
+    print_header "Uninstall: tmux"
+
+    local cfg_dir="${ENV_SETUP_DIR}/configs/tmux"
+    # shellcheck disable=SC2088  # tilde is intentional display label
+    remove_managed_file "${HOME}/.tmux.conf"            "${cfg_dir}/tmux.conf"       "~/.tmux.conf"
+    remove_managed_file "${HOME}/.tmux/dev-layout.conf" "${cfg_dir}/dev-layout.conf" "dev-layout.conf"
+    remove_managed_file "${HOME}/.tmux/tmux.macos.conf" "${cfg_dir}/tmux.macos.conf" "tmux.macos.conf"
+
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        if command_exists tmux; then
+            dry_run_cmd tmux kill-session -t _tpm_install 2>/dev/null || true
+        fi
+        remove_managed_dir "${HOME}/.tmux/plugins" "tmux plugins (TPM)"
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            rmdir "${HOME}/.tmux" 2>/dev/null || true
+        fi
+    fi
+
+    if [[ "${PURGE:-false}" == "true" ]]; then
+        pkg_remove tmux
+        is_linux && pkg_remove xclip
+    fi
+
+    log_success "tmux uninstall complete"
+}
