@@ -346,6 +346,9 @@ run_module "08-claude-code" "install_claude_code"
 # User directories (no dependencies; runs last so all tools are in place)
 run_module "09-user-dirs" "install_user_dirs"
 
+# Worklog (cross-machine capture; curator role also gets the vault + /worklog-sync)
+run_module "10-worklog" "install_worklog"
+
 # Verification
 run_verification
 

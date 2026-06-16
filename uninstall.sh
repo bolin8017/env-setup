@@ -180,7 +180,8 @@ run_uninstall_module() {
     if "$fn"; then REMOVED+=("$module_name"); else log_error "Module $module_name failed"; FAILED+=("$module_name"); fi
 }
 
-# Reverse dependency order (09 → 01)
+# Reverse dependency order (10 → 01)
+run_uninstall_module "10-worklog"      "uninstall_worklog"
 run_uninstall_module "09-user-dirs"    "uninstall_user_dirs"
 run_uninstall_module "08-claude-code"  "uninstall_claude_code"
 run_uninstall_module "07-tmux"         "uninstall_tmux"
