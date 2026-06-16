@@ -349,10 +349,11 @@ worklog:
   source: auto
 
   # Inbox repo (raw logs) — owner/name slug. The module picks HTTPS or the
-  # github-worklog SSH remote based on the detected GitHub auth.
+  # github-worklog SSH remote based on the detected GitHub auth. Paths are
+  # $HOME-relative (or absolute if they start with "/").
   inbox_repo: "bolin8017/worklog-inbox"
-  inbox_path: "~/Documents/repositories/worklog-inbox"
+  inbox_path: "Documents/repositories/worklog-inbox"
 
   # Obsidian vault (curated notes) — used only when role: curator.
   vault_repo: "bolin8017/obsidian-notes"
-  vault_path: "~/Documents/obsidian-notes"
+  vault_path: "Documents/obsidian-notes"

@@ -13,12 +13,12 @@
 # capture-only (work / shared) machine. Set role/source per machine in
 # config.local.yaml.
 
-# _worklog_expand <path> — expand a leading ~ to $HOME
+# _worklog_expand <path> — resolve a $HOME-relative path; absolute paths pass through
 _worklog_expand() {
     local p="$1"
     case "$p" in
-        "~" | "~/"*) printf '%s\n' "${HOME}${p#\~}" ;;
-        *) printf '%s\n' "$p" ;;
+        /*) printf '%s\n' "$p" ;;
+        *) printf '%s\n' "${HOME}/${p}" ;;
     esac
 }
 
