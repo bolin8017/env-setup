@@ -326,3 +326,34 @@ windows:
   multiplexer:
     # zellij — the tmux role on native Windows.
     zellij: true
+
+# -----------------------------------------------------------------------------
+# Worklog — cross-machine work-log capture (curation on trusted machines only)
+# -----------------------------------------------------------------------------
+# Capture-at-source pipeline: every machine appends raw daily logs to a private
+# inbox repo; trusted "curator" machines fold them into the obsidian vault.
+# Per-machine values (role, source) belong in config.local.yaml.
+worklog:
+  # Master switch for this machine.
+  enabled: true
+
+  # Machine role — default "capture" is the safe, least-privilege choice:
+  #   capture — clone the inbox + deploy /worklog only (work / shared servers).
+  #   curator — ALSO clone the obsidian vault + deploy /worklog-sync. Trusted
+  #             machines only; the vault never lands on a capture machine.
+  # curator is NEVER a default — set it per-machine in config.local.yaml.
+  role: capture
+
+  # This machine's label (its source folder in the inbox). "auto" derives it
+  # from the short hostname; override to a friendly name in config.local.yaml.
+  source: auto
+
+  # Inbox repo (raw logs) — owner/name slug. The module picks HTTPS or the
+  # github-worklog SSH remote based on the detected GitHub auth. Paths are
+  # $HOME-relative (or absolute if they start with "/").
+  inbox_repo: "bolin8017/worklog-inbox"
+  inbox_path: "Documents/repositories/worklog-inbox"
+
+  # Obsidian vault (curated notes) — used only when role: curator.
+  vault_repo: "bolin8017/obsidian-notes"
+  vault_path: "Documents/obsidian-notes"

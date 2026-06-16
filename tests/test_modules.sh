@@ -36,6 +36,7 @@ declare -A MODULE_MAP=(
     ["07-tmux"]="install_tmux"
     ["08-claude-code"]="install_claude_code"
     ["09-user-dirs"]="install_user_dirs"
+    ["10-worklog"]="install_worklog"
 )
 
 for module in "${!MODULE_MAP[@]}"; do
@@ -76,6 +77,7 @@ declare -A UNINSTALL_MAP=(
     ["07-tmux"]="uninstall_tmux"
     ["08-claude-code"]="uninstall_claude_code"
     ["09-user-dirs"]="uninstall_user_dirs"
+    ["10-worklog"]="uninstall_worklog"
 )
 
 # Every module file was already sourced by the install-functions suite above,

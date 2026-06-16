@@ -63,6 +63,19 @@ load_config() {
     fi
     eval "$parsed"
 
+    # Merge per-machine overrides from a sibling config.local.yaml (gitignored),
+    # if present. Re-evaluating its CFG_* assignments overrides the base values.
+    local local_file="${config_file%.yaml}.local.yaml"
+    if [[ -f "$local_file" ]]; then
+        log_info "Merging local overrides from: $local_file"
+        local local_parsed
+        if local_parsed="$(yaml_parse "$local_file")" && [[ -n "$local_parsed" ]]; then
+            eval "$local_parsed"
+        else
+            log_warn "Could not parse local override (ignored): $local_file"
+        fi
+    fi
+
     # Apply environment variable overrides for backward compat
     _apply_env_overrides
 

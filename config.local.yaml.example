@@ -1,0 +1,19 @@
+# config.local.yaml — per-machine overrides (gitignored)
+#
+# Copy to `config.local.yaml` on each machine and set ONLY the keys that differ
+# from config.yaml. It is merged ON TOP of config.yaml at load time, so anything
+# you omit falls back to the shared default.
+#
+# The worklog module is the main consumer: `role` and `source` are per-machine.
+# `role` defaults to `capture` (safe: inbox only). Only trusted machines that
+# should also hold the obsidian vault set `role: curator`.
+#
+# --- Example: a trusted/personal machine that also curates the vault ---
+# worklog:
+#   role: curator
+#   source: macbook
+#
+# --- Example: a work/shared server that only captures logs ---
+# worklog:
+#   role: capture
+#   source: hetzner
