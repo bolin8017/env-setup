@@ -128,11 +128,39 @@ function Set-CfgEnvOverride {
     if ($env:SKIP_SHELL_SETUP -eq 'true') { Set-CfgPath 'shell.enabled' 'false' }
 }
 
+# Recursively merge $Override into $Base at the leaf level (nested dictionaries
+# are merged key-by-key; scalars/lists are overwritten). Used for config.local.yaml.
+function Merge-CfgLocal {
+    param(
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Base,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Override
+    )
+    foreach ($k in @($Override.Keys)) {
+        if ($Base.Contains($k) -and ($Base[$k] -is [System.Collections.IDictionary]) -and ($Override[$k] -is [System.Collections.IDictionary])) {
+            Merge-CfgLocal -Base $Base[$k] -Override $Override[$k]
+        } else {
+            $Base[$k] = $Override[$k]
+        }
+    }
+}
+
 function Import-Config {
     param([string]$Path)
     $file = Find-ConfigFile -Path $Path
     $lines = Get-Content -LiteralPath $file
     $script:Config = ConvertFrom-SimpleYaml -Lines $lines
+
+    # Merge a sibling config.local.yaml (gitignored) over the base config — per
+    # machine overrides such as worklog.role / worklog.source. Mirrors lib/config.sh.
+    $localFile = $file -replace '\.yaml$', '.local.yaml'
+    if (Test-Path -LiteralPath $localFile) {
+        Write-Verbose "Merging local overrides from: $localFile"
+        $localCfg = ConvertFrom-SimpleYaml -Lines (Get-Content -LiteralPath $localFile)
+        if ($localCfg -is [System.Collections.IDictionary]) {
+            Merge-CfgLocal -Base $script:Config -Override $localCfg
+        }
+    }
+
     Set-CfgEnvOverride
 }
 

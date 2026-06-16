@@ -102,6 +102,7 @@ $ModuleList = @(
     @{ Name = '07-Multiplexer'; Fn = 'Install-Multiplexer' }
     @{ Name = '08-ClaudeCode';  Fn = 'Install-ClaudeCode' }
     @{ Name = '09-UserDirs';    Fn = 'Install-UserDirs' }
+    @{ Name = '10-Worklog';     Fn = 'Install-Worklog' }
 )
 
 # Assign the filter directly as an array. `$x = if (...) { } else { @() }` would

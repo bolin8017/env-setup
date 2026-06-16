@@ -83,6 +83,7 @@ $env:ENVSETUP_PROTECTED_EXTRA = ((Get-CfgList 'user_dirs.paths' | ForEach-Object
 
 # Reverse module order (09 → 01; 04-Docker has no Windows engine).
 $ModuleList = @(
+    @{ Name = '10-Worklog';     Fn = 'Uninstall-Worklog' }
     @{ Name = '09-UserDirs';    Fn = 'Uninstall-UserDirs' }
     @{ Name = '08-ClaudeCode';  Fn = 'Uninstall-ClaudeCode' }
     @{ Name = '07-Multiplexer'; Fn = 'Uninstall-Multiplexer' }
