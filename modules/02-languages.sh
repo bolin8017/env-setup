@@ -24,10 +24,23 @@ _install_nvm() {
     local fragment_file="$fragment_dir/16-nvm.zsh"
     if [[ ! -f "$fragment_file" ]] || ! grep -q "NVM_DIR" "$fragment_file" 2>/dev/null; then
         log_info "Writing nvm shell fragment: $fragment_file"
+        # Lazy-load nvm: sourcing nvm.sh eagerly runs nvm's auto-use on every
+        # shell start (~0.5s+, often the single biggest startup cost). Instead
+        # define thin nvm/node/npm/npx stubs that source nvm.sh on first use,
+        # then hand off to the real command. Keeps interactive startup instant.
         dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
 export NVM_DIR=\"\$HOME/.nvm\"
-[ -s \"\$NVM_DIR/nvm.sh\" ] && \\. \"\$NVM_DIR/nvm.sh\"
-[ -s \"\$NVM_DIR/bash_completion\" ] && \\. \"\$NVM_DIR/bash_completion\"
+if [ -s \"\$NVM_DIR/nvm.sh\" ]; then
+  _envsetup_load_nvm() {
+    unset -f nvm node npm npx _envsetup_load_nvm
+    \\. \"\$NVM_DIR/nvm.sh\"
+    [ -s \"\$NVM_DIR/bash_completion\" ] && \\. \"\$NVM_DIR/bash_completion\"
+  }
+  nvm()  { _envsetup_load_nvm; nvm \"\$@\"; }
+  node() { _envsetup_load_nvm; node \"\$@\"; }
+  npm()  { _envsetup_load_nvm; npm \"\$@\"; }
+  npx()  { _envsetup_load_nvm; npx \"\$@\"; }
+fi
 FRAGMENT"
     fi
 
@@ -111,19 +124,26 @@ _install_pyenv() {
     local fragment_file="$fragment_dir/15-pyenv.zsh"
     if [[ ! -f "$fragment_file" ]] || ! grep -q "PYENV_ROOT" "$fragment_file" 2>/dev/null; then
         log_info "Writing pyenv shell fragment: $fragment_file"
+        # --no-rehash: skip the implicit 'pyenv rehash' that BOTH 'pyenv init
+        # --path' and 'pyenv init -' emit on every shell start. An interrupted
+        # rehash leaves a stale ~/.pyenv/shims/.pyenv-shim lock; subsequent
+        # rehashes then block ~60s each waiting for it, stalling shell startup
+        # by minutes. Shims are still refreshed by 'pyenv install' and a manual
+        # 'pyenv rehash' when needed.
         dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
 export PYENV_ROOT=\"\$HOME/.pyenv\"
 [[ -d \"\$PYENV_ROOT/bin\" ]] && export PATH=\"\$PYENV_ROOT/bin:\$PATH\"
-eval \"\$(pyenv init --path)\" 2>/dev/null
-eval \"\$(pyenv init -)\" 2>/dev/null
+eval \"\$(pyenv init --path --no-rehash)\" 2>/dev/null
+eval \"\$(pyenv init - --no-rehash)\" 2>/dev/null
 FRAGMENT"
     fi
 
-    # Ensure pyenv is in PATH for current session (disable nounset for pyenv init)
+    # Ensure pyenv is in PATH for current session (disable nounset for pyenv init).
+    # --no-rehash matches the generated fragment; 'pyenv install' below rehashes.
     export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
     set +u
-    eval "$(pyenv init --path)" 2>/dev/null || true
-    eval "$(pyenv init -)" 2>/dev/null || true
+    eval "$(pyenv init --path --no-rehash)" 2>/dev/null || true
+    eval "$(pyenv init - --no-rehash)" 2>/dev/null || true
     set -u
 
     # Install Python version specified in config

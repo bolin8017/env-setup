@@ -161,4 +161,18 @@ for lib_file in "$PROJECT_ROOT/lib"/*.sh; do
 done
 
 # =============================================================================
+suite "Language shell-init hardening (02-languages.sh)"
+# =============================================================================
+
+languages_src="$(cat "$PROJECT_ROOT/modules/02-languages.sh")"
+# pyenv: both init forms must pass --no-rehash so an interrupted rehash's stale
+# shims lock can't stall every future shell ~60s waiting on it.
+assert_contains "$languages_src" "pyenv init --path --no-rehash" "pyenv: 'init --path' skips rehash"
+assert_contains "$languages_src" "pyenv init - --no-rehash"      "pyenv: 'init -' skips rehash"
+assert_not_contains "$languages_src" 'pyenv init --path)' "pyenv: no rehash-on-init via 'init --path'"
+assert_not_contains "$languages_src" 'pyenv init -)'      "pyenv: no rehash-on-init via 'init -'"
+# nvm: lazy-loaded so its auto-use does not run on every shell start.
+assert_contains "$languages_src" "_envsetup_load_nvm" "nvm: lazy-load stubs defined"
+
+# =============================================================================
 print_test_summary
