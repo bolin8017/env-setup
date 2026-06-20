@@ -4,6 +4,21 @@
 - Always respond in Traditional Chinese (繁體中文)
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
+## Working approach — before writing code
+- **Surface assumptions, don't bury them.** Before non-trivial work, state
+  assumptions and tradeoffs. If multiple interpretations exist, present them —
+  don't silently pick one. If something is unclear, ask before implementing.
+- **Simplicity first (YAGNI).** Write the minimum that solves the stated
+  problem. No speculative features, no abstractions for single-use code, no
+  config knobs nobody asked for. If a senior engineer would call it
+  overcomplicated, simplify.
+- **Surgical changes.** Every changed line should trace to the request. Don't
+  refactor or reformat adjacent code that isn't broken; match existing style
+  even if you'd do it differently. Remove only the symbols your own change
+  orphaned — flag pre-existing dead code instead of deleting it.
+- Goal/verification discipline is already covered by TDD + verification skills;
+  not repeated here.
+
 ## Hard rules — never do these without an explicit user request
 - Do NOT use `--no-verify` to bypass pre-commit / commit-msg hooks
 - Do NOT `--amend` a commit that has already been pushed to a shared branch
