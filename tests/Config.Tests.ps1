@@ -16,6 +16,9 @@ windows:
       - Terminal-Icons
       - PSFzf
       - posh-git
+single:
+  one_item:
+    - solo
 '@
     $script:Fixture = Join-Path $TestDrive 'config.yaml'
     Set-Content -Path $script:Fixture -Value $script:Yaml -Encoding utf8
@@ -46,6 +49,13 @@ Describe 'Get-CfgList' {
     }
     It 'returns an empty array for a missing list' {
         (Get-CfgList 'no.such.list').Count | Should -Be 0
+    }
+    It 'returns a single-element list as a 1-item array (item not lost)' {
+        # Consumers wrap with @() (see 08-ClaudeCode); the bug returned @() (empty)
+        # because Get-CfgNode unrolled the count-1 list to a scalar.
+        $r = @(Get-CfgList 'single.one_item')
+        $r.Count | Should -Be 1
+        $r[0] | Should -Be 'solo'
     }
 }
 

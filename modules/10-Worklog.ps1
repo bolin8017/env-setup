@@ -17,7 +17,9 @@ Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"  # Remove-ManagedFile (teard
 $script:WorklogCmds = (Resolve-Path (Join-Path $PSScriptRoot '../configs/worklog/commands')).Path
 
 function Resolve-WorklogPath {
-    param([Parameter(Mandatory)][string]$Path)
+    # AllowEmptyString: an unset path key yields '' (Get-CfgValue) — degrade to
+    # $HOME like the Bash sibling's _worklog_expand '' rather than throwing.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
     if ([System.IO.Path]::IsPathRooted($Path)) { return $Path }
     return (Join-Path $HOME $Path)
 }

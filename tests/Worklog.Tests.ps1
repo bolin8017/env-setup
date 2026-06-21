@@ -38,6 +38,7 @@ Describe 'Worklog module' {
     It 'resolves HOME-relative paths and passes absolute paths through' {
         Resolve-WorklogPath 'Documents/x' | Should -Be (Join-Path $HOME 'Documents/x')
         Resolve-WorklogPath '/tmp/x' | Should -Be '/tmp/x'
+        { Resolve-WorklogPath '' } | Should -Not -Throw  # parity: Bash _worklog_expand '' degrades, doesn't error
     }
 
     It 'runs Install-Worklog under dry-run without throwing' {
@@ -50,6 +51,13 @@ Describe 'Worklog module' {
 }
 
 Describe 'config.local.yaml override (leaf merge)' {
+    AfterAll {
+        # The It blocks below repoint $script:Config at TestDrive fixtures; restore
+        # the isolated base so a later test file that reads config without first
+        # re-importing doesn't see stale state.
+        Import-Config -Path $baseCfg
+    }
+
     It 'overrides only the leaf keys present in config.local.yaml' {
         $base = @'
 worklog:

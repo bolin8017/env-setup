@@ -161,8 +161,9 @@ bash setup.sh --dry-run
 # Dry-run uninstall (prints what would be removed)
 bash uninstall.sh --dry-run --auto-yes
 
-# Run a single module
-bash modules/06-shell.sh
+# Run a single module (install or teardown)
+bash setup.sh --modules 06-shell
+bash uninstall.sh --modules 06-shell
 
 # Verify installed tools
 bash scripts/verify.sh
