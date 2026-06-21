@@ -37,4 +37,15 @@ HOME="$fake_home2" DRY_RUN="true" _write_update_state >/dev/null
 assert_file_not_exists "$fake_home2/.env-setup/update.env" "no state file under dry-run"
 assert_file_not_exists "$fake_home2/.env-setup/.update-last-check" "no timestamp under dry-run"
 
+suite "_remove_shell_config removes the self-update state files"
+# Re-create state under a fake HOME, then tear down.
+fake_home3="$TEST_TMPDIR/home3"
+mkdir -p "$fake_home3"
+# shellcheck source=lib/uninstall.sh
+source "$PROJECT_ROOT/lib/uninstall.sh"
+HOME="$fake_home3" DRY_RUN="false" _write_update_state
+HOME="$fake_home3" DRY_RUN="false" _remove_shell_config >/dev/null 2>&1 || true
+assert_file_not_exists "$fake_home3/.env-setup/update.env" "update.env removed on teardown"
+assert_file_not_exists "$fake_home3/.env-setup/.update-last-check" "timestamp removed on teardown"
+
 print_test_summary

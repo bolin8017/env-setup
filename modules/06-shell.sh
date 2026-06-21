@@ -313,6 +313,17 @@ _remove_shell_config() {
     # shellcheck disable=SC2088  # tilde is intentional display label
     remove_managed_file "${HOME}/.p10k.zsh" "${cfg_dir}/p10k/.p10k.zsh" "~/.p10k.zsh"
 
+    # Self-update state files (generated; no repo source to compare against)
+    local state_dir="${HOME}/.env-setup" sf
+    for sf in "${state_dir}/update.env" "${state_dir}/.update-last-check"; do
+        if [[ -e "$sf" ]] && ! is_protected_path "$sf"; then
+            dry_run_rm "$sf"
+            if [[ "${DRY_RUN:-false}" != "true" ]]; then
+                log_success "Removed $(basename "$sf")"
+            fi
+        fi
+    done
+
     # Drop the fragments dir if it is now empty (keeps custom/ intact)
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         rmdir "$frag_dest" 2>/dev/null || true
