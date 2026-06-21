@@ -50,6 +50,13 @@ Describe 'Worklog module' {
 }
 
 Describe 'config.local.yaml override (leaf merge)' {
+    AfterAll {
+        # The It blocks below repoint $script:Config at TestDrive fixtures; restore
+        # the isolated base so a later test file that reads config without first
+        # re-importing doesn't see stale state.
+        Import-Config -Path $baseCfg
+    }
+
     It 'overrides only the leaf keys present in config.local.yaml' {
         $base = @'
 worklog:
