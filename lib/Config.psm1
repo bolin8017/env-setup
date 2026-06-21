@@ -41,8 +41,10 @@ function Remove-InlineComment {
 
 function ConvertFrom-SimpleYaml {
     # AllowEmptyString: Get-Content yields '' for blank config lines and the loop
-    # skips them. Without it, a Mandatory [string[]] rejects the whole array.
-    param([Parameter(Mandatory)][AllowEmptyString()][string[]]$Lines)
+    # skips them. AllowEmptyCollection: a 0-byte file (e.g. an empty
+    # config.local.yaml) reads as an empty array, which a Mandatory [string[]]
+    # would otherwise reject; the loop then yields an empty map (a no-op merge).
+    param([Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines)
 
     $root = [ordered]@{}
     # Frame: Indent = level at which this container's keys/items appear.
@@ -155,7 +157,10 @@ function Import-Config {
     $localFile = $file -replace '\.yaml$', '.local.yaml'
     if (Test-Path -LiteralPath $localFile) {
         Write-Verbose "Merging local overrides from: $localFile"
-        $localCfg = ConvertFrom-SimpleYaml -Lines (Get-Content -LiteralPath $localFile)
+        # @() so a 0-byte local file reads as an empty array rather than $null
+        # (ConvertFrom-SimpleYaml allows empty input); an empty/whitespace local
+        # file is then a harmless no-op, matching the Bash engine.
+        $localCfg = ConvertFrom-SimpleYaml -Lines @(Get-Content -LiteralPath $localFile)
         if ($localCfg -is [System.Collections.IDictionary]) {
             Merge-CfgLocal -Base $script:Config -Override $localCfg
         }
