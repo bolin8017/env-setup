@@ -12,7 +12,13 @@ source "$PROJECT_ROOT/lib/config.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml" >/dev/null
+
+# Load the base config in isolation. load_config() also merges a sibling
+# config.local.yaml (per-machine overrides such as role: curator), which would
+# skew the schema-default assertions below; copying config.yaml into TEST_TMPDIR
+# (no sibling override there) keeps this suite hermetic on curator machines.
+cp "$PROJECT_ROOT/config.yaml" "$TEST_TMPDIR/config.yaml"
+load_config "$TEST_TMPDIR/config.yaml" >/dev/null
 export ENV_SETUP_DIR="$PROJECT_ROOT"
 DRY_RUN="true"
 AUTO_YES="true"
