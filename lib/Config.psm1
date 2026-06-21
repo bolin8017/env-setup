@@ -179,7 +179,10 @@ function Get-CfgNode {
             return $null
         }
     }
-    return $node
+    # Comma operator: wrap so a count-1 collection (a single-element list) is
+    # returned intact instead of being unrolled to its lone element by the
+    # pipeline — otherwise Get-CfgList would see a scalar and return @().
+    return ,$node
 }
 
 function Get-CfgValue {
