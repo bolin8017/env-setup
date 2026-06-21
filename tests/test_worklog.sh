@@ -52,4 +52,24 @@ assert_eq "0" "$rc" "install_worklog returns 0 in dry-run"
 assert_contains "$out" "Worklog" "install prints the Worklog header"
 assert_contains "$out" "DRY-RUN" "dry-run mode logs [DRY-RUN] (no real writes)"
 
+# config.local.yaml leaf-merge — mirrors the Pester test in Worklog.Tests.ps1.
+# A sibling config.local.yaml overrides only the leaf keys it sets; keys absent
+# from it fall back to the base config. Runs last: it reloads CFG_* from a fixture.
+suite "config.local.yaml override (leaf merge)"
+cat >"$TEST_TMPDIR/merge.yaml" <<'YAML'
+worklog:
+  role: capture
+  source: auto
+  inbox_repo: "owner/inbox"
+YAML
+cat >"$TEST_TMPDIR/merge.local.yaml" <<'YAML'
+worklog:
+  role: curator
+  source: my-box
+YAML
+load_config "$TEST_TMPDIR/merge.yaml" >/dev/null
+assert_eq "curator" "$(cfg_get worklog.role)" "local override wins for worklog.role"
+assert_eq "my-box" "$(cfg_get worklog.source)" "local override wins for worklog.source"
+assert_eq "owner/inbox" "$(cfg_get worklog.inbox_repo)" "base preserved for keys absent from local"
+
 print_test_summary
