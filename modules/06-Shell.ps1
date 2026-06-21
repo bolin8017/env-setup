@@ -215,6 +215,18 @@ function Remove-NerdFont {
     Write-Success 'Removed MesloLGS NF font (open a new terminal to apply)'
 }
 
+function Remove-UpdateState {
+    # Remove the generated self-update state files (no repo source to compare).
+    param([string]$StateDir = (Join-Path $HOME '.env-setup'))
+    foreach ($name in @('update.ps1', '.update-last-check')) {
+        $sf = Join-Path $StateDir $name
+        if ((Test-Path -LiteralPath $sf) -and -not (Test-ProtectedPath $sf)) {
+            Remove-OrDryRun -Path $sf
+            if (-not (Test-DryRun)) { Write-Success "Removed $name" }
+        }
+    }
+}
+
 function Uninstall-Shell {
     Write-Header 'Uninstall: Shell'
     $cfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs')).Path
@@ -231,6 +243,7 @@ function Uninstall-Shell {
     }
     Remove-ManagedFile -Dest (Join-Path $HOME '.config/powershell/aliases.ps1') `
         -RepoSrc (Join-Path $cfg 'aliases.ps1') -Label 'aliases.ps1'
+    Remove-UpdateState
 
     # C — Oh My Posh theme
     $ompName = Get-CfgValue 'windows.powershell.omp_theme'

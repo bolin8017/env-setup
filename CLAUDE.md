@@ -136,6 +136,9 @@ env-setup/
   offers to re-run setup. The runtime fragment reads a generated state file
   (`~/.env-setup/update.env`, written by `06-shell`) so it never parses YAML on
   shell startup. `env-update` triggers the same flow manually on any machine.
+  The Windows engine mirrors this: `configs/pwsh/45-self-update.ps1` reads
+  `~/.env-setup/update.ps1` (written by `06-Shell.ps1`); `env-update`
+  (`Update-EnvSetup`) re-runs `setup.ps1`.
 
 ## Commit Conventions
 

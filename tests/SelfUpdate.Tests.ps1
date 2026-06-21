@@ -68,3 +68,20 @@ Describe '45-self-update.ps1 content' {
         $f | Should -Match 'git -C "\$repo"'
     }
 }
+
+Describe 'Remove-UpdateState' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        Import-Module "$PSScriptRoot/../lib/Uninstall.psm1" -Force -DisableNameChecking
+        . "$PSScriptRoot/../modules/06-Shell.ps1"
+    }
+    It 'removes both generated state files' {
+        $sd = Join-Path $TestDrive 'teardown'
+        New-Item -ItemType Directory -Path $sd -Force | Out-Null
+        Set-Content -Path (Join-Path $sd 'update.ps1') -Value 'x'
+        Set-Content -Path (Join-Path $sd '.update-last-check') -Value '123'
+        Remove-UpdateState -StateDir $sd
+        Test-Path (Join-Path $sd 'update.ps1') | Should -BeFalse
+        Test-Path (Join-Path $sd '.update-last-check') | Should -BeFalse
+    }
+}
