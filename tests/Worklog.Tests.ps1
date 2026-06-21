@@ -38,6 +38,7 @@ Describe 'Worklog module' {
     It 'resolves HOME-relative paths and passes absolute paths through' {
         Resolve-WorklogPath 'Documents/x' | Should -Be (Join-Path $HOME 'Documents/x')
         Resolve-WorklogPath '/tmp/x' | Should -Be '/tmp/x'
+        { Resolve-WorklogPath '' } | Should -Not -Throw  # parity: Bash _worklog_expand '' degrades, doesn't error
     }
 
     It 'runs Install-Worklog under dry-run without throwing' {
