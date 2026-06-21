@@ -62,6 +62,17 @@ _deploy_ccstatusline_config() {
 
     dry_run_mkdir "$dest_dir"
     deploy_config "$src" "$dest" "ccstatusline settings.json"
+
+    # Launcher wrapper that guarantees a node runtime is on PATH. The bare
+    # `npx` in settings.json fails in Claude Code's non-interactive shell when
+    # nvm is lazy-loaded (interactive-only). The Unix statusLine command is
+    # repointed at this wrapper by _set_ccstatusline_command (after the merge).
+    local wrapper_src="${ENV_SETUP_DIR}/configs/ccstatusline/statusline.sh"
+    local wrapper_dest="${dest_dir}/statusline.sh"
+    if [[ -f "$wrapper_src" ]]; then
+        dry_run_cp "$wrapper_src" "$wrapper_dest"
+        [[ "${DRY_RUN:-false}" == "true" ]] || chmod +x "$wrapper_dest"
+    fi
 }
 
 # =============================================================================
@@ -253,6 +264,17 @@ _merge_claude_settings() {
         log_error "jq merge dry-evaluation failed — skipping (no changes made)"
         return 0
     }
+    # On Unix the deployed statusLine points at the ccstatusline launcher wrapper
+    # (node-on-PATH guarantee), not the repo's portable `npx ...`. Fold that into
+    # the idempotency baseline so an already-synced file isn't re-merged (and
+    # re-backed-up) on every run; the actual repoint is _set_ccstatusline_command.
+    if cfg_enabled "claude_code.ccstatusline.enabled"; then
+        local _cc_expected
+        if _cc_expected=$(printf '%s' "$expected" | jq -S --arg cmd "${HOME}/.config/ccstatusline/statusline.sh" \
+                'if .statusLine then .statusLine.command = $cmd else . end' 2>/dev/null); then
+            expected="$_cc_expected"
+        fi
+    fi
     if [[ "$current" == "$expected" ]]; then
         log_info "claude settings already in sync — skipping"
         return 0
@@ -305,6 +327,43 @@ _merge_claude_settings() {
     else
         log_error "jq merge failed — original preserved, backup at ${bak}"
         rm -f "$tmp"
+    fi
+}
+
+# =============================================================================
+# _set_ccstatusline_command — Repoint ~/.claude/settings.json's statusLine at the
+# deployed launcher wrapper (Unix only; node-on-PATH guarantee under lazy nvm).
+# The shared configs/claude/settings.json keeps the portable `npx ...` command
+# for the Windows engine. Runs AFTER _merge_claude_settings so the whitelist
+# merge doesn't clobber it. Idempotent; honours DRY_RUN.
+# =============================================================================
+_set_ccstatusline_command() {
+    cfg_enabled "claude_code.ccstatusline.enabled" || return 0
+
+    local dest="${HOME}/.claude/settings.json"
+    local wrapper="${HOME}/.config/ccstatusline/statusline.sh"
+
+    [[ -f "$dest" ]] || return 0
+
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "[DRY-RUN] Would point statusLine.command at ${wrapper}"
+        return 0
+    fi
+
+    command_exists jq || { log_warn "jq not found — leaving statusLine.command as-is"; return 0; }
+    jq empty "$dest" 2>/dev/null || { log_warn "${dest} not valid JSON — leaving statusLine.command as-is"; return 0; }
+
+    # Idempotent: nothing to do if already pointed at the wrapper.
+    local cur
+    cur=$(jq -r '.statusLine.command // ""' "$dest" 2>/dev/null)
+    [[ "$cur" == "$wrapper" ]] && return 0
+
+    local tmp="${dest}.tmp.$$"
+    if jq --arg cmd "$wrapper" 'if .statusLine then .statusLine.command = $cmd else . end' "$dest" > "$tmp" && mv "$tmp" "$dest"; then
+        log_success "Pointed statusLine.command at ${wrapper}"
+    else
+        rm -f "$tmp"
+        log_warn "Failed to update statusLine.command — left as-is"
     fi
 }
 
@@ -551,6 +610,7 @@ install_claude_code() {
     _sync_claude_commands
     _sync_claude_agents
     _merge_claude_settings
+    _set_ccstatusline_command
     _register_plugin_marketplaces
     _install_enabled_plugins
     _sync_mcp_servers
@@ -687,6 +747,8 @@ uninstall_claude_code() {
 
     remove_managed_file "${HOME}/.config/ccstatusline/settings.json" \
         "${ENV_SETUP_DIR}/configs/ccstatusline/settings.json" "ccstatusline settings.json"
+    remove_managed_file "${HOME}/.config/ccstatusline/statusline.sh" \
+        "${ENV_SETUP_DIR}/configs/ccstatusline/statusline.sh" "ccstatusline launcher"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         rmdir "${HOME}/.config/ccstatusline" 2>/dev/null || true
     fi

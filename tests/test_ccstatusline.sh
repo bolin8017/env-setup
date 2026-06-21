@@ -120,8 +120,11 @@ assert_eq "npx -y ccstatusline@latest" \
 suite "Merge: idempotent — already in sync, no .bak, no content change"
 # ---------------------------------------------------------------------------
 _reset
-# Start from a settings.json that already matches the repo's whitelisted keys
-cp "$PROJECT_ROOT/configs/claude/settings.json" "$HOME/.claude/settings.json"
+# The settled, in-sync state has statusLine.command pointed at the launcher
+# wrapper (see _set_ccstatusline_command), not the repo's portable npx command.
+jq --arg cmd "$HOME/.config/ccstatusline/statusline.sh" \
+   'if .statusLine then .statusLine.command = $cmd else . end' \
+   "$PROJECT_ROOT/configs/claude/settings.json" > "$HOME/.claude/settings.json"
 hash_before="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
 out="$(_merge_claude_settings 2>&1)"
 hash_after="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
@@ -176,6 +179,73 @@ out="$(_merge_claude_settings 2>&1)"
 after="$(cat "$HOME/.claude/settings.json")"
 assert_eq "$before" "$after" "malformed file preserved verbatim"
 assert_contains "$out" "ERROR" "log_error emitted"
+
+# ---------------------------------------------------------------------------
+suite "Launcher wrapper: repo file exists, executable, ensures node on PATH"
+# ---------------------------------------------------------------------------
+assert_file_exists "$PROJECT_ROOT/configs/ccstatusline/statusline.sh" \
+    "configs/ccstatusline/statusline.sh is in the repo"
+[[ -x "$PROJECT_ROOT/configs/ccstatusline/statusline.sh" ]]
+assert_true "$?" "launcher wrapper is executable"
+wrapper_body="$(cat "$PROJECT_ROOT/configs/ccstatusline/statusline.sh")"
+assert_contains "$wrapper_body" "command -v node" "wrapper checks for node on PATH"
+assert_contains "$wrapper_body" "versions/node" "wrapper falls back to nvm node bin"
+assert_contains "$wrapper_body" "ccstatusline@latest" "wrapper execs ccstatusline"
+
+# ---------------------------------------------------------------------------
+suite "Deploy: launcher wrapper is deployed executable"
+# ---------------------------------------------------------------------------
+_reset
+_deploy_ccstatusline_config >/dev/null 2>&1
+assert_file_exists "$HOME/.config/ccstatusline/statusline.sh" "wrapper deployed"
+[[ -x "$HOME/.config/ccstatusline/statusline.sh" ]]
+assert_true "$?" "deployed wrapper is executable"
+
+# ---------------------------------------------------------------------------
+suite "Repoint: _set_ccstatusline_command points statusLine at the wrapper"
+# ---------------------------------------------------------------------------
+_reset
+_deploy_ccstatusline_config >/dev/null 2>&1
+_merge_claude_settings >/dev/null 2>&1   # creates settings.json (command=npx)
+assert_eq "npx -y ccstatusline@latest" \
+    "$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")" \
+    "before repoint: command is the portable npx"
+_set_ccstatusline_command >/dev/null 2>&1
+assert_eq "$HOME/.config/ccstatusline/statusline.sh" \
+    "$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")" \
+    "after repoint: command points at the launcher wrapper"
+assert_eq "command" "$(jq -r '.statusLine.type' "$HOME/.claude/settings.json")" \
+    "other statusLine fields (type) preserved"
+hb="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
+_set_ccstatusline_command >/dev/null 2>&1
+ha="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
+assert_eq "$hb" "$ha" "repoint is idempotent (second call is a no-op)"
+
+# ---------------------------------------------------------------------------
+suite "Repoint disabled: ccstatusline.enabled=false leaves command untouched"
+# ---------------------------------------------------------------------------
+_reset
+_merge_claude_settings >/dev/null 2>&1
+CFG_CLAUDE_CODE_CCSTATUSLINE_ENABLED="false" _set_ccstatusline_command >/dev/null 2>&1
+assert_eq "npx -y ccstatusline@latest" \
+    "$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")" \
+    "command left as npx when ccstatusline disabled"
+
+# ---------------------------------------------------------------------------
+suite "End-to-end: merge + repoint settles, re-run makes no .bak, no change"
+# ---------------------------------------------------------------------------
+_reset
+_deploy_ccstatusline_config >/dev/null 2>&1
+_merge_claude_settings >/dev/null 2>&1
+_set_ccstatusline_command >/dev/null 2>&1
+rm -f "$HOME/.claude/settings.json".bak.*    # clear any first-run backup
+hb2="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
+_merge_claude_settings >/dev/null 2>&1
+_set_ccstatusline_command >/dev/null 2>&1
+ha2="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
+assert_eq "$hb2" "$ha2" "settled state: no content change on re-run"
+assert_eq "0" "$(find "$HOME/.claude" -name 'settings.json.bak.*' 2>/dev/null | wc -l | tr -d ' ')" \
+    "settled state: no new .bak on re-run"
 
 # Cleanup
 export HOME="$ORIG_HOME"
