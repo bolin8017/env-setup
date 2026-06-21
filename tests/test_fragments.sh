@@ -22,6 +22,7 @@ required_fragments=(
     "30-completion.zsh"
     "40-env.zsh"
     "50-tools.zsh"
+    "55-self-update.zsh"
     "60-aliases.zsh"
     "99-p10k-config.zsh"
 )
@@ -101,6 +102,15 @@ assert_contains "$content_50" "bat"    "50: has bat integration"
 # All tool integrations guarded with command -v
 assert_contains "$content_50" "command -v" "50: tools are guarded with command -v"
 
+# 55: Self-update check
+content_55="$(cat "$FRAG_DIR/55-self-update.zsh")"
+assert_contains "$content_55" "update.env"                 "55: sources update.env state"
+assert_contains "$content_55" "_envsetup_should_check"     "55: defines cadence helper"
+assert_contains "$content_55" 'HEAD..@{u}'                 "55: compares against upstream"
+assert_contains "$content_55" "pull --ff-only"             "55: fast-forward-only pull"
+assert_contains "$content_55" "-o interactive"             "55: interactive-only guard"
+assert_contains "$content_55" "ENVSETUP_UPDATE_FREQ_DAYS"  "55: reads cadence from state"
+
 # 60: Aliases
 content_60="$(cat "$FRAG_DIR/60-aliases.zsh")"
 assert_contains "$content_60" "aliases.zsh" "60: sources aliases file"
@@ -122,6 +132,7 @@ assert_contains "$aliases_content" "batcat"  "aliases: handles batcat (Ubuntu)"
 assert_contains "$aliases_content" "fdfind"  "aliases: handles fdfind (Ubuntu)"
 assert_contains "$aliases_content" "cp -i"   "aliases: safety alias for cp"
 assert_contains "$aliases_content" "rm -i"   "aliases: safety alias for rm"
+assert_contains "$aliases_content" "env-update()" "aliases: defines env-update command"
 
 # =============================================================================
 suite "Tmux config files"

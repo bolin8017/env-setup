@@ -27,6 +27,7 @@ tests=(
     "test_uninstall.sh"
     "test_config_consistency.sh"
     "test_fragments.sh"
+    "test_self_update.sh"
     "test_user_dirs.sh"
     "test_ccstatusline.sh"
     "test_shellcheck.sh"

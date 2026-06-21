@@ -25,6 +25,18 @@ general:
   backup: true
 
 # -----------------------------------------------------------------------------
+# Self-update — check whether env-setup itself has new commits on shell startup
+# -----------------------------------------------------------------------------
+update:
+  # On a new shell, if behind upstream: auto `git pull`, then ask to re-run setup.
+  # Runs at most once per `frequency_days` (the cadence gate keeps shell startup
+  # fast). Deployed by the shell module (06-shell).
+  enabled: true
+
+  # Minimum days between checks (0 = every shell). Keep > 0 to avoid startup latency.
+  frequency_days: 7
+
+# -----------------------------------------------------------------------------
 # Core toolchain — installed first because later modules depend on them
 # -----------------------------------------------------------------------------
 core:
