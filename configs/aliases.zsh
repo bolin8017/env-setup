@@ -145,3 +145,19 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 elif [[ -f /etc/debian_version ]]; then
     alias update='sudo apt update && sudo apt upgrade -y'
 fi
+
+# ---------------------------
+# env-setup self-update
+# ---------------------------
+# Pull the latest env-setup and re-apply it. Works on any machine regardless of
+# the update.enabled setting. Resolves the repo from the state file written at
+# install time (ENVSETUP_REPO_DIR), falling back to the bootstrap default.
+env-update() {
+    local repo="${ENVSETUP_REPO_DIR:-$HOME/.local/share/env-setup}"
+    if [[ ! -d "$repo/.git" ]]; then
+        echo "env-update: env-setup repo not found at $repo" >&2
+        return 1
+    fi
+    git -C "$repo" pull --ff-only || return 1
+    bash "$repo/setup.sh" "$@"
+}

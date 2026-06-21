@@ -122,6 +122,7 @@ assert_contains "$aliases_content" "batcat"  "aliases: handles batcat (Ubuntu)"
 assert_contains "$aliases_content" "fdfind"  "aliases: handles fdfind (Ubuntu)"
 assert_contains "$aliases_content" "cp -i"   "aliases: safety alias for cp"
 assert_contains "$aliases_content" "rm -i"   "aliases: safety alias for rm"
+assert_contains "$aliases_content" "env-update()" "aliases: defines env-update command"
 
 # =============================================================================
 suite "Tmux config files"
