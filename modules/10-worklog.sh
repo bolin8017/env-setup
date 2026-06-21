@@ -137,17 +137,20 @@ uninstall_worklog() {
     print_header "Uninstall: Worklog"
     # Conservative: remove only the deployed commands + per-machine config.
     # NEVER touch the cloned inbox/vault or any logs (user data).
-    local f
-    for f in \
-        "${HOME}/.claude/commands/worklog.md" \
-        "${HOME}/.claude/commands/worklog-sync.md" \
-        "${HOME}/.config/worklog/config"; do
-        [[ -f "$f" ]] || continue
-        if [[ "${DRY_RUN:-false}" == "true" ]]; then
-            log_info "[DRY-RUN] remove ${f}"
-        else
-            rm -f "$f" && log_success "Removed ${f}"
-        fi
+
+    # Deployed command files: byte-compare against the repo source so a copy the
+    # user edited is preserved, not clobbered (matches 08-claude-code's teardown).
+    local name
+    for name in worklog worklog-sync; do
+        remove_managed_file "${HOME}/.claude/commands/${name}.md" \
+            "${ENV_SETUP_DIR}/configs/worklog/commands/${name}.md" "/${name} command"
     done
+
+    # Generated runtime config has no repo source to verify against (so
+    # remove_managed_file would refuse it) — remove it directly, dry-run aware.
+    if [[ -f "${HOME}/.config/worklog/config" ]]; then
+        dry_run_rm "${HOME}/.config/worklog/config"
+    fi
+
     log_info "Left the inbox/vault clones and all logs untouched (user data)."
 }

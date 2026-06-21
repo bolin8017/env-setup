@@ -12,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 Import-Module "$PSScriptRoot/../lib/Common.psm1"
 Import-Module "$PSScriptRoot/../lib/Config.psm1"
 Import-Module "$PSScriptRoot/../lib/DryRun.psm1" -DisableNameChecking  # WinPS 5.1: 'Deploy' is an unapproved verb
+Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"  # Remove-ManagedFile (teardown)
 
 $script:WorklogCmds = (Resolve-Path (Join-Path $PSScriptRoot '../configs/worklog/commands')).Path
 
@@ -121,13 +122,18 @@ function Uninstall-Worklog {
     Write-Header 'Uninstall: Worklog'
     # Conservative: remove only the deployed commands + per-machine config.
     # NEVER touch the cloned inbox/vault or any logs (user data).
-    $targets = @(
-        (Join-Path $HOME '.claude/commands/worklog.md')
-        (Join-Path $HOME '.claude/commands/worklog-sync.md')
-        (Join-Path $HOME '.config/worklog/config')
-    )
-    foreach ($f in $targets) {
-        if (Test-Path -LiteralPath $f) { Remove-OrDryRun -Path $f }
+
+    # Deployed command files: byte-compare against the repo source so a copy the
+    # user edited is preserved, not clobbered (matches 08-ClaudeCode's teardown).
+    foreach ($name in 'worklog', 'worklog-sync') {
+        Remove-ManagedFile -Dest (Join-Path $HOME ".claude/commands/$name.md") `
+            -RepoSrc (Join-Path $script:WorklogCmds "$name.md") -Label "/$name command"
     }
+
+    # Generated runtime config has no repo source to verify against (so
+    # Remove-ManagedFile would refuse it) — remove it directly, dry-run aware.
+    $cfg = Join-Path $HOME '.config/worklog/config'
+    if (Test-Path -LiteralPath $cfg) { Remove-OrDryRun -Path $cfg }
+
     Write-Info 'Left the inbox/vault clones and all logs untouched (user data).'
 }

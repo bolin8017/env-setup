@@ -12,7 +12,13 @@ source "$PROJECT_ROOT/lib/config.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml" >/dev/null
+
+# Load the base config in isolation. load_config() also merges a sibling
+# config.local.yaml (per-machine overrides such as role: curator), which would
+# skew the schema-default assertions below; copying config.yaml into TEST_TMPDIR
+# (no sibling override there) keeps this suite hermetic on curator machines.
+cp "$PROJECT_ROOT/config.yaml" "$TEST_TMPDIR/config.yaml"
+load_config "$TEST_TMPDIR/config.yaml" >/dev/null
 export ENV_SETUP_DIR="$PROJECT_ROOT"
 DRY_RUN="true"
 AUTO_YES="true"
@@ -45,5 +51,25 @@ rc=$?
 assert_eq "0" "$rc" "install_worklog returns 0 in dry-run"
 assert_contains "$out" "Worklog" "install prints the Worklog header"
 assert_contains "$out" "DRY-RUN" "dry-run mode logs [DRY-RUN] (no real writes)"
+
+# config.local.yaml leaf-merge — mirrors the Pester test in Worklog.Tests.ps1.
+# A sibling config.local.yaml overrides only the leaf keys it sets; keys absent
+# from it fall back to the base config. Runs last: it reloads CFG_* from a fixture.
+suite "config.local.yaml override (leaf merge)"
+cat >"$TEST_TMPDIR/merge.yaml" <<'YAML'
+worklog:
+  role: capture
+  source: auto
+  inbox_repo: "owner/inbox"
+YAML
+cat >"$TEST_TMPDIR/merge.local.yaml" <<'YAML'
+worklog:
+  role: curator
+  source: my-box
+YAML
+load_config "$TEST_TMPDIR/merge.yaml" >/dev/null
+assert_eq "curator" "$(cfg_get worklog.role)" "local override wins for worklog.role"
+assert_eq "my-box" "$(cfg_get worklog.source)" "local override wins for worklog.source"
+assert_eq "owner/inbox" "$(cfg_get worklog.inbox_repo)" "base preserved for keys absent from local"
 
 print_test_summary

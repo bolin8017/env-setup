@@ -45,6 +45,7 @@ env-setup/
 ├── uninstall.ps1         # Teardown entrypoint (Windows) — reverse module runner
 ├── config.yaml           # User configuration (sensible defaults)
 ├── config.yaml.example   # Fully commented reference config
+├── config.local.yaml.example  # Per-machine overrides (gitignored; merged over config.yaml)
 ├── lib/                  # Bash engine (*.sh) + Windows engine (*.psm1) siblings
 │   ├── common.sh         # Logging, colours, platform detection, helpers
 │   ├── yaml.sh           # Pure bash/awk YAML parser (no external deps)
@@ -70,8 +71,9 @@ env-setup/
 │   ├── 06-shell.sh       # Zsh, Oh My Zsh, Powerlevel10k, plugins
 │   ├── 07-tmux.sh        # tmux + TPM
 │   ├── 08-claude-code.sh # Claude Code CLI (native installer)
-│   └── 09-user-dirs.sh   # Create personal directories under $HOME
-│                         # Windows modules: 01-03, 05-09 as NN-Name.ps1 (all stages done)
+│   ├── 09-user-dirs.sh   # Create personal directories under $HOME
+│   └── 10-worklog.sh     # Cross-machine work-log capture (+ curator vault)
+│                         # Windows modules: 01-03, 05-10 as NN-Name.ps1 (all stages done)
 ├── configs/              # Dotfile templates and fragments
 │   ├── zshrc/            # .zshrc fragments (numbered for load order)
 │   ├── zshrc.base        # Skeleton .zshrc that sources fragments
@@ -79,6 +81,7 @@ env-setup/
 │   ├── tmux/             # tmux.conf + macOS overrides + dev layout
 │   ├── p10k/             # Powerlevel10k configuration
 │   ├── ccstatusline/     # ccstatusline widget config (deployed by 08-claude-code)
+│   ├── worklog/          # /worklog + /worklog-sync command assets (deployed by 10-worklog)
 │   ├── pwsh/             # (Windows) $PROFILE fragments (numbered)
 │   ├── pwsh.profile.base # (Windows) skeleton $PROFILE that sources fragments
 │   ├── aliases.ps1       # (Windows) PowerShell function aliases

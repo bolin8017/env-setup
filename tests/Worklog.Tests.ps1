@@ -6,7 +6,14 @@ BeforeAll {
     . "$PSScriptRoot/../modules/10-Worklog.ps1"
 
     $env:ENVSETUP_DRY_RUN = 'true'
-    Import-Config -Path "$PSScriptRoot/../config.yaml"
+
+    # Load the base config in isolation. Import-Config also merges a sibling
+    # config.local.yaml (per-machine overrides such as role: curator), which
+    # would skew the schema-default assertions; copying config.yaml into
+    # TestDrive (no sibling override) keeps this suite hermetic on curator boxes.
+    $baseCfg = Join-Path $TestDrive 'config.yaml'
+    Copy-Item "$PSScriptRoot/../config.yaml" $baseCfg
+    Import-Config -Path $baseCfg
 }
 
 AfterAll {
@@ -63,5 +70,14 @@ worklog:
         Get-CfgValue -Path 'worklog.role' | Should -Be 'curator'           # overridden
         Get-CfgValue -Path 'worklog.source' | Should -Be 'my-box'          # overridden
         Get-CfgValue -Path 'worklog.inbox_repo' | Should -Be 'owner/inbox' # base preserved (leaf merge)
+    }
+
+    It 'ignores an empty (0-byte) config.local.yaml without throwing' {
+        $bf = Join-Path $TestDrive 'e.yaml'
+        $lf = Join-Path $TestDrive 'e.local.yaml'
+        Set-Content -LiteralPath $bf -Value "worklog:`n  role: capture"
+        New-Item -ItemType File -Path $lf -Force | Out-Null   # 0-byte sibling
+        { Import-Config -Path $bf } | Should -Not -Throw
+        Get-CfgValue -Path 'worklog.role' | Should -Be 'capture'
     }
 }
