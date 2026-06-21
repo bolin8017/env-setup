@@ -154,8 +154,10 @@ function Import-Config {
 
     # Merge a sibling config.local.yaml (gitignored) over the base config — per
     # machine overrides such as worklog.role / worklog.source. Mirrors lib/config.sh.
+    # `-ne $file` guards a non-.yaml config path, where the -replace is a no-op
+    # and Test-Path would otherwise match $file and self-merge it onto itself.
     $localFile = $file -replace '\.yaml$', '.local.yaml'
-    if (Test-Path -LiteralPath $localFile) {
+    if (($localFile -ne $file) -and (Test-Path -LiteralPath $localFile)) {
         Write-Verbose "Merging local overrides from: $localFile"
         # @() so a 0-byte local file reads as an empty array rather than $null
         # (ConvertFrom-SimpleYaml allows empty input); an empty/whitespace local
