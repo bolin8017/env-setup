@@ -45,3 +45,26 @@ Describe 'aliases.ps1 self-update command' {
         $aliases | Should -Match "Set-Alias.*env-update"
     }
 }
+
+Describe 'Test-EnvSetupShouldCheck' {
+    BeforeAll {
+        $env:ENVSETUP_UPDATE_RUNNING = '1'   # suppress the top-level check on dot-source
+        . "$PSScriptRoot/../configs/pwsh/45-self-update.ps1"
+        $env:ENVSETUP_UPDATE_RUNNING = $null
+    }
+    It 'is due when there is no prior check'      { Test-EnvSetupShouldCheck -Last 0 -Now 1000000 -FreqDays 7 | Should -BeTrue }
+    It 'is not due within the window'             { Test-EnvSetupShouldCheck -Last 1000000 -Now 1000001 -FreqDays 7 | Should -BeFalse }
+    It 'is due once the window has elapsed'       { Test-EnvSetupShouldCheck -Last 0 -Now (8*86400) -FreqDays 7 | Should -BeTrue }
+    It 'freq 0 means check every shell'           { Test-EnvSetupShouldCheck -Last 9999999 -Now 9999999 -FreqDays 0 | Should -BeTrue }
+}
+
+Describe '45-self-update.ps1 content' {
+    It 'sources state, quotes upstream, ff-only, guards interactive' {
+        $f = Get-Content -Raw "$PSScriptRoot/../configs/pwsh/45-self-update.ps1"
+        $f | Should -Match 'update\.ps1'
+        $f | Should -Match "'HEAD\.\.@\{u\}'"
+        $f | Should -Match 'pull --ff-only'
+        $f | Should -Match 'UserInteractive'
+        $f | Should -Match 'git -C "\$repo"'
+    }
+}
