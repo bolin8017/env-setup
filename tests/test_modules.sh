@@ -175,4 +175,18 @@ assert_not_contains "$languages_src" 'pyenv init -)'      "pyenv: no rehash-on-i
 assert_contains "$languages_src" "_envsetup_load_nvm" "nvm: lazy-load stubs defined"
 
 # =============================================================================
+suite "Oh My Zsh install idempotency (06-shell.sh)"
+# =============================================================================
+
+shell_src="$(cat "$PROJECT_ROOT/modules/06-shell.sh")"
+# A half-installed ~/.oh-my-zsh (only custom/, left by the p10k/plugin clones
+# when the core install failed) must be detected and repaired. Gate the
+# "already installed" early-return on the core loader, not the bare directory.
+assert_contains "$shell_src" 'if [[ -f "$omz_dir/oh-my-zsh.sh" ]]; then' \
+    "install_oh_my_zsh: idempotency check probes oh-my-zsh.sh"
+assert_not_contains "$shell_src" 'if [[ -d "$omz_dir" ]]; then
+        log_info "Oh My Zsh already installed' \
+    "install_oh_my_zsh: no bare-directory early return"
+
+# =============================================================================
 print_test_summary
