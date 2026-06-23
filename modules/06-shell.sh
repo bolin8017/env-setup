@@ -39,11 +39,25 @@ install_oh_my_zsh() {
 
     local omz_dir="${HOME}/.oh-my-zsh"
 
-    if [[ -d "$omz_dir" ]]; then
+    # Probe the core loader, not just the directory: install_powerlevel10k and
+    # install_zsh_plugins clone into ~/.oh-my-zsh/custom/, so a failed core
+    # install (e.g. zsh missing on a no-sudo run) still leaves the directory
+    # behind. A bare `[[ -d ]]` check would then mistake that half-installed
+    # state for a complete install and never repair it.
+    if [[ -f "$omz_dir/oh-my-zsh.sh" ]]; then
         log_info "Oh My Zsh already installed, updating..."
         dry_run_cmd git -C "$omz_dir" pull --rebase --quiet 2>/dev/null || true
         log_success "Oh My Zsh updated"
         return 0
+    fi
+
+    # Half-installed: directory exists (typically only custom/) but the core
+    # loader is missing. The upstream installer aborts when $ZSH already exists,
+    # so clear the stale directory first. install_powerlevel10k and
+    # install_zsh_plugins run after us and re-clone the themes/plugins.
+    if [[ -d "$omz_dir" ]]; then
+        log_warn "Incomplete Oh My Zsh install detected; removing and reinstalling..."
+        dry_run_rm "$omz_dir"
     fi
 
     log_info "Installing Oh My Zsh (unattended)..."
