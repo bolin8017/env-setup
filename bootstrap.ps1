@@ -8,6 +8,28 @@ $ErrorActionPreference = 'Stop'
 $RepoUrl    = 'https://github.com/bolin8017/env-setup.git'
 $InstallDir = Join-Path $HOME '.local/share/env-setup'
 
+function Invoke-WithRetry {
+    # bootstrap runs BEFORE the repo is cloned, so it cannot import
+    # lib/Common.psm1 — this mirrors that module's Invoke-WithRetry. Some corporate
+    # networks intermittently reset the TLS connection to GitHub mid-handshake, so a
+    # lone attempt can fail spuriously while the same call succeeds seconds later;
+    # under $ErrorActionPreference='Stop' that one failure aborts the whole install.
+    param(
+        [Parameter(Mandatory)][scriptblock]$Action,
+        [string]$What = 'operation',
+        [int]$MaxAttempts = 5,
+        [int]$DelaySeconds = 3
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try { return & $Action }
+        catch {
+            if ($attempt -ge $MaxAttempts) { throw }
+            Write-Warning "$What failed (attempt $attempt/$MaxAttempts): $($_.Exception.Message). Retrying in ${DelaySeconds}s..."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 function Set-LocalExecutionPolicy {
     # Best-effort: some managed environments forbid changing this. Warn rather
     # than aborting the whole bootstrap over a policy we can run without.
@@ -24,7 +46,10 @@ function Initialize-Git {
 function Initialize-Scoop {
     if (Get-Command scoop -ErrorAction SilentlyContinue) { return }
     Write-Host 'Installing scoop...'
-    Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
+    # Retry the download, then run the installer once. This lone irm — under
+    # $ErrorActionPreference='Stop' — is what a single TLS reset used to abort on.
+    $installer = Invoke-WithRetry -What 'scoop download' -Action { Invoke-RestMethod -Uri 'https://get.scoop.sh' }
+    Invoke-Expression $installer
 }
 
 function Sync-Repo {
@@ -35,13 +60,22 @@ function Sync-Repo {
     } else {
         Write-Host 'Cloning env-setup...'
         New-Item -ItemType Directory -Path (Split-Path $InstallDir -Parent) -Force | Out-Null
-        git clone $RepoUrl $InstallDir
-        if ($LASTEXITCODE -ne 0) { throw "git clone failed (exit $LASTEXITCODE)" }
+        Invoke-WithRetry -What 'git clone' -Action {
+            # A failed clone can leave a partial dir that blocks the next attempt.
+            if (Test-Path $InstallDir) { Remove-Item -Recurse -Force $InstallDir }
+            git clone $RepoUrl $InstallDir
+            if ($LASTEXITCODE -ne 0) { throw "git clone failed (exit $LASTEXITCODE)" }
+        }
     }
 }
 
 function Invoke-Bootstrap {
     param([string[]]$ForwardArgs)
+    # Windows PowerShell 5.1 (where a pasted one-liner usually runs) defaults to
+    # TLS 1.0 for .NET web requests; GitHub requires TLS 1.2+. Opt in before any
+    # download so the scoop/Git fetches below don't fail the handshake on older boxes.
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     Set-LocalExecutionPolicy
     Initialize-Git
     Initialize-Scoop
