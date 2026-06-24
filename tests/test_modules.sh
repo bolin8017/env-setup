@@ -171,8 +171,12 @@ assert_contains "$languages_src" "pyenv init --path --no-rehash" "pyenv: 'init -
 assert_contains "$languages_src" "pyenv init - --no-rehash"      "pyenv: 'init -' skips rehash"
 assert_not_contains "$languages_src" 'pyenv init --path)' "pyenv: no rehash-on-init via 'init --path'"
 assert_not_contains "$languages_src" 'pyenv init -)'      "pyenv: no rehash-on-init via 'init -'"
-# nvm: lazy-loaded so its auto-use does not run on every shell start.
-assert_contains "$languages_src" "_envsetup_load_nvm" "nvm: lazy-load stubs defined"
+# nvm: the `nvm` command stays lazy (no auto-use on every shell start), but the
+# default Node's bin is added to PATH eagerly so node/npm/npx are real binaries
+# for non-interactive children (MCP servers, scripts), not shell-function stubs.
+assert_contains "$languages_src" "_envsetup_load_nvm" "nvm: command lazy-load stub defined"
+assert_contains "$languages_src" 'versions/node' "nvm: default node bin added to PATH eagerly"
+assert_not_contains "$languages_src" 'node() { _envsetup_load_nvm' "nvm: node is a real binary, not a lazy stub"
 
 # =============================================================================
 suite "Oh My Zsh install idempotency (06-shell.sh)"
