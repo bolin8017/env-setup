@@ -64,3 +64,24 @@ Describe 'dependent-module imports keep Common in the caller scope' {
         Get-Command Assert-Windows -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
     }
 }
+
+Describe 'Invoke-WithRetry' {
+    It 'returns the action result without retrying on success' {
+        $script:n = 0
+        $r = Invoke-WithRetry -DelaySeconds 0 -Action { $script:n++; 'ok' }
+        $r | Should -Be 'ok'
+        $script:n | Should -Be 1
+    }
+    It 'retries a transient failure, then returns the eventual result' {
+        $script:n = 0
+        $r = Invoke-WithRetry -DelaySeconds 0 -MaxAttempts 5 -Action {
+            $script:n++; if ($script:n -lt 3) { throw 'transient' }; 'ok'
+        }
+        $r | Should -Be 'ok'
+        $script:n | Should -Be 3
+    }
+    It 'rethrows the last error after exhausting attempts' {
+        { Invoke-WithRetry -DelaySeconds 0 -MaxAttempts 2 -Action { throw 'always' } } |
+            Should -Throw -ExpectedMessage '*always*'
+    }
+}

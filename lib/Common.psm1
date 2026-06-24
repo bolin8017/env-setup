@@ -53,8 +53,30 @@ function Confirm-Action {
     return ($answer -match '^[Yy]')
 }
 
+function Invoke-WithRetry {
+    # Retry a transient-failure-prone action — typically a GitHub download. Some
+    # corporate networks intermittently reset the TLS connection to GitHub hosts
+    # (get.scoop.sh / raw.githubusercontent.com / github.com) mid-handshake, so a
+    # lone attempt can fail spuriously while the same call succeeds seconds later.
+    # Returns the action's output; rethrows the last error once attempts are spent.
+    param(
+        [Parameter(Mandatory)][scriptblock]$Action,
+        [string]$What = 'operation',
+        [int]$MaxAttempts = 5,
+        [int]$DelaySeconds = 3
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try { return & $Action }
+        catch {
+            if ($attempt -ge $MaxAttempts) { throw }
+            Write-Warn "$What failed (attempt $attempt/$MaxAttempts): $($_.Exception.Message). Retrying in ${DelaySeconds}s..."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
-    Test-Command, Test-IsWindows, Assert-Windows, `
+    Test-Command, Test-IsWindows, Assert-Windows, Invoke-WithRetry, `
     Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
     Test-KeepTools, Test-Purge, Test-NoRestore
