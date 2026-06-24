@@ -1,4 +1,4 @@
-# Common.psm1 — logging, platform detection, shared helpers for the Windows engine.
+# Common.psm1 - logging, platform detection, shared helpers for the Windows engine.
 # Cross-module flags travel via ENVSETUP_* environment variables (mirrors the
 # Bash engine's exported DRY_RUN / AUTO_YES / KEEP_EXISTING).
 
@@ -24,7 +24,7 @@ function Test-Command {
 
 function Test-IsWindows {
     # $IsWindows exists only on pwsh 6+. On Windows PowerShell 5.1 it is *unset*
-    # (not $null) — and under Set-StrictMode -Version Latest, reading an unset
+    # (not $null) - and under Set-StrictMode -Version Latest, reading an unset
     # variable is a terminating error (VariableIsUndefined). Probe with
     # Get-Variable instead of referencing $IsWindows directly, then fall back to
     # $env:OS (5.1 only ever runs on Windows, where $env:OS is 'Windows_NT').
@@ -54,7 +54,7 @@ function Confirm-Action {
 }
 
 function Invoke-WithRetry {
-    # Retry a transient-failure-prone action — typically a GitHub download. Some
+    # Retry a transient-failure-prone action - typically a GitHub download. Some
     # corporate networks intermittently reset the TLS connection to GitHub hosts
     # (get.scoop.sh / raw.githubusercontent.com / github.com) mid-handshake, so a
     # lone attempt can fail spuriously while the same call succeeds seconds later.

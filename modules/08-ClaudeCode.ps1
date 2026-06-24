@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 08-ClaudeCode.ps1 — install Claude Code (native) and sync personal config.
+# 08-ClaudeCode.ps1 - install Claude Code (native) and sync personal config.
 # Mirrors 08-claude-code.sh, but every JSON merge is PowerShell-native
 # (ConvertFrom/To-Json via lib/ClaudeConfig.psm1) instead of jq. Reuses the same
 # configs/claude/* sources as the Bash engine.
@@ -78,7 +78,7 @@ function Sync-ClaudeFile {
 function Sync-ClaudeDir {
     param([Parameter(Mandatory)][string]$SubDir)
     $srcDir = Join-Path $script:ClaudeCfg $SubDir
-    if (-not (Test-Path $srcDir)) { Write-Info "$SubDir source missing — skipping"; return }
+    if (-not (Test-Path $srcDir)) { Write-Info "$SubDir source missing - skipping"; return }
     $destDir = Join-Path $HOME ".claude/$SubDir"
     New-DirOrDryRun -Path $destDir
     Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
@@ -100,7 +100,7 @@ function Sync-ClaudeSettings {
     $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
     $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
-    if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync — skipping'; return }
+    if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync - skipping'; return }
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Set-Content -LiteralPath $dest -Value $merged -Encoding utf8
     Write-Success "Merged $($keys.Count) whitelisted key(s) into settings.json"
@@ -112,10 +112,10 @@ function Sync-ClaudeMcp {
     if (-not (Test-Path $src)) { return }
     $srcObj = Get-Content -Raw $src | ConvertFrom-Json
     $count = if ($srcObj.PSObject.Properties['mcpServers']) { @($srcObj.mcpServers.PSObject.Properties).Count } else { 0 }
-    if ($count -eq 0) { Write-Info 'no MCP servers declared in repo — skipping'; return }
+    if ($count -eq 0) { Write-Info 'no MCP servers declared in repo - skipping'; return }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $count MCP server(s) into $dest"; return }
     if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing MCP servers (KeepExisting)'; return }
-    if (-not (Test-Path $dest)) { Write-Warn "$dest not found — run Claude Code once first; skipping MCP sync"; return }
+    if (-not (Test-Path $dest)) { Write-Warn "$dest not found - run Claude Code once first; skipping MCP sync"; return }
     $merged = Merge-McpServers -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src)
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Set-Content -LiteralPath $dest -Value $merged -Encoding utf8
@@ -124,7 +124,7 @@ function Sync-ClaudeMcp {
 
 function Register-ClaudeMarketplaces {
     if (-not (Test-CfgEnabled 'claude_code.register_marketplaces')) { return }
-    if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found — skipping marketplace registration'; return }
+    if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found - skipping marketplace registration'; return }
     foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace add $repo"; continue }
         claude plugin marketplace add $repo *> $null
@@ -134,7 +134,7 @@ function Register-ClaudeMarketplaces {
 
 function Install-ClaudePlugins {
     if (-not (Test-CfgEnabled 'claude_code.install_enabled_plugins')) { return }
-    if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found — skipping plugin install'; return }
+    if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found - skipping plugin install'; return }
     $src = Join-Path $script:ClaudeCfg 'settings.json'
     if (-not (Test-Path $src)) { return }
     $settings = Get-Content -Raw $src | ConvertFrom-Json
@@ -150,14 +150,14 @@ function Install-ClaudePlugins {
 function Install-Ccstatusline {
     if (-not (Test-CfgEnabled 'claude_code.ccstatusline.enabled')) { return }
     $src = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
-    if (-not $src) { Write-Info 'ccstatusline template missing — skipping'; return }
+    if (-not $src) { Write-Info 'ccstatusline template missing - skipping'; return }
     $dest = Join-Path $HOME '.config/ccstatusline/settings.json'
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     Deploy-Config -Source $src.Path -Destination $dest -Label 'ccstatusline settings.json'
 }
 
 function Install-ClaudeCode {
-    if (-not (Test-CfgEnabled 'claude_code.enabled')) { Write-Info 'Claude Code disabled — skipping'; return }
+    if (-not (Test-CfgEnabled 'claude_code.enabled')) { Write-Info 'Claude Code disabled - skipping'; return }
     Write-Header 'Claude Code'
     Install-ClaudeNative
     Add-ClaudeBinToPath
@@ -210,13 +210,13 @@ function Uninstall-ClaudeMcp {
         Copy-Item -LiteralPath $bak -Destination $dest -Force
         Write-Success 'Restored ~/.claude.json from backup'; return
     }
-    Write-Info 'No ~/.claude.json backup — leaving MCP servers intact'
+    Write-Info 'No ~/.claude.json backup - leaving MCP servers intact'
 }
 
 function Uninstall-ClaudeCode {
     Write-Header 'Uninstall: Claude Code'
 
-    # C — managed config files (user-edited copies preserved by Remove-ManagedFile)
+    # C - managed config files (user-edited copies preserved by Remove-ManagedFile)
     Remove-ManagedFile -Dest (Join-Path $HOME '.claude/CLAUDE.md') `
         -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
     foreach ($sub in @('rules', 'commands', 'agents')) {
@@ -235,7 +235,7 @@ function Uninstall-ClaudeCode {
         Remove-ManagedFile -Dest (Join-Path $HOME '.config/ccstatusline/settings.json') -RepoSrc $cc.Path -Label 'ccstatusline settings.json'
     }
 
-    # T — plugins/marketplaces + CLI binary
+    # T - plugins/marketplaces + CLI binary
     if (-not (Test-KeepTools)) {
         if (Test-Command 'claude') {
             $s = Join-Path $script:ClaudeCfg 'settings.json'

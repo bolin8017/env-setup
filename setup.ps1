@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# setup.ps1 — Windows (native PowerShell) entrypoint for env-setup.
+# setup.ps1 - Windows (native PowerShell) entrypoint for env-setup.
 # Sibling of setup.sh; reads the same config.yaml. Runs only on native Windows.
 
 [CmdletBinding()]
@@ -45,12 +45,12 @@ Options:
 }
 
 function Test-ModuleInFilter {
-    # Mirror setup.sh::_module_in_filter — match a filter entry by full name OR
+    # Mirror setup.sh::_module_in_filter - match a filter entry by full name OR
     # numeric prefix, so `-Modules 06` selects `06-Shell` like `--modules 06`.
     # Escape the entry so a value like `[0` is matched as a literal prefix rather
     # than an invalid -like wildcard pattern (which would throw and abort the run).
     param([string]$Name, [string[]]$Filter)
-    if (-not $Filter) { return $true }   # $null or empty → select everything
+    if (-not $Filter) { return $true }   # $null or empty -> select everything
     foreach ($entry in $Filter) {
         if ($entry -eq $Name) { return $true }
         $prefix = [System.Management.Automation.WildcardPattern]::Escape($entry)
@@ -61,7 +61,7 @@ function Test-ModuleInFilter {
 
 function Show-Welcome {
     Write-Host ''
-    Write-Host '  env-setup — Windows PowerShell engine' -ForegroundColor Blue
+    Write-Host '  env-setup - Windows PowerShell engine' -ForegroundColor Blue
     Write-Host "  Dry-run: $($env:ENVSETUP_DRY_RUN)" -ForegroundColor Cyan
     Write-Host ''
 }
@@ -88,7 +88,7 @@ if ((Test-CfgEnabled 'general.auto_yes') -and -not $KeepExisting) { $env:ENVSETU
 if ($Verify) {
     $v = Join-Path $RepoDir 'scripts/verify.ps1'
     if (Test-Path $v) { & $v; exit $LASTEXITCODE }
-    Write-Warn 'scripts/verify.ps1 not present yet — nothing to verify'
+    Write-Warn 'scripts/verify.ps1 not present yet - nothing to verify'
     exit 0
 }
 
@@ -121,7 +121,7 @@ foreach ($m in $ModuleList) {
     }
     $file = Join-Path $RepoDir "modules/$($m.Name).ps1"
     if (-not (Test-Path $file)) {
-        Write-Warn "Module file not found: $file — skipping"
+        Write-Warn "Module file not found: $file - skipping"
         $skipped += "$($m.Name) (missing)"; continue
     }
     Write-Header $m.Name

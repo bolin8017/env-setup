@@ -12,7 +12,7 @@ Describe 'DryRun.psm1' {
 
     Context 'Invoke-OrDryRun' {
         # The action path is baked into the scriptblock string (no variable capture),
-        # so behavior is observed via a file side-effect — robust under Pester scoping.
+        # so behavior is observed via a file side-effect - robust under Pester scoping.
         It 'does not run the action under dry-run' {
             $env:ENVSETUP_DRY_RUN = 'true'
             $marker = Join-Path $TestDrive 'dry.txt'

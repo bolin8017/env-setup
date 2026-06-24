@@ -1,6 +1,6 @@
 BeforeDiscovery {
     # $env:OS is 'Windows_NT' on both Windows PowerShell 5.1 and pwsh-on-Windows and
-    # is StrictMode-safe to read — used to gate the 5.1-only regression test below.
+    # is StrictMode-safe to read - used to gate the 5.1-only regression test below.
     $onWindows = ($env:OS -eq 'Windows_NT')
 }
 
@@ -77,7 +77,7 @@ Describe 'Resolve-JunctionFreePath' {
     It 'resolves a junction under Windows PowerShell 5.1 without ResolveLinkTarget (regression)' -Skip:(-not $onWindows) {
         # modules/02-Languages.ps1 runs under Windows PowerShell 5.1 (the bootstrap
         # shell), where FileSystemInfo.ResolveLinkTarget does NOT exist and used to
-        # throw — aborting the whole module before its pyenv MSI workaround. CI runs
+        # throw - aborting the whole module before its pyenv MSI workaround. CI runs
         # this suite under pwsh (Core), where the method exists and the bug is
         # invisible, so reproduce the real engine via powershell.exe (always present
         # on Windows). Old code => non-zero exit; fix => 0.

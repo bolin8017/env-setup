@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 01-Core.ps1 — scoop buckets + core apps (git, gh). Mirrors 01-core.sh, which
+# 01-Core.ps1 - scoop buckets + core apps (git, gh). Mirrors 01-core.sh, which
 # installs git/gh/build-tools (it configures no git identity, so neither do we).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -19,7 +19,7 @@ function Add-ScoopBucket {
 function Install-Core {
     Write-Header 'Core'
     if (-not (Test-DryRun) -and -not (Test-ScoopAvailable)) {
-        throw 'scoop not found — run bootstrap.ps1 first'
+        throw 'scoop not found - run bootstrap.ps1 first'
     }
     Add-ScoopBucket -Name 'extras'   # some CLI tools (e.g. bottom) live here
     if (Test-CfgEnabled 'core.git')        { Install-App -Id 'Git.Git' }
@@ -34,10 +34,10 @@ function Install-Core {
 function Uninstall-Core {
     Write-Header 'Uninstall: Core'
     if (Test-Purge) {
-        Write-Warn 'git and gh are widely depended on — removing them per -Purge'
+        Write-Warn 'git and gh are widely depended on - removing them per -Purge'
         Remove-App -Id 'GitHub.cli'
         Remove-App -Id 'Git.Git'
     } else {
-        Write-Info 'git/gh are system tools — use -Purge to remove them'
+        Write-Info 'git/gh are system tools - use -Purge to remove them'
     }
 }

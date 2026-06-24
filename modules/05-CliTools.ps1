@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 05-CliTools.ps1 — modern CLI tools via scoop, with same-role Windows mappings.
+# 05-CliTools.ps1 - modern CLI tools via scoop, with same-role Windows mappings.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -37,7 +37,7 @@ function Install-CliTools {
     }
     foreach ($key in $script:CliToolWindowsSkip.Keys) {
         if (Test-CfgEnabled "cli_tools.$key") {
-            Write-Info "Skipping '$key' on Windows (no scoop manifest) — $($script:CliToolWindowsSkip[$key])"
+            Write-Info "Skipping '$key' on Windows (no scoop manifest) - $($script:CliToolWindowsSkip[$key])"
         }
     }
 }
@@ -49,6 +49,6 @@ function Uninstall-CliTools {
             Remove-Pkg -Name (Get-CliScoopPackage -Key $key)
         }
     } else {
-        Write-Info 'CLI tools are scoop packages — use -Purge to remove them'
+        Write-Info 'CLI tools are scoop packages - use -Purge to remove them'
     }
 }

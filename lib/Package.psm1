@@ -1,4 +1,4 @@
-# Package.psm1 — scoop (CLI, no admin) + winget (apps) abstraction with a
+# Package.psm1 - scoop (CLI, no admin) + winget (apps) abstraction with a
 # no-admin defer path that mirrors the Bash engine's no-sudo handling.
 
 Set-StrictMode -Version Latest
@@ -35,12 +35,12 @@ function Test-Elevated {
 function Test-ScoopAvailable { return (Test-Command 'scoop') }
 
 function Install-Pkg {
-    # CLI tools via scoop — never needs admin. Throws on failure so the calling
+    # CLI tools via scoop - never needs admin. Throws on failure so the calling
     # module is honestly recorded as Failed (never silently reported Installed).
     param([Parameter(Mandatory)][string]$Name)
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: scoop install $Name"; return }
     if (-not (Test-ScoopAvailable)) {
-        throw "scoop not available — cannot install $Name (run 01-Core first)"
+        throw "scoop not available - cannot install $Name (run 01-Core first)"
     }
     # scoop is a PowerShell shim whose $LASTEXITCODE is unreliable (and reading it
     # unset throws under StrictMode), so we don't gate on it here. Robust per-tool
@@ -52,7 +52,7 @@ function Install-Pkg {
 function Test-WingetSucceeded {
     # winget exits 0 on a fresh install. When the package is already present it
     # tries to upgrade, and if nothing newer exists it exits 0x8A15002B
-    # (-1978335189, "No newer package versions are available") — success for an
+    # (-1978335189, "No newer package versions are available") - success for an
     # idempotent re-run, not a failure.
     param([Parameter(Mandatory)][int]$ExitCode)
     return ($ExitCode -eq 0 -or $ExitCode -eq -1978335189)
@@ -93,7 +93,7 @@ function Remove-Pkg {
     # Uninstall a scoop CLI package (no admin). Mirrors Install-Pkg.
     param([Parameter(Mandatory)][string]$Name)
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: scoop uninstall $Name"; return }
-    if (-not (Test-ScoopAvailable)) { Write-Warn "scoop not available — cannot uninstall $Name"; return }
+    if (-not (Test-ScoopAvailable)) { Write-Warn "scoop not available - cannot uninstall $Name"; return }
     scoop uninstall $Name
 }
 

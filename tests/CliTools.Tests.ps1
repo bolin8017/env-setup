@@ -18,7 +18,7 @@ Describe 'Install-CliTools dispatch' {
         $yaml = "cli_tools:`n  ripgrep: true`n  bat: false`n  btop: true`n"
         $f = Join-Path $TestDrive 'c.yaml'; Set-Content $f $yaml
         Import-Config -Path $f
-        # Install-CliTools runs in this (dot-sourced) scope, so mock here — not -ModuleName.
+        # Install-CliTools runs in this (dot-sourced) scope, so mock here - not -ModuleName.
         Mock Install-Pkg { }
     }
     It 'installs only enabled tools and applies the mapping' {

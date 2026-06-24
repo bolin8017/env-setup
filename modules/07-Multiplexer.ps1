@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 07-Multiplexer.ps1 — zellij (the tmux role on native Windows) + config/layout.
+# 07-Multiplexer.ps1 - zellij (the tmux role on native Windows) + config/layout.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -12,7 +12,7 @@ Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"
 function Install-Multiplexer {
     Write-Header 'Multiplexer (zellij)'
     if (-not (Test-CfgEnabled 'windows.multiplexer.zellij')) {
-        Write-Info 'zellij disabled — skipping'
+        Write-Info 'zellij disabled - skipping'
         return
     }
     Install-Pkg -Name 'zellij'

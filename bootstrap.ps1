@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# bootstrap.ps1 — one-liner installer for the Windows engine.
+# bootstrap.ps1 - one-liner installer for the Windows engine.
 # Usage: irm https://raw.githubusercontent.com/bolin8017/env-setup/main/bootstrap.ps1 | iex
 
 Set-StrictMode -Version Latest
@@ -10,7 +10,7 @@ $InstallDir = Join-Path $HOME '.local/share/env-setup'
 
 function Invoke-WithRetry {
     # bootstrap runs BEFORE the repo is cloned, so it cannot import
-    # lib/Common.psm1 — this mirrors that module's Invoke-WithRetry. Some corporate
+    # lib/Common.psm1 - this mirrors that module's Invoke-WithRetry. Some corporate
     # networks intermittently reset the TLS connection to GitHub mid-handshake, so a
     # lone attempt can fail spuriously while the same call succeeds seconds later;
     # under $ErrorActionPreference='Stop' that one failure aborts the whole install.
@@ -46,8 +46,8 @@ function Initialize-Git {
 function Initialize-Scoop {
     if (Get-Command scoop -ErrorAction SilentlyContinue) { return }
     Write-Host 'Installing scoop...'
-    # Retry the download, then run the installer once. This lone irm — under
-    # $ErrorActionPreference='Stop' — is what a single TLS reset used to abort on.
+    # Retry the download, then run the installer once. This lone irm - under
+    # $ErrorActionPreference='Stop' - is what a single TLS reset used to abort on.
     $installer = Invoke-WithRetry -What 'scoop download' -Action { Invoke-RestMethod -Uri 'https://get.scoop.sh' }
     Invoke-Expression $installer
 }
@@ -56,7 +56,7 @@ function Sync-Repo {
     if (Test-Path (Join-Path $InstallDir '.git')) {
         Write-Host 'Updating existing installation...'
         git -C $InstallDir pull --ff-only
-        if ($LASTEXITCODE -ne 0) { throw "git pull failed (exit $LASTEXITCODE) — resolve $InstallDir by hand" }
+        if ($LASTEXITCODE -ne 0) { throw "git pull failed (exit $LASTEXITCODE) - resolve $InstallDir by hand" }
     } else {
         Write-Host 'Cloning env-setup...'
         New-Item -ItemType Directory -Path (Split-Path $InstallDir -Parent) -Force | Out-Null

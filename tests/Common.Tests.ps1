@@ -1,6 +1,6 @@
 BeforeDiscovery {
     # $env:OS is 'Windows_NT' on BOTH Windows PowerShell 5.1 and pwsh-on-Windows,
-    # and reading it is StrictMode-safe — unlike the $IsWindows automatic variable,
+    # and reading it is StrictMode-safe - unlike the $IsWindows automatic variable,
     # which is unset on 5.1. Used to gate the 5.1-only regression test below.
     $onWindows = ($env:OS -eq 'Windows_NT')
 }
@@ -28,7 +28,7 @@ Describe 'Test-IsWindows' {
         # the $IsWindows automatic variable is *unset* (it exists only on pwsh 6+),
         # so the old `if ($null -ne $IsWindows)` guard threw under StrictMode. CI
         # runs this suite under pwsh (Core), where $IsWindows exists and the bug is
-        # invisible — so reproduce the real engine by shelling out to powershell.exe
+        # invisible - so reproduce the real engine by shelling out to powershell.exe
         # (5.1 is always present on Windows). Old code => non-zero exit; fix => 0.
         $module = (Resolve-Path "$PSScriptRoot/../lib/Common.psm1").Path
         $probe  = "Set-StrictMode -Version Latest; Import-Module '$module' -Force; if ((Test-IsWindows) -isnot [bool]) { exit 2 }"

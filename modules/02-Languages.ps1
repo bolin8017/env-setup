@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 02-Languages.ps1 — nvm-windows + pyenv-win. PATH/shim wiring into $PROFILE is
+# 02-Languages.ps1 - nvm-windows + pyenv-win. PATH/shim wiring into $PROFILE is
 # added with the shell profile in Stage 3.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -33,7 +33,7 @@ function Update-PyenvVersionCache {
     # pyenv-win refreshes its installable-version list with 'pyenv update', but
     # that uses an htmlfile COM object unsupported on current Windows 11
     # ("htmlfile: this method is not supported"), so it fails and the list goes
-    # stale. Replace the cache file directly from the maintained source — no
+    # stale. Replace the cache file directly from the maintained source - no
     # htmlfile. Best-effort: on failure pyenv keeps its existing list.
     try {
         $cache = Join-Path (scoop prefix pyenv) 'pyenv-win\.versions_cache.xml'
@@ -63,7 +63,7 @@ function Resolve-JunctionFreePath {
     $item = Get-Item -LiteralPath $Path -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
         # FileSystemInfo.ResolveLinkTarget arrived with .NET 6 / PowerShell 7 and is
-        # ABSENT on Windows PowerShell 5.1 (.NET Framework) — the shell a pasted
+        # ABSENT on Windows PowerShell 5.1 (.NET Framework) - the shell a pasted
         # bootstrap one-liner runs in. Calling it there throws "[...] does not contain
         # a method named 'ResolveLinkTarget'" and aborts the module before the MSI
         # workaround below runs. Prefer it when present (resolves the *final* target
@@ -177,7 +177,7 @@ function Install-Languages {
                     Update-PyenvVersionCache
                     $resolved = Resolve-PyenvVersion -Requested $pyver -Available (pyenv install --list)
                     if ($resolved -eq $pyver) {
-                        Write-Warn "No pyenv-win definition for $pyver.* — the version list may be stale. Pin an exact version in config.yaml."
+                        Write-Warn "No pyenv-win definition for $pyver.* - the version list may be stale. Pin an exact version in config.yaml."
                         $pyver = $null
                     } else {
                         Write-Info "Resolved Python $pyver -> $resolved"

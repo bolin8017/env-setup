@@ -1,4 +1,4 @@
-# DryRun.psm1 — dry-run wrappers + config deployment with overwrite protection.
+# DryRun.psm1 - dry-run wrappers + config deployment with overwrite protection.
 # Mirrors lib/dryrun.sh. Reads flags via Common.psm1 (ENVSETUP_* env vars).
 
 Set-StrictMode -Version Latest
@@ -51,7 +51,7 @@ function Deploy-Config {
         if (-not (Test-AutoYes)) {
             $same = $false
             try { $same = -not (Compare-Object (Get-Content -LiteralPath $Source) (Get-Content -LiteralPath $Destination)) } catch { $same = $false }
-            if ($same) { Write-Info "${Label}: identical to repo version — skipping"; return }
+            if ($same) { Write-Info "${Label}: identical to repo version - skipping"; return }
             if (-not (Confirm-Action "Overwrite ${Destination}?")) { Write-Info "[SKIP] Keeping existing $Label"; return }
         }
     }
