@@ -1,4 +1,4 @@
-# WindowsTerminal.psm1 — whitelisted merge into Windows Terminal settings.json.
+# WindowsTerminal.psm1 - whitelisted merge into Windows Terminal settings.json.
 # Pure (string in / string out) so it is fully unit-testable; the caller reads,
 # backs up, and writes the file. Mirrors the claude settings merge: it sets the
 # default font face and preserves every other key.

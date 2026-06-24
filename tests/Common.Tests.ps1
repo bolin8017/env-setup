@@ -1,6 +1,6 @@
 BeforeDiscovery {
     # $env:OS is 'Windows_NT' on BOTH Windows PowerShell 5.1 and pwsh-on-Windows,
-    # and reading it is StrictMode-safe — unlike the $IsWindows automatic variable,
+    # and reading it is StrictMode-safe - unlike the $IsWindows automatic variable,
     # which is unset on 5.1. Used to gate the 5.1-only regression test below.
     $onWindows = ($env:OS -eq 'Windows_NT')
 }
@@ -28,7 +28,7 @@ Describe 'Test-IsWindows' {
         # the $IsWindows automatic variable is *unset* (it exists only on pwsh 6+),
         # so the old `if ($null -ne $IsWindows)` guard threw under StrictMode. CI
         # runs this suite under pwsh (Core), where $IsWindows exists and the bug is
-        # invisible — so reproduce the real engine by shelling out to powershell.exe
+        # invisible - so reproduce the real engine by shelling out to powershell.exe
         # (5.1 is always present on Windows). Old code => non-zero exit; fix => 0.
         $module = (Resolve-Path "$PSScriptRoot/../lib/Common.psm1").Path
         $probe  = "Set-StrictMode -Version Latest; Import-Module '$module' -Force; if ((Test-IsWindows) -isnot [bool]) { exit 2 }"
@@ -62,5 +62,26 @@ Describe 'dependent-module imports keep Common in the caller scope' {
         Import-Module "$PSScriptRoot/../lib/Package.psm1" -Force
         { Test-IsWindows } | Should -Not -Throw
         Get-Command Assert-Windows -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Invoke-WithRetry' {
+    It 'returns the action result without retrying on success' {
+        $script:n = 0
+        $r = Invoke-WithRetry -DelaySeconds 0 -Action { $script:n++; 'ok' }
+        $r | Should -Be 'ok'
+        $script:n | Should -Be 1
+    }
+    It 'retries a transient failure, then returns the eventual result' {
+        $script:n = 0
+        $r = Invoke-WithRetry -DelaySeconds 0 -MaxAttempts 5 -Action {
+            $script:n++; if ($script:n -lt 3) { throw 'transient' }; 'ok'
+        }
+        $r | Should -Be 'ok'
+        $script:n | Should -Be 3
+    }
+    It 'rethrows the last error after exhausting attempts' {
+        { Invoke-WithRetry -DelaySeconds 0 -MaxAttempts 2 -Action { throw 'always' } } |
+            Should -Throw -ExpectedMessage '*always*'
     }
 }

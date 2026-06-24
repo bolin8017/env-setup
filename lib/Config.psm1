@@ -1,4 +1,4 @@
-# Config.psm1 — pure-PowerShell reader for the restricted config.yaml subset
+# Config.psm1 - pure-PowerShell reader for the restricted config.yaml subset
 # used by lib/yaml.sh + lib/config.sh: scalars, nested maps (2-space indent),
 # lists (`- item` one level deeper than their key), `#` comments, optional quotes.
 
@@ -119,7 +119,7 @@ function Set-CfgPath {
 }
 
 function Set-CfgEnvOverride {
-    # Legacy env overrides — the subset of lib/config.sh::_apply_env_overrides
+    # Legacy env overrides - the subset of lib/config.sh::_apply_env_overrides
     # with a native-Windows target. SKIP_DOCKER and SKIP_TMUX_CONFIG are omitted
     # (no Docker; zellij replaces tmux, gated by windows.multiplexer.zellij).
     if ($env:AUTO_YES)       { Set-CfgPath 'general.auto_yes' $env:AUTO_YES }
@@ -152,7 +152,7 @@ function Import-Config {
     $lines = Get-Content -LiteralPath $file
     $script:Config = ConvertFrom-SimpleYaml -Lines $lines
 
-    # Merge a sibling config.local.yaml (gitignored) over the base config — per
+    # Merge a sibling config.local.yaml (gitignored) over the base config - per
     # machine overrides such as worklog.role / worklog.source. Mirrors lib/config.sh.
     # `-ne $file` guards a non-.yaml config path, where the -replace is a no-op
     # and Test-Path would otherwise match $file and self-merge it onto itself.
@@ -183,7 +183,7 @@ function Get-CfgNode {
     }
     # Comma operator: wrap so a count-1 collection (a single-element list) is
     # returned intact instead of being unrolled to its lone element by the
-    # pipeline — otherwise Get-CfgList would see a scalar and return @().
+    # pipeline - otherwise Get-CfgList would see a scalar and return @().
     return ,$node
 }
 

@@ -1,4 +1,4 @@
-# Uninstall.psm1 — safety primitives for the Windows teardown engine.
+# Uninstall.psm1 - safety primitives for the Windows teardown engine.
 # Mirrors lib/uninstall.sh: protected-path guard + managed file/dir removal.
 
 Set-StrictMode -Version Latest
@@ -53,12 +53,12 @@ function Remove-ManagedFile {
     if (-not (Test-Path -LiteralPath $Dest)) { Write-Info "[SKIP] $Label not present"; return }
     if (Test-ProtectedPath $Dest) { Write-Warn "Refusing to remove protected path: $Dest"; return }
     if (-not $RepoSrc -or -not (Test-Path -LiteralPath $RepoSrc)) {
-        Write-Warn "${Label}: cannot verify (no repo source) — preserved"; return
+        Write-Warn "${Label}: cannot verify (no repo source) - preserved"; return
     }
     $same = $false
     try { $same = -not (Compare-Object (Get-Content -LiteralPath $RepoSrc) (Get-Content -LiteralPath $Dest)) }
     catch { $same = $false }
-    if (-not $same) { Write-Warn "$Label modified locally — preserved"; return }
+    if (-not $same) { Write-Warn "$Label modified locally - preserved"; return }
     Remove-OrDryRun -Path $Dest
     Write-Success "Removed $Label"
 }

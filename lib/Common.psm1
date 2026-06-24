@@ -1,4 +1,4 @@
-# Common.psm1 — logging, platform detection, shared helpers for the Windows engine.
+# Common.psm1 - logging, platform detection, shared helpers for the Windows engine.
 # Cross-module flags travel via ENVSETUP_* environment variables (mirrors the
 # Bash engine's exported DRY_RUN / AUTO_YES / KEEP_EXISTING).
 
@@ -24,7 +24,7 @@ function Test-Command {
 
 function Test-IsWindows {
     # $IsWindows exists only on pwsh 6+. On Windows PowerShell 5.1 it is *unset*
-    # (not $null) — and under Set-StrictMode -Version Latest, reading an unset
+    # (not $null) - and under Set-StrictMode -Version Latest, reading an unset
     # variable is a terminating error (VariableIsUndefined). Probe with
     # Get-Variable instead of referencing $IsWindows directly, then fall back to
     # $env:OS (5.1 only ever runs on Windows, where $env:OS is 'Windows_NT').
@@ -53,8 +53,30 @@ function Confirm-Action {
     return ($answer -match '^[Yy]')
 }
 
+function Invoke-WithRetry {
+    # Retry a transient-failure-prone action - typically a GitHub download. Some
+    # corporate networks intermittently reset the TLS connection to GitHub hosts
+    # (get.scoop.sh / raw.githubusercontent.com / github.com) mid-handshake, so a
+    # lone attempt can fail spuriously while the same call succeeds seconds later.
+    # Returns the action's output; rethrows the last error once attempts are spent.
+    param(
+        [Parameter(Mandatory)][scriptblock]$Action,
+        [string]$What = 'operation',
+        [int]$MaxAttempts = 5,
+        [int]$DelaySeconds = 3
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try { return & $Action }
+        catch {
+            if ($attempt -ge $MaxAttempts) { throw }
+            Write-Warn "$What failed (attempt $attempt/$MaxAttempts): $($_.Exception.Message). Retrying in ${DelaySeconds}s..."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
-    Test-Command, Test-IsWindows, Assert-Windows, `
+    Test-Command, Test-IsWindows, Assert-Windows, Invoke-WithRetry, `
     Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
     Test-KeepTools, Test-Purge, Test-NoRestore

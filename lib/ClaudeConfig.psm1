@@ -1,4 +1,4 @@
-# ClaudeConfig.psm1 — PowerShell-native JSON merges for Claude Code config sync.
+# ClaudeConfig.psm1 - PowerShell-native JSON merges for Claude Code config sync.
 # Replaces the Bash engine's jq usage (08-claude-code.sh) with ConvertFrom/To-Json.
 # Pure (string in / string out) so they are fully unit-testable; callers read,
 # back up, and write the files.
@@ -52,7 +52,7 @@ function Remove-ManagedSettingsKeys {
     # Inverse of Merge-ClaudeSettings: given the user's settings JSON, the repo's
     # settings JSON, and the whitelist keys, return JSON with each whitelisted key
     # removed ONLY when its value still equals the repo's. User-owned keys and
-    # locally-changed values are preserved. Pure → unit-testable.
+    # locally-changed values are preserved. Pure -> unit-testable.
     param(
         [Parameter(Mandatory)][string]$CurrentJson,
         [Parameter(Mandatory)][string]$SourceJson,

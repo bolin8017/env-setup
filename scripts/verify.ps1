@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# verify.ps1 — post-install check of the Windows engine's tools (analog of verify.sh).
+# verify.ps1 - post-install check of the Windows engine's tools (analog of verify.sh).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 

@@ -72,18 +72,18 @@ Describe 'Remove-ManagedSettingsKeys' {
 
 Describe 'uninstall.ps1 CLI' {
     It 'prints usage with -Help and exits 0' {
-        $u = Join-Path $PSScriptRoot '..' 'uninstall.ps1'
+        $u = Join-Path $PSScriptRoot '../uninstall.ps1'
         $out = pwsh -NoProfile -File $u -Help
         $LASTEXITCODE | Should -Be 0
         ($out -join "`n") | Should -Match 'Usage'
     }
     It 'rejects -KeepTools with -Purge' -Skip:(-not $OnWindows) {
-        $u = Join-Path $PSScriptRoot '..' 'uninstall.ps1'
+        $u = Join-Path $PSScriptRoot '../uninstall.ps1'
         pwsh -NoProfile -File $u -KeepTools -Purge | Out-Null
         $LASTEXITCODE | Should -Be 1
     }
     It 'runs a dry-run to completion and exits 0' -Skip:(-not $OnWindows) {
-        $u = Join-Path $PSScriptRoot '..' 'uninstall.ps1'
+        $u = Join-Path $PSScriptRoot '../uninstall.ps1'
         pwsh -NoProfile -File $u -DryRun -AutoYes | Out-Null
         $LASTEXITCODE | Should -Be 0
     }
@@ -107,7 +107,7 @@ Describe 'module Uninstall-* functions are defined' {
         @{ M = '09-UserDirs';    Fn = 'Uninstall-UserDirs' }
     )
     It '<M> defines <Fn>' -ForEach $cases {
-        . (Join-Path $PSScriptRoot '..' "modules/$M.ps1")
+        . (Join-Path $PSScriptRoot "../modules/$M.ps1")
         Get-Command $Fn -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
     }
 }

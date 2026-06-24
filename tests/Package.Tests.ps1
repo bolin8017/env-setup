@@ -59,7 +59,7 @@ Describe 'Install-Pkg surfaces failure instead of silently succeeding' {
         $env:ENVSETUP_DRY_RUN = $null
         # Neither this Linux dev box nor the windows-latest runner has scoop,
         # so Test-ScoopAvailable is false and Install-Pkg throws before any
-        # real install — never silently reporting success.
+        # real install - never silently reporting success.
         { Install-Pkg -Name 'ripgrep' } | Should -Throw
     }
 }

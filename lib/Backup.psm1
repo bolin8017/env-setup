@@ -1,4 +1,4 @@
-# Backup.psm1 — timestamped backup of a single file before overwrite.
+# Backup.psm1 - timestamped backup of a single file before overwrite.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

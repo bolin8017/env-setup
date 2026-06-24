@@ -1,4 +1,4 @@
-# Worklog.Tests.ps1 — Pester tests for the 10-Worklog module + config.local merge
+# Worklog.Tests.ps1 - Pester tests for the 10-Worklog module + config.local merge
 BeforeAll {
     Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
     Import-Module "$PSScriptRoot/../lib/Config.psm1" -Force

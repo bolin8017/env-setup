@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 03-PythonTools.ps1 — uv (scoop) + poetry/jupyter (pipx). Gated on Python being
+# 03-PythonTools.ps1 - uv (scoop) + poetry/jupyter (pipx). Gated on Python being
 # enabled, mirroring 03-python-tools.sh.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,7 @@ Import-Module "$PSScriptRoot/../lib/Package.psm1"
 function Install-PythonTools {
     Write-Header 'Python tools'
     if (-not (Test-CfgEnabled 'languages.python.enabled')) {
-        Write-Info 'Python disabled — skipping Python tools'
+        Write-Info 'Python disabled - skipping Python tools'
         return
     }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
-# uninstall.ps1 — Windows (native PowerShell) teardown entry point.
-# Sibling of setup.ps1; reverses each module's Uninstall-<Module> (09 → 01).
+# uninstall.ps1 - Windows (native PowerShell) teardown entry point.
+# Sibling of setup.ps1; reverses each module's Uninstall-<Module> (09 -> 01).
 [CmdletBinding()]
 param(
     [switch]$DryRun,
@@ -81,7 +81,7 @@ if (Test-CfgEnabled 'general.dry_run') { $env:ENVSETUP_DRY_RUN = 'true' }
 # Protected user_dirs paths (newline-separated absolutes).
 $env:ENVSETUP_PROTECTED_EXTRA = ((Get-CfgList 'user_dirs.paths' | ForEach-Object { Join-Path $HOME $_ }) -join "`n")
 
-# Reverse module order (09 → 01; 04-Docker has no Windows engine).
+# Reverse module order (09 -> 01; 04-Docker has no Windows engine).
 $ModuleList = @(
     @{ Name = '10-Worklog';     Fn = 'Uninstall-Worklog' }
     @{ Name = '09-UserDirs';    Fn = 'Uninstall-UserDirs' }
@@ -99,7 +99,7 @@ if ($Modules) { $filter = @($Modules.Split(',').Trim()) }
 $done = @(); $skipped = @(); $failed = @()
 
 Write-Host ''
-Write-Host '  env-setup — Uninstaller' -ForegroundColor Red
+Write-Host '  env-setup - Uninstaller' -ForegroundColor Red
 Write-Host "  Dry-run: $($env:ENVSETUP_DRY_RUN)  KeepTools: $($env:ENVSETUP_KEEP_TOOLS)  Purge: $($env:ENVSETUP_PURGE)" -ForegroundColor Cyan
 Write-Host ''
 

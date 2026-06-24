@@ -115,3 +115,34 @@ jobs:
       - name: Run uninstall dry-run
         shell: pwsh
         run: ./uninstall.ps1 -DryRun -AutoYes
+
+  # Windows PowerShell 5.1 (Desktop) is the shell a pasted bootstrap one-liner runs
+  # in, but every job above uses pwsh (Core) — so 5.1-only breakage (e.g. a .NET 6+
+  # API like FileSystemInfo.ResolveLinkTarget) stays invisible. This lane runs the
+  # suite and a dry-run under 5.1 to catch those regressions. `shell: powershell` is
+  # Windows PowerShell 5.1 on windows runners; `shell: pwsh` is PowerShell 7.
+  powershell5-tests:
+    name: Pester + Dry Run (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck -MinimumVersion 5.5.0
+
+      - name: Run Pester under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          Import-Module Pester -MinimumVersion 5.5.0 -Force
+          $r = Invoke-Pester -Path tests -Output Detailed -PassThru
+          if ($r.FailedCount -gt 0) { throw "$($r.FailedCount) test(s) failed" }
+
+      - name: Dry-run under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          ./setup.ps1 -DryRun -AutoYes
+          ./uninstall.ps1 -DryRun -AutoYes

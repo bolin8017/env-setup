@@ -1,4 +1,4 @@
-# env-setup aliases — functions (PowerShell aliases can't take arguments).
+# env-setup aliases - functions (PowerShell aliases can't take arguments).
 
 if (Get-Command eza -ErrorAction SilentlyContinue) {
     function ls { eza --icons @args }

@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# 06-Shell.ps1 — PowerShell 7, Oh My Posh, PSGallery modules, $PROFILE assembly
+# 06-Shell.ps1 - PowerShell 7, Oh My Posh, PSGallery modules, $PROFILE assembly
 # (from configs/pwsh fragments), and a gated Windows Terminal font merge.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -75,7 +75,7 @@ function Write-UpdateState {
 function Get-ProfileTargetPaths {
     # env-setup targets pwsh 7, so deploy the profile to pwsh 7's AllHosts path
     # regardless of which shell runs setup. Pinning to the Documents folder (not
-    # $PROFILE — which is the *running* shell's path) means a bootstrap pasted
+    # $PROFILE - which is the *running* shell's path) means a bootstrap pasted
     # into Windows PowerShell 5.1 still lands the profile in pwsh 7's tree
     # instead of leaving pwsh 7 bare. windows.powershell5_profile additionally
     # deploys the Windows PowerShell 5.1 profile.
@@ -88,9 +88,9 @@ function Get-ProfileTargetPaths {
 }
 
 function Set-WindowsTerminalFont {
-    if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA — skipping Windows Terminal config'; return }
+    if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA - skipping Windows Terminal config'; return }
     $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
-    if (-not (Test-Path $wt)) { Write-Info 'Windows Terminal settings not found — skipping font config'; return }
+    if (-not (Test-Path $wt)) { Write-Info 'Windows Terminal settings not found - skipping font config'; return }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge Nerd Font into $wt"; return }
     Backup-File -Path $wt -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     $merged = Merge-WtSettings -CurrentJson (Get-Content -Raw -LiteralPath $wt) -FontFace 'MesloLGS NF'
@@ -102,7 +102,7 @@ function Enable-SessionFonts {
     # Make freshly-registered fonts usable in the CURRENT login session without a
     # sign-out. Copying the .ttf and writing the HKCU registry key persists the
     # font, but the live GDI/DirectWrite font tables are only rebuilt at next
-    # logon — so a fresh box keeps showing "couldn't find MesloLGS NF" until the
+    # logon - so a fresh box keeps showing "couldn't find MesloLGS NF" until the
     # user signs out. AddFontResourceW loads each file into the session font
     # table; a WM_FONTCHANGE broadcast asks running apps to re-enumerate.
     # Best-effort and idempotent.
@@ -125,12 +125,12 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
 
 function Install-NerdFont {
     # The Oh My Posh prompt and the Windows Terminal face we set both need
-    # MesloLGS NF, but nothing here installed it — so a fresh box shows
+    # MesloLGS NF, but nothing here installed it - so a fresh box shows
     # "couldn't find MesloLGS NF" and renders prompt glyphs as tofu. Install the
     # exact "MesloLGS NF" family (Powerlevel10k's fonts, whose face name matches
     # what Set-WindowsTerminalFont writes) per-user: no admin, no name guessing.
     if (Test-DryRun) { Write-Info '[DRY-RUN] Would install the MesloLGS NF Nerd Font'; return }
-    if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA — skipping Nerd Font install'; return }
+    if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA - skipping Nerd Font install'; return }
     $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
     $regKey  = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
     $base    = 'https://github.com/romkatv/powerlevel10k-media/raw/master'
@@ -145,7 +145,9 @@ function Install-NerdFont {
         foreach ($f in $files) {
             $dest = Join-Path $fontDir $f
             if (-not (Test-Path -LiteralPath $dest)) {
-                Invoke-WebRequest -UseBasicParsing -Uri "$base/$([uri]::EscapeDataString($f))" -OutFile $dest
+                Invoke-WithRetry -What "font download ($f)" -Action {
+                    Invoke-WebRequest -UseBasicParsing -Uri "$base/$([uri]::EscapeDataString($f))" -OutFile $dest
+                }
                 $added++
             }
             # Register per-user so Windows Terminal resolves the face by name.
@@ -154,7 +156,7 @@ function Install-NerdFont {
         }
         # Activate in the current session so glyphs render without a sign-out.
         Enable-SessionFonts -Path ($files | ForEach-Object { Join-Path $fontDir $_ })
-        if ($added -gt 0) { Write-Success "Installed MesloLGS NF ($added file(s)) — open a new terminal to apply" }
+        if ($added -gt 0) { Write-Success "Installed MesloLGS NF ($added file(s)) - open a new terminal to apply" }
         else { Write-Info 'MesloLGS NF already installed (re-activated for this session)' }
     } catch {
         Write-Warn "Could not install MesloLGS NF (prompt glyphs may not render): $_"
@@ -231,12 +233,12 @@ function Uninstall-Shell {
     Write-Header 'Uninstall: Shell'
     $cfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs')).Path
 
-    # C — $PROFILE targets
+    # C - $PROFILE targets
     foreach ($target in (Get-ProfileTargetPaths)) {
         Remove-ManagedFile -Dest $target -RepoSrc (Join-Path $cfg 'pwsh.profile.base') -Label "PowerShell profile ($target)"
     }
 
-    # C — fragments + aliases
+    # C - fragments + aliases
     $fragments = Join-Path $HOME '.config/powershell/fragments'
     Get-ChildItem (Join-Path $cfg 'pwsh') -Filter *.ps1 -ErrorAction Ignore | ForEach-Object {
         Remove-ManagedFile -Dest (Join-Path $fragments $_.Name) -RepoSrc $_.FullName -Label "fragment $($_.Name)"
@@ -245,19 +247,19 @@ function Uninstall-Shell {
         -RepoSrc (Join-Path $cfg 'aliases.ps1') -Label 'aliases.ps1'
     Remove-UpdateState
 
-    # C — Oh My Posh theme
+    # C - Oh My Posh theme
     $ompName = Get-CfgValue 'windows.powershell.omp_theme'
     if (-not $ompName) { $ompName = 'envsetup.omp.json' }
     Remove-ManagedFile -Dest (Join-Path $HOME ".config/oh-my-posh/$ompName") `
         -RepoSrc (Join-Path $cfg "omp/$ompName") -Label 'Oh My Posh theme'
 
-    # C — restore Windows Terminal settings from the install's .bak
+    # C - restore Windows Terminal settings from the install's .bak
     if ($env:LOCALAPPDATA) {
         $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
         Restore-NewestBak -Path $wt
     }
 
-    # T — PSGallery modules + Nerd Font
+    # T - PSGallery modules + Nerd Font
     if (-not (Test-KeepTools)) {
         foreach ($m in (Get-CfgList 'windows.powershell.modules')) {
             if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: Uninstall-Module $m" }
@@ -266,7 +268,7 @@ function Uninstall-Shell {
         Remove-NerdFont
     }
 
-    # P — apps
+    # P - apps
     if (Test-Purge) {
         Remove-App -Id 'JanDeDobbeleer.OhMyPosh'
         Remove-App -Id 'Microsoft.PowerShell'
