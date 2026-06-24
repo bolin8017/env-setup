@@ -1,3 +1,9 @@
+BeforeDiscovery {
+    # $env:OS is 'Windows_NT' on both Windows PowerShell 5.1 and pwsh-on-Windows and
+    # is StrictMode-safe to read — used to gate the 5.1-only regression test below.
+    $onWindows = ($env:OS -eq 'Windows_NT')
+}
+
 BeforeAll {
     Import-Module "$PSScriptRoot/../lib/Common.psm1"
     Import-Module "$PSScriptRoot/../lib/Config.psm1"
@@ -66,5 +72,28 @@ Describe 'Resolve-JunctionFreePath' {
     It 'returns a non-existent path unchanged' {
         $p = Join-Path $TestDrive 'does-not-exist'
         Resolve-JunctionFreePath -Path $p | Should -Be $p
+    }
+
+    It 'resolves a junction under Windows PowerShell 5.1 without ResolveLinkTarget (regression)' -Skip:(-not $onWindows) {
+        # modules/02-Languages.ps1 runs under Windows PowerShell 5.1 (the bootstrap
+        # shell), where FileSystemInfo.ResolveLinkTarget does NOT exist and used to
+        # throw — aborting the whole module before its pyenv MSI workaround. CI runs
+        # this suite under pwsh (Core), where the method exists and the bug is
+        # invisible, so reproduce the real engine via powershell.exe (always present
+        # on Windows). Old code => non-zero exit; fix => 0.
+        $mod = (Resolve-Path "$PSScriptRoot/../modules/02-Languages.ps1").Path
+        $probe = @"
+Set-StrictMode -Version Latest
+. '$mod'
+`$real = Join-Path `$env:TEMP ('jf_' + [guid]::NewGuid().ToString('N'))
+`$link = `$real + '_link'
+New-Item -ItemType Directory -Path `$real | Out-Null
+New-Item -ItemType Junction -Path `$link -Target `$real | Out-Null
+try {
+    if ((Resolve-JunctionFreePath -Path `$link) -ne (Get-Item `$real).FullName) { exit 3 }
+} finally { Remove-Item `$real, `$link -Recurse -Force -ErrorAction SilentlyContinue }
+"@
+        $out = & powershell.exe -NoProfile -NonInteractive -Command $probe 2>&1
+        $LASTEXITCODE | Should -Be 0 -Because "powershell.exe (5.1) output: $out"
     }
 }

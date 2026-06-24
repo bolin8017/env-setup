@@ -40,7 +40,9 @@ function Update-PyenvVersionCache {
         [Net.ServicePointManager]::SecurityProtocol =
             [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $url = 'https://raw.githubusercontent.com/pyenv-win/pyenv-win/master/pyenv-win/.versions_cache.xml'
-        Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $cache
+        Invoke-WithRetry -What 'pyenv version-list download' -Action {
+            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $cache
+        }
         Write-Info 'Refreshed pyenv-win version list (.versions_cache.xml)'
     } catch {
         Write-Warn "Could not refresh the pyenv version list (using the existing one): $_"
@@ -60,8 +62,22 @@ function Resolve-JunctionFreePath {
     if (-not (Test-Path -LiteralPath $Path)) { return $Path }
     $item = Get-Item -LiteralPath $Path -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        $target = $item.ResolveLinkTarget($true)
-        if ($target) { return $target.FullName }
+        # FileSystemInfo.ResolveLinkTarget arrived with .NET 6 / PowerShell 7 and is
+        # ABSENT on Windows PowerShell 5.1 (.NET Framework) — the shell a pasted
+        # bootstrap one-liner runs in. Calling it there throws "[...] does not contain
+        # a method named 'ResolveLinkTarget'" and aborts the module before the MSI
+        # workaround below runs. Prefer it when present (resolves the *final* target
+        # through nested links); on 5.1 fall back to the ETS-projected .Target
+        # property, which holds the (absolute) junction target scoop creates. Guard
+        # with Get-Member so the 5.1 path never invokes the missing method.
+        $target = $null
+        if ($item | Get-Member -Name ResolveLinkTarget -MemberType Method) {
+            $resolved = $item.ResolveLinkTarget($true)
+            if ($resolved) { $target = $resolved.FullName }
+        } elseif ($item.Target) {
+            $target = [IO.Path]::GetFullPath(@($item.Target)[0])
+        }
+        if ($target) { return $target }
     }
     return $item.FullName
 }
