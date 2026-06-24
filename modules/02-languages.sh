@@ -24,22 +24,30 @@ _install_nvm() {
     local fragment_file="$fragment_dir/16-nvm.zsh"
     if [[ ! -f "$fragment_file" ]] || ! grep -q "NVM_DIR" "$fragment_file" 2>/dev/null; then
         log_info "Writing nvm shell fragment: $fragment_file"
-        # Lazy-load nvm: sourcing nvm.sh eagerly runs nvm's auto-use on every
-        # shell start (~0.5s+, often the single biggest startup cost). Instead
-        # define thin nvm/node/npm/npx stubs that source nvm.sh on first use,
-        # then hand off to the real command. Keeps interactive startup instant.
+        # Sourcing nvm.sh eagerly runs nvm's auto-use on every shell start
+        # (~0.4s, often the single biggest startup cost). Avoid that, but still
+        # put the default Node's bin on PATH eagerly (~0ms) so node/npm/npx are
+        # real binaries — a lazy shell-function node is invisible to execvp, so
+        # non-interactive children (Claude Code MCP servers, scripts) can't find
+        # it. The `nvm` command itself stays lazy: rarely used interactively,
+        # and sourcing nvm.sh is the slow part.
         dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
 export NVM_DIR=\"\$HOME/.nvm\"
 if [ -s \"\$NVM_DIR/nvm.sh\" ]; then
+  _nvm_bin=\"\$(command find \"\$NVM_DIR/versions/node\" -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1)\"
+  if [ -n \"\$_nvm_bin\" ]; then
+    case \":\$PATH:\" in
+      *\":\$_nvm_bin:\"*) ;;
+      *) PATH=\"\$_nvm_bin:\$PATH\" ;;
+    esac
+  fi
+  unset _nvm_bin
   _envsetup_load_nvm() {
-    unset -f nvm node npm npx _envsetup_load_nvm
+    unset -f nvm _envsetup_load_nvm
     \\. \"\$NVM_DIR/nvm.sh\"
     [ -s \"\$NVM_DIR/bash_completion\" ] && \\. \"\$NVM_DIR/bash_completion\"
   }
-  nvm()  { _envsetup_load_nvm; nvm \"\$@\"; }
-  node() { _envsetup_load_nvm; node \"\$@\"; }
-  npm()  { _envsetup_load_nvm; npm \"\$@\"; }
-  npx()  { _envsetup_load_nvm; npx \"\$@\"; }
+  nvm() { _envsetup_load_nvm; nvm \"\$@\"; }
 fi
 FRAGMENT"
     fi
