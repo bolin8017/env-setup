@@ -145,7 +145,9 @@ function Install-NerdFont {
         foreach ($f in $files) {
             $dest = Join-Path $fontDir $f
             if (-not (Test-Path -LiteralPath $dest)) {
-                Invoke-WebRequest -UseBasicParsing -Uri "$base/$([uri]::EscapeDataString($f))" -OutFile $dest
+                Invoke-WithRetry -What "font download ($f)" -Action {
+                    Invoke-WebRequest -UseBasicParsing -Uri "$base/$([uri]::EscapeDataString($f))" -OutFile $dest
+                }
                 $added++
             }
             # Register per-user so Windows Terminal resolves the face by name.
