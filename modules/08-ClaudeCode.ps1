@@ -19,7 +19,52 @@ function Install-ClaudeNative {
     if (Test-Command 'claude') { Write-Success 'Claude Code already installed'; return }
     if (Test-DryRun) { Write-Info '[DRY-RUN] Would run: irm https://claude.ai/install.ps1 | iex'; return }
     Write-Info 'Installing Claude Code (native installer)...'
-    Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' | Invoke-Expression
+    $installer = Invoke-WithRetry -What 'Claude Code download' -Action { Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' }
+    Invoke-Expression $installer
+}
+
+function Add-ClaudeBinToPath {
+    # The native installer drops claude.exe in ~/.local/bin but does NOT put it on
+    # PATH (it only prints a manual instruction). Two consequences we fix here:
+    #   1. `claude` is unusable in new shells until the user edits PATH by hand.
+    #   2. Register-ClaudeMarketplaces / Install-ClaudePlugins below gate on
+    #      Test-Command 'claude' and therefore silently skip in this same run.
+    # Prepend it to the *session* PATH (so the steps that follow find claude) and
+    # persist it to the *user* PATH (no admin) for future shells. Idempotent.
+    $bin = Join-Path $HOME '.local/bin'
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would add $bin to the user PATH"; return }
+    if (-not (Test-Path -LiteralPath $bin)) { return }
+
+    if (($env:Path -split ';') -notcontains $bin) { $env:Path = "$bin;$env:Path" }
+
+    # Read/write the RAW user PATH (DoNotExpandEnvironmentNames) and preserve the
+    # value kind, so we never freeze a %VAR% in another entry into a literal.
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    try {
+        $raw  = [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+        $kind = if ($null -ne $key.GetValue('Path')) { $key.GetValueKind('Path') } else { [Microsoft.Win32.RegistryValueKind]::ExpandString }
+        $entries = $raw -split ';' | Where-Object { $_ -ne '' }
+        if ($entries | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') }) { return }
+        $newRaw = if ([string]::IsNullOrEmpty($raw)) { $bin } else { $raw.TrimEnd(';') + ';' + $bin }
+        $key.SetValue('Path', $newRaw, $kind)
+        Write-Success "Added $bin to the user PATH (open a new terminal to pick it up)"
+    } finally { $key.Close() }
+}
+
+function Remove-ClaudeBinFromPath {
+    # Reverse Add-ClaudeBinToPath: drop ~/.local/bin from the user PATH on uninstall.
+    $bin = Join-Path $HOME '.local/bin'
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would remove $bin from the user PATH"; return }
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    try {
+        if ($null -eq $key.GetValue('Path')) { return }
+        $raw  = [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+        $kind = $key.GetValueKind('Path')
+        $kept = $raw -split ';' | Where-Object { $_ -ne '' -and $_.TrimEnd('\') -ine $bin.TrimEnd('\') }
+        if (($raw -split ';' | Where-Object { $_ -ne '' }).Count -eq $kept.Count) { return }
+        $key.SetValue('Path', ($kept -join ';'), $kind)
+        Write-Success "Removed $bin from the user PATH"
+    } finally { $key.Close() }
 }
 
 function Sync-ClaudeFile {
@@ -115,6 +160,7 @@ function Install-ClaudeCode {
     if (-not (Test-CfgEnabled 'claude_code.enabled')) { Write-Info 'Claude Code disabled — skipping'; return }
     Write-Header 'Claude Code'
     Install-ClaudeNative
+    Add-ClaudeBinToPath
     if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' }
     if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' }
     if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' }
@@ -210,6 +256,7 @@ function Uninstall-ClaudeCode {
         }
         $launcher = Join-Path $HOME '.local/bin/claude.exe'
         if (Test-Path -LiteralPath $launcher) { Remove-OrDryRun -Path $launcher }
+        Remove-ClaudeBinFromPath
         Write-Info 'Claude CLI removed where found; ~/.claude data (auth/history) preserved.'
     }
 }
