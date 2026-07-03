@@ -49,6 +49,12 @@ Describe 'Remove-ManagedFile' {
         Remove-ManagedFile -Dest $dst -RepoSrc $src -Label 'x' | Out-Null
         Test-Path $dst | Should -BeTrue
     }
+    It 'preserves a file whose lines were reordered by the user' {
+        $src = Join-Path $script:Tmp 'src3.txt'; Set-Content $src "a`nb"
+        $dst = Join-Path $script:Tmp 'dst3.txt'; Set-Content $dst "b`na"
+        Remove-ManagedFile -Dest $dst -RepoSrc $src -Label 'x' | Out-Null
+        Test-Path $dst | Should -BeTrue
+    }
 }
 
 Describe 'Remove-ManagedSettingsKeys' {

@@ -75,8 +75,24 @@ function Invoke-WithRetry {
     }
 }
 
+function Test-FileContentEqual {
+    # Byte-exact file comparison (the Windows analog of `cmp -s`). Line-based
+    # Compare-Object is an unordered multiset diff and must not be used to
+    # decide whether a managed file was user-modified.
+    param(
+        [Parameter(Mandatory)][string]$PathA,
+        [Parameter(Mandatory)][string]$PathB
+    )
+    if (-not (Test-Path -LiteralPath $PathA) -or -not (Test-Path -LiteralPath $PathB)) { return $false }
+    try {
+        $ha = (Get-FileHash -LiteralPath $PathA -Algorithm SHA256).Hash
+        $hb = (Get-FileHash -LiteralPath $PathB -Algorithm SHA256).Hash
+        return ($ha -eq $hb)
+    } catch { return $false }
+}
+
 Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
     Test-Command, Test-IsWindows, Assert-Windows, Invoke-WithRetry, `
     Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
-    Test-KeepTools, Test-Purge, Test-NoRestore
+    Test-KeepTools, Test-Purge, Test-NoRestore, Test-FileContentEqual
