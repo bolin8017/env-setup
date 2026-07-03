@@ -75,7 +75,17 @@ function Install-App {
     }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: winget install --id $Id -e"; return }
     winget install --id $Id -e --accept-source-agreements --accept-package-agreements
-    if (-not (Test-WingetSucceeded $LASTEXITCODE)) { throw "winget install $Id failed (exit $LASTEXITCODE)" }
+    if (Test-WingetSucceeded $LASTEXITCODE) { return }
+    if (-not (Test-Elevated)) {
+        # Mirror the Bash engine's no-sudo path: a winget failure on an
+        # unelevated session feeds the admin summary and the run continues,
+        # instead of failing the whole module. (Previously this defer
+        # machinery was dead code - no caller ever reached it.)
+        Add-MissingAdminPackage $Id
+        Write-Warn "Deferring $Id to an administrator (winget failed unelevated; exit $LASTEXITCODE)"
+        return
+    }
+    throw "winget install $Id failed (exit $LASTEXITCODE)"
 }
 
 function Show-MissingAdminSummary {
