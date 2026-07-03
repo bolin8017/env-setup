@@ -20,6 +20,9 @@ function Test-ProtectedPath {
     # Return $true if the path must never be removed.
     param([Parameter(Mandatory)][string]$Path)
     $abs  = Get-AbsPath $Path
+    # Get-AbsPath normalizes '/' to '' and 'C:\' to 'C:'; treat filesystem and
+    # drive roots as always protected.
+    if (-not $abs -or $abs -match '^[A-Za-z]:$') { return $true }
     $home0 = $HOME.TrimEnd('\', '/')
     if ($abs -ieq $home0) { return $true }
 

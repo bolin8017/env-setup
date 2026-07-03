@@ -20,6 +20,10 @@ Describe 'Test-ProtectedPath' {
     It 'does not protect ~/.claude/CLAUDE.md' {
         Test-ProtectedPath -Path (Join-Path $HOME '.claude/CLAUDE.md') | Should -BeFalse
     }
+    It 'protects the filesystem root and drive roots' {
+        Test-ProtectedPath -Path '/' | Should -BeTrue
+        Test-ProtectedPath -Path 'C:\' | Should -BeTrue
+    }
     It 'honours ENVSETUP_PROTECTED_EXTRA' {
         $env:ENVSETUP_PROTECTED_EXTRA = (Join-Path $HOME 'Documents')
         Test-ProtectedPath -Path (Join-Path $HOME 'Documents/repos/x') | Should -BeTrue

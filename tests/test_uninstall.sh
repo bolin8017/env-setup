@@ -34,6 +34,7 @@ is_protected_path "$HOME/.env-setup/backups"; assert_true $? "backups dir is pro
 is_protected_path "$HOME/.env-setup/backups/backup_x/file"; assert_true $? "path under backups is protected"
 is_protected_path "$HOME/.claude/.credentials.json"; assert_true $? "claude credentials protected"
 is_protected_path "$HOME/.claude/projects/foo"; assert_true $? "claude projects protected"
+is_protected_path "/"; assert_true $? "filesystem root is protected"
 is_protected_path "$HOME/.zshrc"; assert_false $? "HOME/.zshrc is not protected"
 is_protected_path "$HOME/.claude/CLAUDE.md"; assert_false $? "HOME/.claude/CLAUDE.md is not protected"
 

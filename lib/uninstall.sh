@@ -48,6 +48,10 @@ is_protected_path() {
     local abs
     abs="$(_abs "$1")"
 
+    # _abs("/") normalizes to the empty string; treat it (and bare "/") as the
+    # most protected input of all rather than falling through the guards.
+    [[ -z "$abs" || "$abs" == "/" ]] && return 0
+
     [[ "$abs" == "$HOME" ]] && return 0
 
     local backups="${BACKUP_DIR%/}"
