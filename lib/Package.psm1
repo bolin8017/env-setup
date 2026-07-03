@@ -42,11 +42,12 @@ function Install-Pkg {
     if (-not (Test-ScoopAvailable)) {
         throw "scoop not available - cannot install $Name (run 01-Core first)"
     }
-    # scoop is a PowerShell shim whose $LASTEXITCODE is unreliable (and reading it
-    # unset throws under StrictMode), so we don't gate on it here. Robust per-tool
-    # failure detection lands in Stage 2, where modules exercise this against a
-    # real scoop and the check can be validated.
     scoop install $Name
+    # scoop's shim reliably propagates its exit code (verified empirically:
+    # failure -> 1, already-installed -> 0 with a WARN, success -> 0). Guard the
+    # read: under StrictMode a never-set $LASTEXITCODE would throw.
+    $code = Get-Variable -Name LASTEXITCODE -ValueOnly -ErrorAction Ignore
+    if ($null -ne $code -and $code -ne 0) { throw "scoop install $Name failed (exit $code)" }
 }
 
 function Test-WingetSucceeded {
