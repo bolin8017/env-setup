@@ -35,24 +35,24 @@ _envsetup_update_check() {
     # Stamp up-front so a failing fetch doesn't retry on every shell.
     echo "$now" > "$stamp" 2>/dev/null
 
-    git -C "$repo" fetch --quiet 2>/dev/null || return 0
+    # GIT_TERMINAL_PROMPT=0 / BatchMode: with stderr discarded, a credential
+    # prompt (expired HTTPS token, passphrased SSH key) would be invisible
+    # while git waits on stdin — the new shell looks frozen. Fail fast instead.
+    GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
+        git -C "$repo" fetch --quiet 2>/dev/null || return 0
     local behind
     behind="$(git -C "$repo" rev-list --count HEAD..@{u} 2>/dev/null || echo 0)"
     [[ "$behind" == <-> && "$behind" -gt 0 ]] || return 0
 
-    if ! git -C "$repo" pull --ff-only --quiet 2>/dev/null; then
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$repo" pull --ff-only --quiet 2>/dev/null; then
         print -P "%F{yellow}env-setup: update available but fast-forward failed; resolve ${repo} by hand.%f"
         return 0
     fi
 
-    print -P "%F{cyan}env-setup updated (${behind} new commit(s)).%f"
-    if [[ -t 0 ]] && read -q "?Apply now (re-run setup)? [y/N] "; then
-        print ""
-        ENVSETUP_UPDATE_RUNNING=1 bash "$repo/setup.sh"
-    else
-        print ""
-        print -P "Run %F{green}env-update%f to apply later."
-    fi
+    # No interactive prompt here: during zshrc init the p10k instant prompt
+    # buffers output, so a read would eat keystrokes against an invisible
+    # question. Print the notice and let the user apply when convenient.
+    print -P "%F{cyan}env-setup updated (${behind} new commit(s)). Run %F{green}env-update%f%F{cyan} to apply.%f"
 }
 
 # Don't recurse while a triggered setup re-run is in progress.
