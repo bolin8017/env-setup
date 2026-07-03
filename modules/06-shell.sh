@@ -293,6 +293,12 @@ set_default_shell() {
 # install_shell — Main entry point
 # =============================================================================
 install_shell() {
+    # Master switch (also the SKIP_SHELL_SETUP env override's landing site).
+    if [[ "$(cfg_get "shell.enabled")" == "false" ]]; then
+        log_info "Shell module disabled in config — skipping"
+        return 0
+    fi
+
     print_header "Shell (Zsh + Oh My Zsh + Powerlevel10k)"
 
     install_zsh

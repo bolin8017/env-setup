@@ -77,6 +77,9 @@ assert_contains "$content_10" 'ZSH="$HOME/.oh-my-zsh"'  "10: sets ZSH path"
 assert_contains "$content_10" "plugins="                  "10: defines plugins list"
 assert_contains "$content_10" "oh-my-zsh.sh"              "10: sources oh-my-zsh"
 assert_not_contains "$content_10" "zsh-completions" "10: zsh-completions is fpath-only, not a plugin (its README's OMZ pitfall)"
+assert_contains "$content_10" "plugins+=" "10: external plugins appended dynamically"
+assert_contains "$content_10" '[[ -d ' "10: external plugins are existence-guarded (no warnings after uninstall)"
+assert_not_contains "$(cat "$PROJECT_ROOT/config.yaml.example")" "builtin:" "config: dead shell.plugins.builtin knob removed"
 assert_contains "$content_10" "powerlevel10k"              "10: sets p10k theme"
 
 # 20: History

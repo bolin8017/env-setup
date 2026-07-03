@@ -19,6 +19,11 @@ COMPLETION_WAITING_DOTS="true"
 # Plugins
 # ---------------------------
 
+# This list is the source of truth for what LOADS (ordering matters and is
+# encoded here); config.yaml's shell.plugins.external controls what gets
+# CLONED. External entries are existence-guarded below, so removing one from
+# config (and uninstalling its clone) no longer leaves an OMZ "plugin not
+# found" warning on every shell start.
 plugins=(
     # --- Built-in: core ---
     git
@@ -39,21 +44,22 @@ plugins=(
     docker-compose
     gh
     fzf
-
-    # --- External: must come BEFORE zsh-autosuggestions and zsh-syntax-highlighting ---
-    # (the extra-completions package is intentionally absent here: it is
-    # fpath-registered by the 05-completions-fpath.zsh fragment BEFORE
-    # compinit, which is the only way its src/ functions actually register.)
-    fzf-tab
-    zsh-you-should-use
-    zsh-autosuggestions
-
-    # zsh-syntax-highlighting MUST be the last plugin loaded
-    zsh-syntax-highlighting
-
-    # history-substring-search must come AFTER zsh-syntax-highlighting
-    history-substring-search
 )
+
+# --- External: only when the clone exists; must come BEFORE
+# zsh-autosuggestions and zsh-syntax-highlighting.
+# (the extra-completions package is intentionally absent here: it is
+# fpath-registered by the 05-completions-fpath.zsh fragment BEFORE
+# compinit, which is the only way its src/ functions actually register.)
+_envsetup_custom="${ZSH_CUSTOM:-$ZSH/custom}/plugins"
+for _envsetup_p in fzf-tab zsh-you-should-use zsh-autosuggestions zsh-syntax-highlighting; do
+    # zsh-syntax-highlighting MUST stay the last external loaded
+    [[ -d "$_envsetup_custom/$_envsetup_p" ]] && plugins+=("$_envsetup_p")
+done
+unset _envsetup_custom _envsetup_p
+
+# history-substring-search (built-in) must come AFTER zsh-syntax-highlighting
+plugins+=(history-substring-search)
 
 # Load Oh My Zsh
 source "$ZSH/oh-my-zsh.sh"
