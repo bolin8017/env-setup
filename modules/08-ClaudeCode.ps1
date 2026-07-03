@@ -80,19 +80,29 @@ function Remove-ClaudeBinFromPath {
     } finally { $key.Close() }
 }
 
+# All Sync-Claude* helpers take an optional -Root (default ~/.claude) so
+# Sync-ClaudeProfiles can mirror the same assets into per-account
+# ~/.claude-<profile> dirs.
 function Sync-ClaudeFile {
-    param([Parameter(Mandatory)][string]$RelSource, [Parameter(Mandatory)][string]$RelDest)
+    param(
+        [Parameter(Mandatory)][string]$RelSource,
+        [Parameter(Mandatory)][string]$RelDest,
+        [string]$Root = (Join-Path $HOME '.claude')
+    )
     $src = Join-Path $script:ClaudeCfg $RelSource
-    $dest = Join-Path $HOME ".claude/$RelDest"
+    $dest = Join-Path $Root $RelDest
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     Deploy-Config -Source $src -Destination $dest -Label $RelDest
 }
 
 function Sync-ClaudeDir {
-    param([Parameter(Mandatory)][string]$SubDir)
+    param(
+        [Parameter(Mandatory)][string]$SubDir,
+        [string]$Root = (Join-Path $HOME '.claude')
+    )
     $srcDir = Join-Path $script:ClaudeCfg $SubDir
     if (-not (Test-Path $srcDir)) { Write-Info "$SubDir source missing - skipping"; return }
-    $destDir = Join-Path $HOME ".claude/$SubDir"
+    $destDir = Join-Path $Root $SubDir
     New-DirOrDryRun -Path $destDir
     Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
         Deploy-Config -Source $_.FullName -Destination (Join-Path $destDir $_.Name) -Label "$SubDir/$($_.Name)"
@@ -103,14 +113,35 @@ function Sync-ClaudeSkills {
     # Skills are directories (SKILL.md + optional support files); each file is
     # deployed individually so user modifications keep overwrite protection.
     # Additive: machine-only skills are preserved.
+    param([string]$Root = (Join-Path $HOME '.claude'))
     $srcRoot = Join-Path $script:ClaudeCfg 'skills'
     if (-not (Test-Path $srcRoot)) { Write-Info 'skills source missing - skipping'; return }
     foreach ($skill in @(Get-ChildItem $srcRoot -Directory -ErrorAction Ignore)) {
-        $destDir = Join-Path $HOME ".claude/skills/$($skill.Name)"
+        $destDir = Join-Path $Root "skills/$($skill.Name)"
         New-DirOrDryRun -Path $destDir
         foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
             Deploy-Config -Source $f.FullName -Destination (Join-Path $destDir $f.Name) -Label "skills/$($skill.Name)/$($f.Name)"
         }
+    }
+}
+
+function Sync-ClaudeProfiles {
+    # Mirror the file-based harness (CLAUDE.md, rules, commands, agents,
+    # skills) into each ~/.claude-<name> declared in claude_code.profiles.
+    # Profiles are alternate Claude Code accounts selected via
+    # CLAUDE_CONFIG_DIR (`claude-as <name>` in configs/aliases.ps1); each keeps
+    # its own credentials/settings/plugins, so only static assets are synced -
+    # settings.json merge and plugin installs stay per-profile manual.
+    $profiles = @(Get-CfgList 'claude_code.profiles')
+    if ($profiles.Count -eq 0) { Write-Info 'no claude profiles declared - skipping'; return }
+    foreach ($p in $profiles) {
+        Write-Info "Syncing claude account profile: $p"
+        $root = Join-Path $HOME ".claude-$p"
+        if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' -Root $root }
+        if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' -Root $root }
+        if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' -Root $root }
+        if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' -Root $root }
+        if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills -Root $root }
     }
 }
 
@@ -246,6 +277,7 @@ function Install-ClaudeCode {
     if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' }
     if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' }
     if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills }
+    Sync-ClaudeProfiles
     Sync-ClaudeSettings
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
@@ -286,30 +318,42 @@ function Uninstall-ClaudeMcp {
     Write-Info 'No ~/.claude.json backup - leaving MCP servers intact'
 }
 
-function Uninstall-ClaudeCode {
-    Write-Header 'Uninstall: Claude Code'
-
-    # C - managed config files (user-edited copies preserved by Remove-ManagedFile)
-    Remove-ManagedFile -Dest (Join-Path $HOME '.claude/CLAUDE.md') `
+function Uninstall-ClaudeAssets {
+    # Remove the managed file-based harness from one config root (~/.claude or
+    # a ~/.claude-<profile> dir). User-edited copies preserved by Remove-ManagedFile.
+    param([Parameter(Mandatory)][string]$Root)
+    Remove-ManagedFile -Dest (Join-Path $Root 'CLAUDE.md') `
         -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
     foreach ($sub in @('rules', 'commands', 'agents')) {
         $srcDir = Join-Path $script:ClaudeCfg $sub
         if (-not (Test-Path $srcDir)) { continue }
         Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
-            Remove-ManagedFile -Dest (Join-Path $HOME ".claude/$sub/$($_.Name)") -RepoSrc $_.FullName -Label "$sub/$($_.Name)"
+            Remove-ManagedFile -Dest (Join-Path $Root "$sub/$($_.Name)") -RepoSrc $_.FullName -Label "$sub/$($_.Name)"
         }
     }
     $skillsRoot = Join-Path $script:ClaudeCfg 'skills'
     if (Test-Path $skillsRoot) {
         foreach ($skill in @(Get-ChildItem $skillsRoot -Directory -ErrorAction Ignore)) {
             foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
-                Remove-ManagedFile -Dest (Join-Path $HOME ".claude/skills/$($skill.Name)/$($f.Name)") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$($f.Name)"
+                Remove-ManagedFile -Dest (Join-Path $Root "skills/$($skill.Name)/$($f.Name)") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$($f.Name)"
             }
-            $destDir = Join-Path $HOME ".claude/skills/$($skill.Name)"
+            $destDir = Join-Path $Root "skills/$($skill.Name)"
             if (-not (Test-DryRun) -and (Test-Path $destDir) -and -not @(Get-ChildItem $destDir -Force)) {
                 Remove-Item -LiteralPath $destDir
             }
         }
+    }
+}
+
+function Uninstall-ClaudeCode {
+    Write-Header 'Uninstall: Claude Code'
+
+    # C - managed config files, in ~/.claude and (detection-driven, not
+    # config-driven) every ~/.claude-<profile> dir present on this machine
+    Uninstall-ClaudeAssets -Root (Join-Path $HOME '.claude')
+    foreach ($proot in @(Get-ChildItem -Path $HOME -Directory -Filter '.claude-*' -Force -ErrorAction Ignore)) {
+        Write-Info "Uninstalling claude profile assets: $($proot.Name)"
+        Uninstall-ClaudeAssets -Root $proot.FullName
     }
 
     Uninstall-ClaudeSettings

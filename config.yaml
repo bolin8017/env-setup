@@ -239,6 +239,20 @@ claude_code:
   # (personal skills — load on demand, the successor format to commands)
   sync_skills: true
 
+  # Alternate Claude Code account profiles. Each name gets its own config dir
+  # ~/.claude-<name> (credentials, settings, history, plugins all isolated via
+  # the official CLAUDE_CONFIG_DIR mechanism) with the same file-based harness
+  # (CLAUDE.md, rules, commands, agents, skills) synced into it. Switch with
+  # `claude-as <name>` (see configs/aliases.zsh / aliases.ps1); first use of a
+  # profile needs /login. settings.json merge and plugin installs are not
+  # mirrored - manage those per profile. Default: no extra profiles.
+  # To declare profiles use the sequence form (the parser does not read
+  # flow-style [a, b] lists):
+  #   profiles:
+  #     - work
+  #     - personal
+  profiles: []
+
   # Whitelist of top-level keys to merge from configs/claude/settings.json into
   # ~/.claude/settings.json. Keys not listed here are preserved verbatim on the
   # machine (useful for experimental or auth-related fields). The merge is

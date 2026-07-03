@@ -25,6 +25,8 @@ claude_code:
   register_marketplaces: true
   install_enabled_plugins: true
   sync_mcp_servers: true
+  profiles:
+    - work
 '@
         $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
         Import-Config -Path $f
@@ -45,6 +47,10 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Label -like 'skills/weekly-review/*' }
     }
+    It 'syncs harness assets into each declared profile dir' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*.claude-work*' }
+    }
     It 'skips entirely when claude_code.enabled is false' {
         $yaml = @'
 claude_code:
@@ -57,6 +63,14 @@ claude_code:
     }
 }
 
+
+Describe 'aliases.ps1 claude-as profile wrapper' {
+    It 'defines claude-as routing through CLAUDE_CONFIG_DIR' {
+        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
+        $aliases | Should -Match 'function claude-as'
+        $aliases | Should -Match 'CLAUDE_CONFIG_DIR'
+    }
+}
 
 Describe 'plugin/marketplace idempotency pre-checks' {
     It 'detects an already-registered marketplace from known_marketplaces.json' {

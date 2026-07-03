@@ -183,7 +183,7 @@ setup.sh 讀取 config.yaml → 依序執行模組
  ├─ 05-cli-tools    11 個 CLI 工具
  ├─ 06-shell        Zsh → Oh My Zsh → P10k → plugins → .zshrc 組裝
  ├─ 07-tmux         tmux → TPM → config → plugins
- ├─ 08-claude-code  Claude Code CLI（原生安裝 + 設定同步）
+ ├─ 08-claude-code  Claude Code CLI（原生安裝 + 設定同步 + 多帳號 profiles）
  └─ 09-user-dirs    在 $HOME 下建立個人目錄
 ```
 
@@ -198,7 +198,7 @@ setup.ps1 讀取 config.yaml → 依序執行模組
  ├─ 05-CliTools     現代 CLI 工具
  ├─ 06-Shell        PowerShell 7 → Oh My Posh → PSReadLine → 模組 → $PROFILE 組裝 → WT 字型
  ├─ 07-Multiplexer  zellij + dev layout
- ├─ 08-ClaudeCode   Claude Code CLI（原生安裝 + 設定同步）
+ ├─ 08-ClaudeCode   Claude Code CLI（原生安裝 + 設定同步 + 多帳號 profiles）
  └─ 09-UserDirs     在 $HOME 下建立個人目錄
 ```
 

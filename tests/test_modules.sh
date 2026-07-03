@@ -219,4 +219,20 @@ _out="$(install_shell 2>&1)"
 assert_contains "$_out" "disabled" "shell.enabled=false skips the module"
 CFG_SHELL_ENABLED="true"
 
+# =============================================================================
+# =============================================================================
+suite "claude account profiles (08-claude-code)"
+# =============================================================================
+
+# Declared profiles get the file-based harness synced into ~/.claude-<name>
+CFG_CLAUDE_CODE_PROFILES_COUNT=1
+CFG_CLAUDE_CODE_PROFILES_0="work"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" ".claude-work" "profiles: assets deploy under ~/.claude-work"
+CFG_CLAUDE_CODE_PROFILES_COUNT=0
+
+# No profiles declared -> quiet no-op
+_out="$(DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" "no claude profiles" "profiles: empty list is a quiet no-op"
+
 print_test_summary

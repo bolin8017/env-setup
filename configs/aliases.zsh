@@ -156,6 +156,23 @@ elif [[ -f /etc/debian_version ]]; then
 fi
 
 # ---------------------------
+# Claude Code account profiles
+# ---------------------------
+# Run Claude Code under an alternate account profile. Each profile keeps its
+# own config dir (~/.claude-<name>): credentials (Linux/Windows), settings,
+# history, and plugins are fully isolated per the official CLAUDE_CONFIG_DIR
+# contract. First use of a profile: `claude-as <name>` then /login.
+claude-as() {
+    if [[ -z "${1:-}" ]]; then
+        echo "usage: claude-as <profile> [claude args...]" >&2
+        return 2
+    fi
+    local profile="$1"
+    shift
+    CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" command claude "$@"
+}
+
+# ---------------------------
 # env-setup self-update
 # ---------------------------
 # Pull the latest env-setup and re-apply it. Works on any machine regardless of

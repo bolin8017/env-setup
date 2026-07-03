@@ -91,7 +91,10 @@ _install_ccstatusline() {
 }
 
 # =============================================================================
-# _sync_claude_global_md — Deploy ~/.claude/CLAUDE.md from repo
+# _sync_claude_global_md — Deploy <root>/CLAUDE.md from repo.
+# All _sync_claude_* functions take an optional config-root argument
+# (default ~/.claude) so _sync_claude_profiles can mirror the same assets
+# into per-account ~/.claude-<profile> dirs.
 # =============================================================================
 _sync_claude_global_md() {
     if ! cfg_enabled "claude_code.sync_global_md"; then
@@ -100,7 +103,7 @@ _sync_claude_global_md() {
     fi
 
     local src="${ENV_SETUP_DIR}/configs/claude/CLAUDE.md"
-    local dest="${HOME}/.claude/CLAUDE.md"
+    local dest="${1:-${HOME}/.claude}/CLAUDE.md"
 
     dry_run_mkdir "$(dirname "$dest")"
     deploy_config "$src" "$dest" "global CLAUDE.md"
@@ -118,7 +121,7 @@ _sync_claude_rules() {
     fi
 
     local src_dir="${ENV_SETUP_DIR}/configs/claude/rules"
-    local dest_dir="${HOME}/.claude/rules"
+    local dest_dir="${1:-${HOME}/.claude}/rules"
 
     if [[ ! -d "$src_dir" ]]; then
         log_warn "rules source dir not found: ${src_dir}"
@@ -146,7 +149,7 @@ _sync_claude_commands() {
     fi
 
     local src_dir="${ENV_SETUP_DIR}/configs/claude/commands"
-    local dest_dir="${HOME}/.claude/commands"
+    local dest_dir="${1:-${HOME}/.claude}/commands"
 
     if [[ ! -d "$src_dir" ]]; then
         log_warn "commands source dir not found: ${src_dir}"
@@ -174,7 +177,7 @@ _sync_claude_agents() {
     fi
 
     local src_dir="${ENV_SETUP_DIR}/configs/claude/agents"
-    local dest_dir="${HOME}/.claude/agents"
+    local dest_dir="${1:-${HOME}/.claude}/agents"
 
     if [[ ! -d "$src_dir" ]]; then
         log_warn "agents source dir not found: ${src_dir}"
@@ -204,7 +207,7 @@ _sync_claude_skills() {
     fi
 
     local src_root="${ENV_SETUP_DIR}/configs/claude/skills"
-    local dest_root="${HOME}/.claude/skills"
+    local dest_root="${1:-${HOME}/.claude}/skills"
 
     if [[ ! -d "$src_root" ]]; then
         log_warn "skills source dir not found: ${src_root}"
@@ -221,6 +224,37 @@ _sync_claude_skills() {
         done
     done
     shopt -u nullglob
+}
+
+# =============================================================================
+# _sync_claude_profiles — Mirror the file-based harness (CLAUDE.md, rules,
+# commands, agents, skills) into each ~/.claude-<name> declared in
+# claude_code.profiles. Profiles are alternate Claude Code accounts selected
+# via CLAUDE_CONFIG_DIR (`claude-as <name>` in configs/aliases.zsh); each keeps
+# its own credentials/settings/plugins, so only static assets are synced —
+# settings.json merge and plugin installs stay per-profile manual.
+# =============================================================================
+_sync_claude_profiles() {
+    local profiles=() p
+    while IFS= read -r p; do
+        [[ -n "$p" ]] && profiles+=("$p")
+    done < <(cfg_list "claude_code.profiles")
+
+    if [[ ${#profiles[@]} -eq 0 ]]; then
+        log_info "no claude profiles declared — skipping"
+        return 0
+    fi
+
+    local root
+    for p in "${profiles[@]}"; do
+        log_info "Syncing claude account profile: ${p}"
+        root="${HOME}/.claude-${p}"
+        _sync_claude_global_md "$root"
+        _sync_claude_rules "$root"
+        _sync_claude_commands "$root"
+        _sync_claude_agents "$root"
+        _sync_claude_skills "$root"
+    done
 }
 
 # =============================================================================
@@ -642,6 +676,7 @@ install_claude_code() {
     _sync_claude_commands
     _sync_claude_agents
     _sync_claude_skills
+    _sync_claude_profiles
     _merge_claude_settings
     _set_ccstatusline_command
     _register_plugin_marketplaces
@@ -762,6 +797,34 @@ _remove_claude_cli() {
 }
 
 # =============================================================================
+# _uninstall_claude_assets — Remove the managed file-based harness from one
+# config root (~/.claude or a ~/.claude-<profile> dir). User-edited copies
+# are preserved by remove_managed_file.
+# =============================================================================
+_uninstall_claude_assets() {
+    local root="$1"
+    local cdir="${ENV_SETUP_DIR}/configs/claude"
+
+    remove_managed_file "${root}/CLAUDE.md" "${cdir}/CLAUDE.md" "global CLAUDE.md"
+    local f
+    shopt -s nullglob
+    for f in "${cdir}/rules"/*.md;    do remove_managed_file "${root}/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
+    for f in "${cdir}/commands"/*.md; do remove_managed_file "${root}/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
+    for f in "${cdir}/agents"/*.md;   do remove_managed_file "${root}/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
+    local skill_dir skill_name
+    for skill_dir in "${cdir}/skills"/*/; do
+        skill_name="$(basename "$skill_dir")"
+        for f in "$skill_dir"*; do
+            [[ -f "$f" ]] && remove_managed_file "${root}/skills/${skill_name}/$(basename "$f")" "$f" "skill ${skill_name}/$(basename "$f")"
+        done
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            rmdir "${root}/skills/${skill_name}" 2>/dev/null || true
+        fi
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
 # uninstall_claude_code — Reverse install_claude_code (surgical).
 # =============================================================================
 uninstall_claude_code() {
@@ -769,24 +832,15 @@ uninstall_claude_code() {
 
     local cdir="${ENV_SETUP_DIR}/configs/claude"
 
-    # C — managed config files (user-edited copies are preserved by remove_managed_file)
-    remove_managed_file "${HOME}/.claude/CLAUDE.md" "${cdir}/CLAUDE.md" "global CLAUDE.md"
-    local f
-    shopt -s nullglob
-    for f in "${cdir}/rules"/*.md;    do remove_managed_file "${HOME}/.claude/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
-    for f in "${cdir}/commands"/*.md; do remove_managed_file "${HOME}/.claude/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
-    for f in "${cdir}/agents"/*.md;   do remove_managed_file "${HOME}/.claude/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
-    local skill_dir skill_name
-    for skill_dir in "${cdir}/skills"/*/; do
-        skill_name="$(basename "$skill_dir")"
-        for f in "$skill_dir"*; do
-            [[ -f "$f" ]] && remove_managed_file "${HOME}/.claude/skills/${skill_name}/$(basename "$f")" "$f" "skill ${skill_name}/$(basename "$f")"
-        done
-        if [[ "${DRY_RUN:-false}" != "true" ]]; then
-            rmdir "${HOME}/.claude/skills/${skill_name}" 2>/dev/null || true
-        fi
+    # C — managed config files, in ~/.claude and (detection-driven, not
+    # config-driven) every ~/.claude-<profile> dir present on this machine
+    _uninstall_claude_assets "${HOME}/.claude"
+    local proot
+    for proot in "${HOME}"/.claude-*/; do
+        [[ -d "$proot" ]] || continue
+        log_info "Uninstalling claude profile assets: $(basename "$proot")"
+        _uninstall_claude_assets "${proot%/}"
     done
-    shopt -u nullglob
 
     _uninstall_claude_settings
     _uninstall_claude_mcp
