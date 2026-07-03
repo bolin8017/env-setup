@@ -46,6 +46,14 @@ Describe 'aliases.ps1 self-update command' {
     }
 }
 
+Describe '45-self-update.ps1 hardening' {
+    It 'suppresses git credential prompts and never blocks on Read-Host' {
+        $c = Get-Content -Raw (Join-Path $RepoRoot 'configs/pwsh/45-self-update.ps1')
+        $c | Should -Match 'GIT_TERMINAL_PROMPT'
+        $c | Should -Not -Match 'Read-Host'
+    }
+}
+
 Describe 'Test-EnvSetupShouldCheck' {
     BeforeAll {
         $env:ENVSETUP_UPDATE_RUNNING = '1'   # suppress the top-level check on dot-source

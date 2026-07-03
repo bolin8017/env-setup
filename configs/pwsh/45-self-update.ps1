@@ -25,7 +25,9 @@ function Invoke-EnvSetupUpdateCheck {
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     $last = [long]0
     if (Test-Path -LiteralPath $stamp) {
-        [void][long]::TryParse((Get-Content -LiteralPath $stamp -Raw).Trim(), [ref]$last)
+        # [string] cast: an empty stamp file makes Get-Content -Raw return
+        # $null, and $null.Trim() would red-error on every shell start.
+        [void][long]::TryParse([string](Get-Content -LiteralPath $stamp -Raw), [ref]$last)
     }
     $freq = [int]7
     [void][int]::TryParse($Env:ENVSETUP_UPDATE_FREQ_DAYS, [ref]$freq)
@@ -34,6 +36,11 @@ function Invoke-EnvSetupUpdateCheck {
     # Stamp up-front so a failing fetch doesn't retry on every shell.
     Set-Content -LiteralPath $stamp -Value ([string]$now) -ErrorAction SilentlyContinue
 
+    # GIT_TERMINAL_PROMPT=0: with stderr discarded, a credential prompt
+    # (expired HTTPS token, passphrased SSH key) would be invisible while git
+    # waits on stdin — the new shell looks frozen. Fail fast instead.
+    $prevPrompt = $env:GIT_TERMINAL_PROMPT
+    $env:GIT_TERMINAL_PROMPT = '0'
     try {
         git -C "$repo" fetch --quiet 2>$null
         if ($LASTEXITCODE -ne 0) { return }
@@ -47,17 +54,14 @@ function Invoke-EnvSetupUpdateCheck {
             return
         }
 
-        Write-Host "env-setup updated ($cnt new commit(s))." -ForegroundColor Cyan
-        $reply = Read-Host 'Apply now (re-run setup)? [y/N]'
-        if ($reply -match '^[yY]') {
-            $Env:ENVSETUP_UPDATE_RUNNING = '1'
-            & (Join-Path $repo 'setup.ps1')
-            $Env:ENVSETUP_UPDATE_RUNNING = $null
-        } else {
-            Write-Host 'Run env-update to apply later.' -ForegroundColor Green
-        }
+        # No interactive prompt here: profile-loading automation (pwsh -File
+        # without -NoProfile) would hang on it. Print the notice and let the
+        # user apply via env-update when convenient.
+        Write-Host "env-setup updated ($cnt new commit(s)). Run env-update to apply." -ForegroundColor Cyan
     } catch {
         # Never let an update check break the shell.
+    } finally {
+        $env:GIT_TERMINAL_PROMPT = $prevPrompt
     }
 }
 
