@@ -51,14 +51,14 @@ function Write-WorklogRuntimeConfig {
         $existing = [string](Get-Content -Raw -LiteralPath $dest)
         if ($existing.TrimEnd() -eq $content.TrimEnd()) { Write-Info "[SKIP] $dest already up to date"; return }
     }
-    Set-Content -LiteralPath $dest -Value $content -Encoding utf8
+    Write-Utf8NoBom -Path $dest -Content $content
     Write-Success "Wrote $dest (source=$SourceLabel, role=$Role)"
 }
 
 function Test-WorklogRepoAccess {
     param([Parameter(Mandatory)][string]$Repo)
     if (-not (Test-Command 'gh')) { return $false }
-    gh repo view $Repo *> $null
+    Invoke-Native gh repo view $Repo | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -73,7 +73,7 @@ function Sync-WorklogRepo {
 
     if (Test-WorklogRepoAccess -Repo $Repo) {
         New-DirOrDryRun -Path (Split-Path $Dest -Parent)
-        gh repo clone $Repo $Dest *> $null
+        Invoke-Native gh repo clone $Repo $Dest | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Success "Cloned $Label ($Repo)" }
         else { Write-Warn "Clone of $Repo failed - /worklog will retry on first use" }
         return

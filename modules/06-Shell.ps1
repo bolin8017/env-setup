@@ -65,9 +65,9 @@ function Write-UpdateState {
 `$Env:ENVSETUP_UPDATE_ENABLED   = '$enabled'
 `$Env:ENVSETUP_UPDATE_FREQ_DAYS = '$freq'
 "@
-    Set-Content -LiteralPath $stateFile -Value $content -Encoding utf8
+    Write-Utf8NoBom -Path $stateFile -Content $content
     if ($enabled -eq '1' -and -not (Test-Path -LiteralPath $tsFile)) {
-        Set-Content -LiteralPath $tsFile -Value ([string][DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -Encoding utf8
+        Write-Utf8NoBom -Path $tsFile -Content ([string][DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
     }
     Write-Success "Wrote self-update state ($stateFile)"
 }
@@ -92,9 +92,18 @@ function Set-WindowsTerminalFont {
     $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
     if (-not (Test-Path $wt)) { Write-Info 'Windows Terminal settings not found - skipping font config'; return }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge Nerd Font into $wt"; return }
+    # Windows Terminal settings are JSONC: pwsh 7 parses comments (but the
+    # rewrite below cannot preserve them); Windows PowerShell 5.1 cannot parse
+    # them at all — skip with guidance instead of failing the module.
+    $raw = Get-Content -Raw -LiteralPath $wt
+    $merged = $null
+    try { $merged = Merge-WtSettings -CurrentJson $raw -FontFace 'MesloLGS NF' }
+    catch { Write-Warn "Could not parse $wt (comments are unsupported on PowerShell 5.1) - set the font face manually"; return }
+    if ($raw -match '(?m)^\s*//|/\*') {
+        Write-Warn 'Windows Terminal settings.json contains comments; the rewrite cannot preserve them (a backup is kept)'
+    }
     Backup-File -Path $wt -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
-    $merged = Merge-WtSettings -CurrentJson (Get-Content -Raw -LiteralPath $wt) -FontFace 'MesloLGS NF'
-    Set-Content -LiteralPath $wt -Value $merged -Encoding utf8
+    Write-Utf8NoBom -Path $wt -Content $merged
     Write-Success 'Configured Windows Terminal font'
 }
 

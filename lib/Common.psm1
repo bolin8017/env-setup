@@ -75,6 +75,36 @@ function Invoke-WithRetry {
     }
 }
 
+function Write-Utf8NoBom {
+    # Windows PowerShell 5.1's `Set-Content -Encoding utf8` writes a BOM, which
+    # strict JSON consumers (e.g. Node reading ~/.claude.json) reject. One
+    # BOM-less writer for every JSON/state file, identical on both PS editions.
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Content
+    )
+    [IO.File]::WriteAllText($Path, $Content, [Text.UTF8Encoding]::new($false))
+}
+
+function Invoke-Native {
+    # Run a native command with stderr merged into the output stream WITHOUT
+    # tripping Windows PowerShell 5.1's RemoteException: under EAP=Stop, 5.1
+    # throws the moment a native command writes to a redirected stderr. Takes
+    # exe + args (not a scriptblock) so the invocation happens in THIS scope,
+    # where EAP is relaxed — a caller-defined scriptblock would still run under
+    # the caller's EAP=Stop. $LASTEXITCODE is preserved for the caller's own
+    # success check. Quote literal dash-flags ('-x') so they don't bind as
+    # parameters.
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$Exe,
+        [Parameter(Position = 1, ValueFromRemainingArguments)][object[]]$Arguments = @()
+    )
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & $Exe @Arguments 2>&1 }
+    finally { $ErrorActionPreference = $prev }
+}
+
 function Test-FileContentEqual {
     # Byte-exact file comparison (the Windows analog of `cmp -s`). Line-based
     # Compare-Object is an unordered multiset diff and must not be used to
@@ -95,4 +125,5 @@ Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
     Test-Command, Test-IsWindows, Assert-Windows, Invoke-WithRetry, `
     Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
-    Test-KeepTools, Test-Purge, Test-NoRestore, Test-FileContentEqual
+    Test-KeepTools, Test-Purge, Test-NoRestore, Test-FileContentEqual, `
+    Write-Utf8NoBom, Invoke-Native
