@@ -262,6 +262,10 @@ claude_code:
   # (custom subagent definitions — directory may be empty)
   sync_agents: true
 
+  # Deploy ~/.claude/skills/<name>/ from configs/claude/skills/<name>/
+  # (personal skills — load on demand, the successor format to commands)
+  sync_skills: true
+
   # Whitelist of top-level keys to merge from configs/claude/settings.json into
   # ~/.claude/settings.json. Keys not listed here are preserved verbatim on the
   # machine (useful for experimental or auth-related fields). The merge is

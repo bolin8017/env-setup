@@ -19,6 +19,7 @@ claude_code:
   sync_rules: true
   sync_commands: true
   sync_agents: true
+  sync_skills: true
   settings_merge_keys:
     - env
   register_marketplaces: true
@@ -39,6 +40,10 @@ claude_code:
     It 'deploys the global CLAUDE.md when sync_global_md is true' {
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'CLAUDE.md' }
+    }
+    It 'deploys skills when sync_skills is true' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -like 'skills/weekly-review/*' }
     }
     It 'skips entirely when claude_code.enabled is false' {
         $yaml = @'
