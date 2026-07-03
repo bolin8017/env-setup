@@ -26,7 +26,10 @@ source "${_PACKAGE_LIB_DIR}/dryrun.sh"
 # sudo_available() detects elevation rights once and caches the result:
 #   1. macOS / DRY_RUN → assume available (brew handles macOS; dry-run prints).
 #   2. Cached or passwordless sudo (`sudo -n true`) → available.
-#   3. Non-TTY or AUTO_YES → unavailable (don't prompt in batch mode).
+#   3. No TTY → unavailable (don't prompt in batch mode). Note: --auto-yes
+#      does NOT imply batch — it means "overwrite files without asking", and
+#      the shipped config defaults it to true; an interactive run must still
+#      get its single sudo prompt or every apt package is silently deferred.
 #   4. Otherwise → `sudo -v` once. sudo reads the password directly from the
 #      TTY via getpass(); this script never sees, logs, or stores it.
 #
@@ -44,6 +47,9 @@ declare -a MISSING_APT_NOTES=()
 _SUDO_CHECKED=""
 _SUDO_AVAILABLE=""
 _SUDO_KEEPALIVE_PID=""
+
+# Testable seam: batch-mode detection for sudo_available.
+_stdin_is_tty() { [[ -t 0 ]]; }
 
 sudo_available() {
     # Dry-run and macOS skip the sudo path entirely
@@ -71,8 +77,8 @@ sudo_available() {
     fi
 
     # Batch / non-interactive: don't prompt
-    if ! [[ -t 0 ]] || [[ "${AUTO_YES:-false}" == "true" ]]; then
-        log_warn "sudo needs a password but no TTY (or --auto-yes) — apt installs will be deferred"
+    if ! _stdin_is_tty; then
+        log_warn "sudo needs a password but there is no TTY — apt installs will be deferred"
         _SUDO_AVAILABLE="false"
         return 1
     fi
