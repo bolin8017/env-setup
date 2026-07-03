@@ -36,6 +36,7 @@ function Add-ClaudeBinToPath {
     if (-not (Test-Path -LiteralPath $bin)) { return }
 
     if (($env:Path -split ';') -notcontains $bin) { $env:Path = "$bin;$env:Path" }
+    $marker = Join-Path $HOME '.env-setup/.claude-bin-path-added'
 
     # Read/write the RAW user PATH (DoNotExpandEnvironmentNames) and preserve the
     # value kind, so we never freeze a %VAR% in another entry into a literal.
@@ -47,14 +48,26 @@ function Add-ClaudeBinToPath {
         if ($entries | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') }) { return }
         $newRaw = if ([string]::IsNullOrEmpty($raw)) { $bin } else { $raw.TrimEnd(';') + ';' + $bin }
         $key.SetValue('Path', $newRaw, $kind)
+        # Marker: uninstall must only remove the entry WE added - ~/.local/bin
+        # is a shared convention dir (pipx uses it too).
+        New-Item -ItemType Directory -Path (Split-Path $marker -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $marker -Value 'added by env-setup 08-ClaudeCode'
         Write-Success "Added $bin to the user PATH (open a new terminal to pick it up)"
     } finally { $key.Close() }
 }
 
 function Remove-ClaudeBinFromPath {
-    # Reverse Add-ClaudeBinToPath: drop ~/.local/bin from the user PATH on uninstall.
+    # Reverse Add-ClaudeBinToPath: drop ~/.local/bin from the user PATH on
+    # uninstall - but only when the install marker says WE added it. The dir
+    # is a shared convention (pipx et al.); pre-existing entries stay.
     $bin = Join-Path $HOME '.local/bin'
+    $marker = Join-Path $HOME '.env-setup/.claude-bin-path-added'
+    if (-not (Test-Path -LiteralPath $marker)) {
+        Write-Info "$bin was on the user PATH before env-setup - leaving it"
+        return
+    }
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would remove $bin from the user PATH"; return }
+    Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue
     $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
     try {
         if ($null -eq $key.GetValue('Path')) { return }
@@ -112,6 +125,11 @@ function Sync-ClaudeSettings {
     if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing settings.json (KeepExisting)'; return }
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     if (-not (Test-Path $dest)) { Copy-Item -LiteralPath $src -Destination $dest; Write-Success "Created $dest from repo template"; return }
+    # A corrupted user file must degrade to a warning (the Bash twin jq-empty
+    # checks first) - under EAP=Stop a parse throw would abort the module and
+    # skip every later step (marketplaces, plugins, ccstatusline).
+    try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
+    catch { Write-Warn "$dest is not valid JSON - skipping merge. Fix manually."; return }
     $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
     $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
@@ -131,16 +149,59 @@ function Sync-ClaudeMcp {
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $count MCP server(s) into $dest"; return }
     if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing MCP servers (KeepExisting)'; return }
     if (-not (Test-Path $dest)) { Write-Warn "$dest not found - run Claude Code once first; skipping MCP sync"; return }
+    try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
+    catch { Write-Warn "$dest is not valid JSON - skipping MCP sync. Fix manually."; return }
     $merged = Merge-McpServers -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src)
+    # Idempotency (the Bash twin has this): without it every setup run backed
+    # up and rewrote the live ~/.claude.json, so the "newest backup" converged
+    # to already-merged content and the uninstall restore became a no-op.
+    $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+    $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+    if ($curNorm -eq $newNorm) { Write-Info 'MCP servers already in sync - skipping'; return }
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Write-Utf8NoBom -Path $dest -Content $merged
     Write-Success "Synced $count MCP server(s)"
 }
 
+function Test-ClaudeMarketplaceRegistered {
+    # Pure pre-check against ~/.claude/plugins/known_marketplaces.json (the
+    # same idempotency source the Bash twin reads) so re-runs skip the slow,
+    # networked CLI call and its misleading "Failed to register" on repeats.
+    param(
+        [Parameter(Mandatory)][string]$Repo,
+        [Parameter(Mandatory)][string]$JsonPath
+    )
+    if (-not (Test-Path -LiteralPath $JsonPath)) { return $false }
+    try { $known = Get-Content -Raw $JsonPath | ConvertFrom-Json } catch { return $false }
+    foreach ($m in $known.PSObject.Properties) {
+        $srcNode = $m.Value.PSObject.Properties['source']
+        if ($srcNode -and $srcNode.Value.PSObject.Properties['repo'] -and $srcNode.Value.repo -eq $Repo) { return $true }
+    }
+    return $false
+}
+
+function Test-ClaudePluginInstalled {
+    # Pure pre-check against ~/.claude/plugins/installed_plugins.json.
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$JsonPath
+    )
+    if (-not (Test-Path -LiteralPath $JsonPath)) { return $false }
+    try { $installed = Get-Content -Raw $JsonPath | ConvertFrom-Json } catch { return $false }
+    $plugins = $installed.PSObject.Properties['plugins']
+    if (-not $plugins) { return $false }
+    $entry = $plugins.Value.PSObject.Properties[$Name]
+    return ($null -ne $entry -and @($entry.Value).Count -gt 0)
+}
+
 function Register-ClaudeMarketplaces {
     if (-not (Test-CfgEnabled 'claude_code.register_marketplaces')) { return }
     if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found - skipping marketplace registration'; return }
+    $known = Join-Path $HOME '.claude/plugins/known_marketplaces.json'
     foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
+        if (Test-ClaudeMarketplaceRegistered -Repo $repo -JsonPath $known) {
+            Write-Info "marketplace $repo already registered - skipping"; continue
+        }
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace add $repo"; continue }
         Invoke-Native claude plugin marketplace add $repo | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Success "Registered marketplace: $repo" } else { Write-Warn "Failed to register marketplace: $repo" }
@@ -154,8 +215,12 @@ function Install-ClaudePlugins {
     if (-not (Test-Path $src)) { return }
     $settings = Get-Content -Raw $src | ConvertFrom-Json
     if (-not $settings.PSObject.Properties['enabledPlugins']) { return }
+    $installedJson = Join-Path $HOME '.claude/plugins/installed_plugins.json'
     foreach ($p in $settings.enabledPlugins.PSObject.Properties) {
         if ($p.Value -ne $true) { continue }
+        if (Test-ClaudePluginInstalled -Name $p.Name -JsonPath $installedJson) {
+            Write-Info "plugin $($p.Name) already installed - skipping"; continue
+        }
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin install $($p.Name)"; continue }
         Invoke-Native claude plugin install $p.Name | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Success "Installed plugin: $($p.Name)" } else { Write-Warn "Failed to install plugin: $($p.Name)" }
@@ -188,16 +253,6 @@ function Install-ClaudeCode {
     Install-Ccstatusline
 }
 
-function Get-NewestBakPath {
-    param([Parameter(Mandatory)][string]$Path)
-    $dir  = Split-Path $Path -Parent
-    $leaf = Split-Path $Path -Leaf
-    if (-not (Test-Path -LiteralPath $dir)) { return $null }
-    $b = Get-ChildItem -LiteralPath $dir -Filter "$leaf.bak.*" -ErrorAction Ignore |
-         Sort-Object LastWriteTime | Select-Object -Last 1
-    if ($b) { return $b.FullName } else { return $null }
-}
-
 function Uninstall-ClaudeSettings {
     $dest = Join-Path $HOME '.claude/settings.json'
     $src  = Join-Path $script:ClaudeCfg 'settings.json'
@@ -210,6 +265,8 @@ function Uninstall-ClaudeSettings {
         Write-Success "Restored settings.json from $(Split-Path $bak -Leaf)"; return
     }
     if (-not (Test-Path $src)) { return }
+    try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
+    catch { Write-Warn "$dest is not valid JSON - leaving it. Fix manually."; return }
     $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would strip $($keys.Count) env-setup key(s) from settings.json"; return }
     $stripped = Remove-ManagedSettingsKeys -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
@@ -261,6 +318,10 @@ function Uninstall-ClaudeCode {
     $cc = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
     if ($cc) {
         Remove-ManagedFile -Dest (Join-Path $HOME '.config/ccstatusline/settings.json') -RepoSrc $cc.Path -Label 'ccstatusline settings.json'
+        $ccDir = Join-Path $HOME '.config/ccstatusline'
+        if (-not (Test-DryRun) -and (Test-Path -LiteralPath $ccDir) -and -not @(Get-ChildItem -LiteralPath $ccDir -Force)) {
+            Remove-Item -LiteralPath $ccDir
+        }
     }
 
     # T - plugins/marketplaces + CLI binary

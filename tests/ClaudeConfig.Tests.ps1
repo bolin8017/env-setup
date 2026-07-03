@@ -31,3 +31,14 @@ Describe 'Merge-McpServers' {
         $o.x | Should -Be 1
     }
 }
+
+
+Describe 'Remove-ManagedSettingsKeys array-vs-scalar safety' {
+    BeforeAll { Import-Module "$PSScriptRoot/../lib/ClaudeConfig.psm1" -Force }
+    It 'does not treat a one-element array as equal to its bare element' {
+        # Pipeline ConvertTo-Json unwraps @('x') to "x", wrongly stripping a
+        # user's diverged value on uninstall.
+        $out = Remove-ManagedSettingsKeys -CurrentJson '{"env":["x"]}' -SourceJson '{"env":"x"}' -WhitelistKeys @('env')
+        ($out | ConvertFrom-Json).PSObject.Properties['env'] | Should -Not -BeNullOrEmpty
+    }
+}
