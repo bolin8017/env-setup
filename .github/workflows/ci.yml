@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -100,7 +103,9 @@ jobs:
         shell: pwsh
         run: |
           $r = Invoke-Pester -Path tests -Output Detailed -PassThru
-          if ($r.FailedCount -gt 0) { throw "$($r.FailedCount) test(s) failed" }
+          # Result check (not FailedCount): a throw during discovery or in a
+          # BeforeAll marks tests NotRun with FailedCount 0 - a green lie.
+          if ($r.Result -ne 'Passed') { throw "Pester result: $($r.Result) ($($r.FailedCount) failed, $($r.NotRunCount) not run)" }
 
   powershell-dry-run:
     name: Dry Run (windows-latest)
@@ -139,7 +144,9 @@ jobs:
         run: |
           Import-Module Pester -MinimumVersion 5.5.0 -Force
           $r = Invoke-Pester -Path tests -Output Detailed -PassThru
-          if ($r.FailedCount -gt 0) { throw "$($r.FailedCount) test(s) failed" }
+          # Result check (not FailedCount): a throw during discovery or in a
+          # BeforeAll marks tests NotRun with FailedCount 0 - a green lie.
+          if ($r.Result -ne 'Passed') { throw "Pester result: $($r.Result) ($($r.FailedCount) failed, $($r.NotRunCount) not run)" }
 
       - name: Dry-run under Windows PowerShell 5.1
         shell: powershell

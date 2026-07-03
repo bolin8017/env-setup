@@ -209,4 +209,24 @@ function Get-CfgList {
     return [string[]]@()
 }
 
-Export-ModuleMember -Function Import-Config, Get-CfgValue, Test-CfgEnabled, Get-CfgList
+function Get-CfgFlatMap {
+    # Flatten the loaded config into "dotted.path=value" lines (list items as
+    # dotted.path.<index>=value), sorted. Exists for the cross-engine parity
+    # test: tests/test_parser_parity.sh diffs this view against lib/yaml.sh's.
+    function Get-FlatEntry {
+        param($Node, [string]$Prefix)
+        if ($Node -is [System.Collections.IDictionary]) {
+            foreach ($k in @($Node.Keys)) {
+                $p = if ($Prefix) { "$Prefix.$k" } else { [string]$k }
+                Get-FlatEntry -Node $Node[$k] -Prefix $p
+            }
+        }
+        elseif ($Node -is [System.Collections.IList]) {
+            for ($i = 0; $i -lt $Node.Count; $i++) { "$Prefix.$i=$($Node[$i])" }
+        }
+        else { "$Prefix=$Node" }
+    }
+    return @(Get-FlatEntry -Node $script:Config -Prefix '') | Sort-Object
+}
+
+Export-ModuleMember -Function Import-Config, Get-CfgValue, Test-CfgEnabled, Get-CfgList, Get-CfgFlatMap

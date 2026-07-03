@@ -1,5 +1,8 @@
 name: Integration Tests
 
+permissions:
+  contents: read
+
 on:
   # Weekly on Monday at 02:00 UTC
   schedule:
@@ -11,6 +14,9 @@ on:
     branches: [main]
     paths:
       - 'setup.sh'
+      - 'uninstall.sh'
+      - 'bootstrap.sh'
+      - 'scripts/**'
       - 'lib/**'
       - 'modules/**'
       - 'configs/**'

@@ -109,3 +109,16 @@ Describe 'Import-Config on the repo config.yaml' {
         Test-CfgEnabled 'windows.windows_terminal' | Should -BeTrue
     }
 }
+
+
+Describe 'Get-CfgFlatMap' {
+    It 'flattens scalars and lists into dotted lines (parity-test contract)' {
+        $f = Join-Path $TestDrive 'flat.yaml'
+        Set-Content $f "a:`n  b: 1`n  c:`n    - x`n    - y`n"
+        Import-Config -Path $f
+        $m = Get-CfgFlatMap
+        $m | Should -Contain 'a.b=1'
+        $m | Should -Contain 'a.c.0=x'
+        $m | Should -Contain 'a.c.1=y'
+    }
+}

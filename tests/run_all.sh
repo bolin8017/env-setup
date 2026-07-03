@@ -31,6 +31,8 @@ tests=(
     "test_user_dirs.sh"
     "test_ccstatusline.sh"
     "test_shellcheck.sh"
+    "test_parser_parity.sh"
+    "e2e/test_uninstall_roundtrip.sh"
 )
 
 total_suites=0

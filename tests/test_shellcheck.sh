@@ -31,6 +31,7 @@ suite "Lint all shell scripts"
 # Collect all .sh files
 scripts=(
     "$PROJECT_ROOT/setup.sh"
+    "$PROJECT_ROOT/uninstall.sh"
     "$PROJECT_ROOT/bootstrap.sh"
 )
 
