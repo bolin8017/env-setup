@@ -109,6 +109,14 @@ assert_eq "user zshrc" "$(cat "$_dr_home/.zshrc")"      "dry-run leaves .zshrc u
 assert_eq "user tmux"  "$(cat "$_dr_home/.tmux.conf")"  "dry-run leaves .tmux.conf untouched"
 assert_eq "user p10k"  "$(cat "$_dr_home/.p10k.zsh")"   "dry-run leaves .p10k.zsh untouched"
 
+# Dry-run must not report phantom install failures for tools that were
+# (correctly) not installed, and must not evaluate $(curl ...) eagerly.
+_dr_out="$(HOME="$_dr_home" bash "$PROJECT_ROOT/setup.sh" --dry-run --auto-yes 2>&1 || true)"
+assert_not_contains "$_dr_out" "installation failed" "dry-run reports no phantom install failures"
+
+_eager="$(grep -l 'dry_run_cmd.*"\$(curl' "$PROJECT_ROOT"/modules/*.sh 2>/dev/null || true)"
+assert_eq "" "$_eager" "no module evaluates \$(curl ...) before dry_run_cmd sees it"
+
 # Nothing new may appear anywhere in the sandbox except the log dir
 _unexpected="$(cd "$_dr_home" && find . -path ./.env-setup -prune -o -type f -print     | grep -v -e '^\./\.zshrc$' -e '^\./\.tmux\.conf$' -e '^\./\.p10k\.zsh$' || true)"
 assert_eq "" "$_unexpected" "dry-run creates no files outside ~/.env-setup logs"

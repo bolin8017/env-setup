@@ -15,12 +15,7 @@ _install_tmux_bin() {
     log_info "Installing tmux..."
     pkg_install tmux
 
-    if command_exists tmux; then
-        log_success "tmux installed"
-    else
-        log_error "tmux installation failed"
-        return 1
-    fi
+    verify_installed tmux "tmux" || return 1
 }
 
 # =============================================================================
@@ -66,7 +61,7 @@ _install_tpm() {
         log_info "Installing Tmux Plugin Manager (TPM)..."
         dry_run_mkdir "${HOME}/.tmux/plugins"
         dry_run_cmd git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
-        if [[ -d "$tpm_dir" ]]; then
+        if [[ "${DRY_RUN:-false}" == "true" ]] || [[ -d "$tpm_dir" ]]; then
             log_success "TPM installed"
         else
             log_error "TPM installation failed"
@@ -143,7 +138,13 @@ _install_tmux_plugins() {
             dry_run_cmd tmux start-server
             dry_run_cmd tmux new-session -d -s _tpm_install
             dry_run_cmd "$tpm_install"
-            dry_run_cmd tmux kill-session -t _tpm_install 2>/dev/null || true
+            # Redirect only outside dry-run, or the [DRY-RUN] preview line is
+            # swallowed and the dry run under-reports its actions.
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                dry_run_cmd tmux kill-session -t _tpm_install
+            else
+                tmux kill-session -t _tpm_install 2>/dev/null || true
+            fi
         fi
         log_success "tmux plugins installed"
     else
@@ -186,7 +187,13 @@ uninstall_tmux() {
 
     if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
         if command_exists tmux; then
-            dry_run_cmd tmux kill-session -t _tpm_install 2>/dev/null || true
+            # Redirect only outside dry-run, or the [DRY-RUN] preview line is
+            # swallowed and the dry run under-reports its actions.
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                dry_run_cmd tmux kill-session -t _tpm_install
+            else
+                tmux kill-session -t _tpm_install 2>/dev/null || true
+            fi
         fi
         remove_managed_dir "${HOME}/.tmux/plugins" "tmux plugins (TPM)"
         if [[ "${DRY_RUN:-false}" != "true" ]]; then

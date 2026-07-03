@@ -802,11 +802,19 @@ uninstall_claude_code() {
             local plugin repo
             while IFS= read -r plugin; do
                 [[ -z "$plugin" ]] && continue
-                dry_run_cmd claude plugin uninstall "$plugin" >/dev/null 2>&1 || true
+                if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                    dry_run_cmd claude plugin uninstall "$plugin"
+                else
+                    claude plugin uninstall "$plugin" >/dev/null 2>&1 || true
+                fi
             done < <(jq -r '.enabledPlugins | to_entries[] | select(.value == true) | .key' "${cdir}/settings.json" 2>/dev/null)
             while IFS= read -r repo; do
                 [[ -z "$repo" ]] && continue
-                dry_run_cmd claude plugin marketplace remove "$repo" >/dev/null 2>&1 || true
+                if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                    dry_run_cmd claude plugin marketplace remove "$repo"
+                else
+                    claude plugin marketplace remove "$repo" >/dev/null 2>&1 || true
+                fi
             done < <(cfg_list "claude_code.marketplaces")
         fi
         _remove_claude_cli
