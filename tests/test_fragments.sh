@@ -156,4 +156,14 @@ suite "P10k config file"
 assert_file_exists "$PROJECT_ROOT/configs/p10k/.p10k.zsh" "p10k config exists"
 
 # =============================================================================
+# =============================================================================
+suite "tmux config"
+# =============================================================================
+
+content_tmux="$(cat "$PROJECT_ROOT/configs/tmux/tmux.conf")"
+assert_not_contains "$content_tmux" "| bc" "tmux: no bc-based version detection (breaks on 3.2a/3.5a)"
+assert_not_contains "$content_tmux" "status-bg" "tmux: no pre-2.9 legacy style options"
+assert_not_contains "$content_tmux" "pane-border-fg" "tmux: no legacy pane border options"
+assert_contains "$content_tmux" "status-style" "tmux: uses modern -style options"
+
 print_test_summary
