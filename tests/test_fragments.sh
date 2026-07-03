@@ -17,6 +17,7 @@ suite "Required fragment files exist"
 
 required_fragments=(
     "00-p10k-instant-prompt.zsh"
+    "05-completions-fpath.zsh"
     "10-omz.zsh"
     "20-history.zsh"
     "30-completion.zsh"
@@ -75,6 +76,7 @@ content_10="$(cat "$FRAG_DIR/10-omz.zsh")"
 assert_contains "$content_10" 'ZSH="$HOME/.oh-my-zsh"'  "10: sets ZSH path"
 assert_contains "$content_10" "plugins="                  "10: defines plugins list"
 assert_contains "$content_10" "oh-my-zsh.sh"              "10: sources oh-my-zsh"
+assert_not_contains "$content_10" "zsh-completions" "10: zsh-completions is fpath-only, not a plugin (its README's OMZ pitfall)"
 assert_contains "$content_10" "powerlevel10k"              "10: sets p10k theme"
 
 # 20: History
@@ -84,14 +86,22 @@ assert_contains "$content_20" "SAVEHIST"       "20: sets SAVEHIST"
 assert_contains "$content_20" "SHARE_HISTORY"  "20: enables shared history"
 
 # 30: Completion
+content_05="$(cat "$FRAG_DIR/05-completions-fpath.zsh")"
+assert_contains "$content_05" "zsh-completions" "05: adds zsh-completions to fpath"
+assert_contains "$content_05" "fpath" "05: touches fpath (must precede compinit)"
+
 content_30="$(cat "$FRAG_DIR/30-completion.zsh")"
 assert_contains "$content_30" "completion" "30: has completion config"
-assert_contains "$content_30" "zsh-completions" "30: references zsh-completions"
+assert_not_contains "$content_30" "zsh-completions" "30: fpath registration moved to 05 (pre-compinit)"
 
 # 40: Environment
 content_40="$(cat "$FRAG_DIR/40-env.zsh")"
 assert_contains "$content_40" "EDITOR" "40: sets EDITOR"
 assert_contains "$content_40" "LANG"   "40: sets LANG"
+assert_not_contains "$content_40" "LC_ALL" "40: no blanket LC_ALL override"
+assert_contains "$content_40" "locale -a" "40: LANG gated on locale availability"
+assert_contains "$content_40" "command -v vim" "40: EDITOR guarded on vim presence"
+assert_contains "$content_40" ':$PATH:' "40: .local/bin prepend is dedup-guarded"
 assert_contains "$content_40" "PATH"   "40: modifies PATH"
 
 # 50: Tool integrations
@@ -116,6 +126,10 @@ assert_not_contains "$content_55" "read -q"                "55: no interactive p
 # 60: Aliases
 content_60="$(cat "$FRAG_DIR/60-aliases.zsh")"
 assert_contains "$content_60" "aliases.zsh" "60: sources aliases file"
+
+content_aliases="$(cat "$PROJECT_ROOT/configs/aliases.zsh")"
+assert_not_contains "$content_aliases" "grep --color=auto -n" "aliases: grep alias must not inject -n into pipelines"
+assert_not_contains "$content_aliases" "ifconfig | grep" "aliases: localip must not require net-tools ifconfig"
 
 # 99: P10k config
 content_99="$(cat "$FRAG_DIR/99-p10k-config.zsh")"

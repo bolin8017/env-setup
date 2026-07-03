@@ -12,8 +12,9 @@ alias lm='ls -lh'
 # List files sorted by modification time (newest first)
 alias lt='ls -lht'
 
-# Recursively grep with color and line numbers
-alias grep='grep --color=auto -n'
+# Grep with color. No -n here: unlike --color=auto, -n stays active in
+# pipelines and silently corrupts `... | grep x | awk ...` one-liners.
+alias grep='grep --color=auto'
 
 # Count files in current directory (non-recursive)
 alias filecount='ls -1 | wc -l'
@@ -136,8 +137,16 @@ alias rm='rm -i'
 # Get public IP
 alias myip='curl -s https://api.ipify.org && echo'
 
-# Get local IP
-alias localip="ifconfig | grep 'inet ' | grep -v 127.0.0.1 | awk '{print \$2}'"
+# Get local IP (iproute2 first: modern Ubuntu ships no ifconfig/net-tools)
+localip() {
+    if command -v ip >/dev/null 2>&1; then
+        ip -4 addr show scope global | awk '/inet /{print $2}' | cut -d/ -f1
+    elif command -v ifconfig >/dev/null 2>&1; then
+        ifconfig | awk '/inet /&&!/127.0.0.1/{print $2}'
+    else
+        hostname -I 2>/dev/null
+    fi
+}
 
 # Update system (OS-specific)
 if [[ "$OSTYPE" == "darwin"* ]]; then
