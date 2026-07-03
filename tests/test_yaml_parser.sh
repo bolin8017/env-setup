@@ -230,4 +230,21 @@ printf 'ok:
 _warn="$(yaml_parse "$_lint_yaml" 2>&1 >/dev/null)"
 assert_eq "" "$_warn" "well-formed config produces no warnings"
 
+
+suite "load_config error handling"
+# =============================================================================
+
+# shellcheck source=lib/common.sh
+source "$PROJECT_ROOT/lib/common.sh"
+# shellcheck source=lib/config.sh
+source "$PROJECT_ROOT/lib/config.sh"
+export HOME="$TEST_TMPDIR/home"; mkdir -p "$HOME"; setup_logging
+
+# A typo'd --config path must be an error, not a silent fallback to the repo
+# config (which would then run with the wrong profile).
+rc=0; out="$(load_config "/nonexistent/custom.yaml" 2>&1)" || rc=$?
+assert_false $rc "explicit config path that does not exist is an error"
+assert_contains "$out" "/nonexistent/custom.yaml" "error names the missing path"
+
+# =============================================================================
 print_test_summary
