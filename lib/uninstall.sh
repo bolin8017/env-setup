@@ -144,7 +144,7 @@ remove_fragment() {
         log_info "[SKIP] fragment ${name} not present"
         return 0
     fi
-    if [[ -n "$marker" ]] && ! grep -q "$marker" "$frag" 2>/dev/null; then
+    if [[ -n "$marker" ]] && ! grep -qF "$marker" "$frag" 2>/dev/null; then
         log_warn "fragment ${name}: marker '${marker}' absent — preserved"
         return 0
     fi
