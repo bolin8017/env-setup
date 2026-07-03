@@ -227,12 +227,37 @@ _sync_claude_skills() {
 }
 
 # =============================================================================
-# _sync_claude_profiles — Mirror the file-based harness (CLAUDE.md, rules,
-# commands, agents, skills) into each ~/.claude-<name> declared in
-# claude_code.profiles. Profiles are alternate Claude Code accounts selected
-# via CLAUDE_CONFIG_DIR (`claude-as <name>` in configs/aliases.zsh); each keeps
-# its own credentials/settings/plugins, so only static assets are synced —
-# settings.json merge and plugin installs stay per-profile manual.
+# _valid_claude_profile — Profile names become path components (~/.claude-<name>
+# on install, uninstall, and the claude-as alias), so anything path-like would
+# desynchronize those three consumers. Restrict to a safe charset.
+# =============================================================================
+_valid_claude_profile() {
+    [[ "$1" =~ ^[A-Za-z0-9_-]+$ ]]
+}
+
+# =============================================================================
+# _sync_claude_assets — Deploy the file-based harness (CLAUDE.md, rules,
+# commands, agents, skills) into one config root. The single authoritative
+# asset list: both the default ~/.claude sync and every profile sync go
+# through here, so a new asset type cannot reach one and miss the other.
+# Each piece self-gates on its claude_code.sync_* flag.
+# =============================================================================
+_sync_claude_assets() {
+    local root="$1"
+    _sync_claude_global_md "$root"
+    _sync_claude_rules "$root"
+    _sync_claude_commands "$root"
+    _sync_claude_agents "$root"
+    _sync_claude_skills "$root"
+}
+
+# =============================================================================
+# _sync_claude_profiles — Mirror the harness into each ~/.claude-<name>
+# declared in claude_code.profiles. Profiles are alternate Claude Code
+# accounts selected via CLAUDE_CONFIG_DIR (`claude-as <name>` in
+# configs/aliases.zsh); each keeps its own credentials/settings/plugins, so
+# only static assets are synced — settings.json merge and plugin installs
+# stay per-profile manual.
 # =============================================================================
 _sync_claude_profiles() {
     local profiles=() p
@@ -245,15 +270,13 @@ _sync_claude_profiles() {
         return 0
     fi
 
-    local root
     for p in "${profiles[@]}"; do
+        if ! _valid_claude_profile "$p"; then
+            log_warn "invalid profile name '${p}' (use letters/digits/-/_) — skipping"
+            continue
+        fi
         log_info "Syncing claude account profile: ${p}"
-        root="${HOME}/.claude-${p}"
-        _sync_claude_global_md "$root"
-        _sync_claude_rules "$root"
-        _sync_claude_commands "$root"
-        _sync_claude_agents "$root"
-        _sync_claude_skills "$root"
+        _sync_claude_assets "${HOME}/.claude-${p}"
     done
 }
 
@@ -671,11 +694,7 @@ install_claude_code() {
     _install_ccstatusline
 
     print_header "Claude Code config sync"
-    _sync_claude_global_md
-    _sync_claude_rules
-    _sync_claude_commands
-    _sync_claude_agents
-    _sync_claude_skills
+    _sync_claude_assets "${HOME}/.claude"
     _sync_claude_profiles
     _merge_claude_settings
     _set_ccstatusline_command
@@ -832,15 +851,21 @@ uninstall_claude_code() {
 
     local cdir="${ENV_SETUP_DIR}/configs/claude"
 
-    # C — managed config files, in ~/.claude and (detection-driven, not
-    # config-driven) every ~/.claude-<profile> dir present on this machine
+    # C — managed config files, in ~/.claude and each DECLARED profile dir.
+    # Deliberately config-driven, not a ~/.claude-* glob: the prefix is no
+    # proof env-setup manages a dir (a user's `cp -r ~/.claude ~/.claude-backup`
+    # or a third-party ~/.claude-<tool> must never be swept). Same precedent
+    # as the plugin/marketplace teardown below, which also reads config.
     _uninstall_claude_assets "${HOME}/.claude"
-    local proot
-    for proot in "${HOME}"/.claude-*/; do
+    local p proot
+    while IFS= read -r p; do
+        [[ -n "$p" ]] || continue
+        _valid_claude_profile "$p" || continue
+        proot="${HOME}/.claude-${p}"
         [[ -d "$proot" ]] || continue
-        log_info "Uninstalling claude profile assets: $(basename "$proot")"
-        _uninstall_claude_assets "${proot%/}"
-    done
+        log_info "Uninstalling claude profile assets: ${p}"
+        _uninstall_claude_assets "$proot"
+    done < <(cfg_list "claude_code.profiles")
 
     _uninstall_claude_settings
     _uninstall_claude_mcp

@@ -65,10 +65,41 @@ claude_code:
 
 
 Describe 'aliases.ps1 claude-as profile wrapper' {
+    BeforeAll {
+        # Extract just the claude-as function so dot-sourcing the aliases file
+        # cannot shadow ls/cat/etc. for the rest of the test run.
+        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
+        $tokens = $null; $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
+        $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'claude-as' }, $true)
+        if ($fn) { Invoke-Expression $fn.Extent.Text }
+    }
+
     It 'defines claude-as routing through CLAUDE_CONFIG_DIR' {
         $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
         $aliases | Should -Match 'function claude-as'
         $aliases | Should -Match 'CLAUDE_CONFIG_DIR'
+    }
+
+    It 'passes claude single-dash flags through instead of binding them' {
+        function global:claude { $global:CapturedArgs = $args; $global:CapturedDir = $env:CLAUDE_CONFIG_DIR }
+        try {
+            claude-as work -p 'do the thing'
+            @($global:CapturedArgs) | Should -Be @('-p', 'do the thing')
+            $global:CapturedDir | Should -Be (Join-Path $HOME '.claude-work')
+        } finally {
+            Remove-Item Function:\claude -ErrorAction Ignore
+            Remove-Variable -Name CapturedArgs, CapturedDir -Scope Global -ErrorAction Ignore
+        }
+    }
+
+    It 'restores CLAUDE_CONFIG_DIR after the call' {
+        function global:claude { }
+        try {
+            $before = $env:CLAUDE_CONFIG_DIR
+            claude-as work
+            $env:CLAUDE_CONFIG_DIR | Should -Be $before
+        } finally { Remove-Item Function:\claude -ErrorAction Ignore }
     }
 }
 

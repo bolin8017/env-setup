@@ -18,16 +18,18 @@ function g { git @args }
 # Claude Code account profiles: run claude under an alternate account, with
 # config/credentials/history isolated in ~/.claude-<name> per the official
 # CLAUDE_CONFIG_DIR contract. First use of a profile: `claude-as <name>` then
-# /login. ($ProfileName, not $Profile: $PROFILE is a PowerShell automatic
-# variable and must not be shadowed.)
+# /login. Deliberately a simple $args function with no param() block: the
+# parameter binder would otherwise intercept claude's own single-dash flags
+# (`claude-as work -p "..."` must reach claude, not bind to -ProfileName).
 function claude-as {
-    param(
-        [Parameter(Mandatory, Position = 0)][string]$ProfileName,
-        [Parameter(ValueFromRemainingArguments)][string[]]$ClaudeArgs
-    )
+    if (-not $args -or -not $args[0]) {
+        Write-Error 'usage: claude-as <profile> [claude args...]'
+        return
+    }
     $prev = $env:CLAUDE_CONFIG_DIR
-    $env:CLAUDE_CONFIG_DIR = Join-Path $HOME ".claude-$ProfileName"
-    try { & claude @ClaudeArgs }
+    $env:CLAUDE_CONFIG_DIR = Join-Path $HOME ".claude-$($args[0])"
+    $rest = @($args | Select-Object -Skip 1)
+    try { & claude @rest }
     finally { $env:CLAUDE_CONFIG_DIR = $prev }
 }
 

@@ -125,23 +125,43 @@ function Sync-ClaudeSkills {
     }
 }
 
+function Test-ClaudeProfileName {
+    # Profile names become path components (~/.claude-<name> on install,
+    # uninstall, and the claude-as alias), so anything path-like would
+    # desynchronize those three consumers. Restrict to a safe charset.
+    param([string]$Name)
+    return $Name -match '^[A-Za-z0-9_-]+$'
+}
+
+function Sync-ClaudeAssets {
+    # Deploy the file-based harness (CLAUDE.md, rules, commands, agents,
+    # skills) into one config root. The single authoritative asset list: both
+    # the default ~/.claude sync and every profile sync go through here, so a
+    # new asset type cannot reach one and miss the other.
+    param([Parameter(Mandatory)][string]$Root)
+    if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' -Root $Root }
+    if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' -Root $Root }
+    if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' -Root $Root }
+    if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' -Root $Root }
+    if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills -Root $Root }
+}
+
 function Sync-ClaudeProfiles {
-    # Mirror the file-based harness (CLAUDE.md, rules, commands, agents,
-    # skills) into each ~/.claude-<name> declared in claude_code.profiles.
-    # Profiles are alternate Claude Code accounts selected via
-    # CLAUDE_CONFIG_DIR (`claude-as <name>` in configs/aliases.ps1); each keeps
-    # its own credentials/settings/plugins, so only static assets are synced -
-    # settings.json merge and plugin installs stay per-profile manual.
+    # Mirror the harness into each ~/.claude-<name> declared in
+    # claude_code.profiles. Profiles are alternate Claude Code accounts
+    # selected via CLAUDE_CONFIG_DIR (`claude-as <name>` in
+    # configs/aliases.ps1); each keeps its own credentials/settings/plugins,
+    # so only static assets are synced - settings.json merge and plugin
+    # installs stay per-profile manual.
     $profiles = @(Get-CfgList 'claude_code.profiles')
     if ($profiles.Count -eq 0) { Write-Info 'no claude profiles declared - skipping'; return }
     foreach ($p in $profiles) {
+        if (-not (Test-ClaudeProfileName $p)) {
+            Write-Warn "invalid profile name '$p' (use letters/digits/-/_) - skipping"
+            continue
+        }
         Write-Info "Syncing claude account profile: $p"
-        $root = Join-Path $HOME ".claude-$p"
-        if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' -Root $root }
-        if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' -Root $root }
-        if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' -Root $root }
-        if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' -Root $root }
-        if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills -Root $root }
+        Sync-ClaudeAssets -Root (Join-Path $HOME ".claude-$p")
     }
 }
 
@@ -272,11 +292,7 @@ function Install-ClaudeCode {
     Write-Header 'Claude Code'
     Install-ClaudeNative
     Add-ClaudeBinToPath
-    if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' }
-    if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' }
-    if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' }
-    if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' }
-    if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills }
+    Sync-ClaudeAssets -Root (Join-Path $HOME '.claude')
     Sync-ClaudeProfiles
     Sync-ClaudeSettings
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
@@ -348,12 +364,18 @@ function Uninstall-ClaudeAssets {
 function Uninstall-ClaudeCode {
     Write-Header 'Uninstall: Claude Code'
 
-    # C - managed config files, in ~/.claude and (detection-driven, not
-    # config-driven) every ~/.claude-<profile> dir present on this machine
+    # C - managed config files, in ~/.claude and each DECLARED profile dir.
+    # Deliberately config-driven, not a ~/.claude-* glob: the prefix is no
+    # proof env-setup manages a dir (a user's backup copy or a third-party
+    # ~/.claude-<tool> must never be swept). Same precedent as the
+    # plugin/marketplace teardown below, which also reads config.
     Uninstall-ClaudeAssets -Root (Join-Path $HOME '.claude')
-    foreach ($proot in @(Get-ChildItem -Path $HOME -Directory -Filter '.claude-*' -Force -ErrorAction Ignore)) {
-        Write-Info "Uninstalling claude profile assets: $($proot.Name)"
-        Uninstall-ClaudeAssets -Root $proot.FullName
+    foreach ($p in @(Get-CfgList 'claude_code.profiles')) {
+        if (-not (Test-ClaudeProfileName $p)) { continue }
+        $proot = Join-Path $HOME ".claude-$p"
+        if (-not (Test-Path -LiteralPath $proot)) { continue }
+        Write-Info "Uninstalling claude profile assets: $p"
+        Uninstall-ClaudeAssets -Root $proot
     }
 
     Uninstall-ClaudeSettings
