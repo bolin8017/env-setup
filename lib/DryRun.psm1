@@ -49,8 +49,7 @@ function Deploy-Config {
     if (Test-Path -LiteralPath $Destination) {
         if (Test-KeepExisting) { Write-Info "[SKIP] Keeping existing $Label (KeepExisting)"; return }
         if (-not (Test-AutoYes)) {
-            $same = $false
-            try { $same = -not (Compare-Object (Get-Content -LiteralPath $Source) (Get-Content -LiteralPath $Destination)) } catch { $same = $false }
+            $same = Test-FileContentEqual -PathA $Source -PathB $Destination
             if ($same) { Write-Info "${Label}: identical to repo version - skipping"; return }
             if (-not (Confirm-Action "Overwrite ${Destination}?")) { Write-Info "[SKIP] Keeping existing $Label"; return }
         }

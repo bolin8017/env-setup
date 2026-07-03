@@ -20,6 +20,10 @@ Describe 'Test-ProtectedPath' {
     It 'does not protect ~/.claude/CLAUDE.md' {
         Test-ProtectedPath -Path (Join-Path $HOME '.claude/CLAUDE.md') | Should -BeFalse
     }
+    It 'protects the filesystem root and drive roots' {
+        Test-ProtectedPath -Path '/' | Should -BeTrue
+        Test-ProtectedPath -Path 'C:\' | Should -BeTrue
+    }
     It 'honours ENVSETUP_PROTECTED_EXTRA' {
         $env:ENVSETUP_PROTECTED_EXTRA = (Join-Path $HOME 'Documents')
         Test-ProtectedPath -Path (Join-Path $HOME 'Documents/repos/x') | Should -BeTrue
@@ -46,6 +50,12 @@ Describe 'Remove-ManagedFile' {
     It 'preserves a locally-modified file' {
         $src = Join-Path $script:Tmp 'src2.txt'; Set-Content $src "a`nb"
         $dst = Join-Path $script:Tmp 'dst2.txt'; Set-Content $dst "a`nCHANGED"
+        Remove-ManagedFile -Dest $dst -RepoSrc $src -Label 'x' | Out-Null
+        Test-Path $dst | Should -BeTrue
+    }
+    It 'preserves a file whose lines were reordered by the user' {
+        $src = Join-Path $script:Tmp 'src3.txt'; Set-Content $src "a`nb"
+        $dst = Join-Path $script:Tmp 'dst3.txt'; Set-Content $dst "b`na"
         Remove-ManagedFile -Dest $dst -RepoSrc $src -Label 'x' | Out-Null
         Test-Path $dst | Should -BeTrue
     }

@@ -48,6 +48,10 @@ is_protected_path() {
     local abs
     abs="$(_abs "$1")"
 
+    # _abs("/") normalizes to the empty string; treat it (and bare "/") as the
+    # most protected input of all rather than falling through the guards.
+    [[ -z "$abs" || "$abs" == "/" ]] && return 0
+
     [[ "$abs" == "$HOME" ]] && return 0
 
     local backups="${BACKUP_DIR%/}"
@@ -140,7 +144,7 @@ remove_fragment() {
         log_info "[SKIP] fragment ${name} not present"
         return 0
     fi
-    if [[ -n "$marker" ]] && ! grep -q "$marker" "$frag" 2>/dev/null; then
+    if [[ -n "$marker" ]] && ! grep -qF "$marker" "$frag" 2>/dev/null; then
         log_warn "fragment ${name}: marker '${marker}' absent — preserved"
         return 0
     fi
