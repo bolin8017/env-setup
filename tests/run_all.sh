@@ -30,6 +30,7 @@ tests=(
     "test_self_update.sh"
     "test_user_dirs.sh"
     "test_ccstatusline.sh"
+    "test_claude_assets.sh"
     "test_shellcheck.sh"
 )
 
