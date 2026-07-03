@@ -23,10 +23,16 @@ source "${_CONFIG_LIB_DIR}/yaml.sh"
 _find_config_file() {
     local config_file="${1:-}"
 
-    # 1. Explicit CLI argument
-    if [[ -n "$config_file" ]] && [[ -f "$config_file" ]]; then
-        echo "$config_file"
-        return 0
+    # 1. Explicit CLI argument. A path that was GIVEN but doesn't exist is an
+    # error — silently falling back to the repo config would run the wrong
+    # profile (and with auto_yes it would overwrite dotfiles unprompted).
+    if [[ -n "$config_file" ]]; then
+        if [[ -f "$config_file" ]]; then
+            echo "$config_file"
+            return 0
+        fi
+        log_error "Config file not found: ${config_file}"
+        return 1
     fi
 
     # 2. ./config.yaml in project root

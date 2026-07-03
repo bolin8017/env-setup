@@ -69,6 +69,19 @@ assert_false $? "command_exists returns false for missing command"
 set -e
 
 # =============================================================================
+suite "verify_installed"
+# =============================================================================
+
+set +e
+verify_installed bash "bash" >/dev/null 2>&1
+assert_true $? "present command verifies"
+DRY_RUN="false" verify_installed __missing_tool_xyz__ "ghost" >/dev/null 2>&1
+assert_false $? "missing command fails verification"
+DRY_RUN="true" verify_installed __missing_tool_xyz__ "ghost" >/dev/null 2>&1
+assert_true $? "dry-run exempts the check (nothing was installed on purpose)"
+set -e
+
+# =============================================================================
 suite "Logging functions"
 # =============================================================================
 

@@ -78,4 +78,41 @@ _before="${ENVSETUP_ERROR_COUNT:-0}"
 log_error "counter check" >/dev/null 2>&1
 assert_eq "$((_before + 1))" "${ENVSETUP_ERROR_COUNT:-0}" "log_error bumps the global error counter"
 
+suite "sudo_available: --auto-yes must not disable the password prompt"
+
+# Earlier suites stubbed sudo_available itself — reload the real definitions.
+unset _ENV_SETUP_PACKAGE_LOADED
+# shellcheck source=lib/package.sh
+source "$PROJECT_ROOT/lib/package.sh"
+
+# --auto-yes means "overwrite files without asking"; it must not silently
+# defer every apt package on an interactive box (the shipped default config
+# has auto_yes: true). Stub the environment: Linux, sudo present, nothing
+# cached, interactive TTY, prompt succeeds.
+is_macos() { return 1; }
+command_exists() { [[ "$1" == "sudo" ]]; }
+sudo() {
+    case "$1" in
+        -n) return 1 ;;   # no cached / passwordless credentials
+        -v) return 0 ;;   # the one interactive prompt succeeds
+    esac
+    return 0
+}
+_start_sudo_keepalive() { :; }
+_stdin_is_tty() { return 0; }
+
+DRY_RUN="false"
+AUTO_YES="true"
+_SUDO_CHECKED=""
+_SUDO_AVAILABLE=""
+sudo_available >/dev/null 2>&1
+assert_true $? "interactive run with --auto-yes still acquires sudo"
+
+# Genuinely non-interactive (no TTY): defer as before
+_stdin_is_tty() { return 1; }
+_SUDO_CHECKED=""
+_SUDO_AVAILABLE=""
+sudo_available >/dev/null 2>&1
+assert_false $? "no-TTY run defers to the administrator"
+
 print_test_summary

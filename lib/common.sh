@@ -163,6 +163,19 @@ ask_yes_no() {
     done
 }
 
+# verify_installed <cmd> [<label>] — post-install verification with the
+# dry-run exemption every module needs: under --dry-run nothing was installed
+# on purpose, so the absence of the binary is not a failure.
+verify_installed() {
+    local cmd="$1" label="${2:-$1}"
+    if [[ "${DRY_RUN:-false}" == "true" ]] || command_exists "$cmd"; then
+        log_success "${label} installed"
+        return 0
+    fi
+    log_error "${label} installation failed"
+    return 1
+}
+
 # Idempotently add content to a shell config file
 add_to_shell_config() {
     local content="$1"

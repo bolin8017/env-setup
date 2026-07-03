@@ -48,7 +48,7 @@ install_docker() {
             docker-ce docker-ce-cli containerd.io \
             docker-buildx-plugin docker-compose-plugin
         dry_run_cmd sudo usermod -aG docker "${USER:-$(whoami)}" || true
-        log_success "Docker Engine installed"
+        verify_installed docker "Docker Engine" || return 1
         log_info "Log out and back in for Docker group permissions"
     fi
 }

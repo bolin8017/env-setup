@@ -20,12 +20,7 @@ install_zsh() {
     log_info "Installing zsh..."
     pkg_install zsh
 
-    if command_exists zsh; then
-        log_success "zsh installed"
-    else
-        log_error "zsh installation failed"
-        return 1
-    fi
+    verify_installed zsh "zsh" || return 1
 }
 
 # =============================================================================
@@ -61,10 +56,12 @@ install_oh_my_zsh() {
     fi
 
     log_info "Installing Oh My Zsh (unattended)..."
-    dry_run_cmd env RUNZSH=no KEEP_ZSHRC=yes \
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    # Single quotes defer the curl to execution time: with "$(curl ...)" the
+    # substitution runs BEFORE dry_run_cmd sees it — a dry run still hit the
+    # network and dumped the whole installer into the log.
+    dry_run_cmd bash -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | env RUNZSH=no KEEP_ZSHRC=yes sh -s -- --unattended'
 
-    if [[ -d "$omz_dir" ]]; then
+    if [[ "${DRY_RUN:-false}" == "true" ]] || [[ -d "$omz_dir" ]]; then
         log_success "Oh My Zsh installed"
     else
         log_error "Oh My Zsh installation failed"
@@ -293,6 +290,12 @@ set_default_shell() {
 # install_shell — Main entry point
 # =============================================================================
 install_shell() {
+    # Master switch (also the SKIP_SHELL_SETUP env override's landing site).
+    if [[ "$(cfg_get "shell.enabled")" == "false" ]]; then
+        log_info "Shell module disabled in config — skipping"
+        return 0
+    fi
+
     print_header "Shell (Zsh + Oh My Zsh + Powerlevel10k)"
 
     install_zsh

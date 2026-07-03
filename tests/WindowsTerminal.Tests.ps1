@@ -20,3 +20,12 @@ Describe 'Merge-WtSettings' {
         $o.x | Should -Be 1
     }
 }
+
+
+Describe 'Merge-WtSettings array-form profiles' {
+    BeforeAll { Import-Module "$PSScriptRoot/../lib/WindowsTerminal.psm1" -Force }
+    It 'refuses the legacy array form instead of corrupting every profile' {
+        { Merge-WtSettings -CurrentJson '{"profiles":[{"name":"PS"}]}' } |
+            Should -Throw -ExpectedMessage '*array*'
+    }
+}

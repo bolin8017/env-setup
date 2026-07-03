@@ -41,6 +41,25 @@ Describe 'Worklog module' {
         { Resolve-WorklogPath '' } | Should -Not -Throw  # parity: Bash _worklog_expand '' degrades, doesn't error
     }
 
+    It 'tolerates omitted vault keys on a capture machine (empty strings)' {
+        # yaml-config rule: config.yaml only needs keys that differ from the
+        # defaults; Mandatory [string] params rejected the resulting '' values
+        # and failed the whole module on capture-role machines.
+        $yaml = @'
+worklog:
+  enabled: true
+  role: capture
+  source: testbox
+  inbox_repo: owner/worklog-inbox
+  inbox_path: Documents/repositories/worklog-inbox
+'@
+        $f = Join-Path $TestDrive 'cap.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        { Install-Worklog } | Should -Not -Throw
+        # restore the shared config for later tests
+        Import-Config -Path (Join-Path $TestDrive 'config.yaml')
+    }
+
     It 'runs Install-Worklog under dry-run without throwing' {
         { Install-Worklog } | Should -Not -Throw
     }

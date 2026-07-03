@@ -202,4 +202,21 @@ mkdir -p "$_nvm_home/.nvm"    # directory exists, loader missing
 _out="$(HOME="$_nvm_home" DRY_RUN="true" _install_nvm 2>&1)"
 assert_contains "$_out" "Incomplete nvm install" "bare ~/.nvm dir triggers repair, not a false 'already installed'"
 
+# =============================================================================
+# =============================================================================
+suite "module master switches (SKIP_CLI_TOOLS / SKIP_SHELL_SETUP land here)"
+# =============================================================================
+
+# (modules were already sourced by the entry-function suite above; 05 has a
+# readonly registry that forbids re-sourcing)
+CFG_CLI_TOOLS_ENABLED="false"
+_out="$(install_cli_tools 2>&1)"
+assert_contains "$_out" "disabled" "cli_tools.enabled=false skips the module"
+CFG_CLI_TOOLS_ENABLED="true"
+
+CFG_SHELL_ENABLED="false"
+_out="$(install_shell 2>&1)"
+assert_contains "$_out" "disabled" "shell.enabled=false skips the module"
+CFG_SHELL_ENABLED="true"
+
 print_test_summary

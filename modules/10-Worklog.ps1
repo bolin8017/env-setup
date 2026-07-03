@@ -25,13 +25,17 @@ function Resolve-WorklogPath {
 }
 
 function Write-WorklogRuntimeConfig {
+    # AllowEmptyString on every value: config.yaml only needs keys that differ
+    # from the defaults (yaml-config rule), so capture-role machines routinely
+    # omit vault_repo/vault_path - Get-CfgValue then yields '' and a bare
+    # Mandatory [string] would fail the whole module at binding time.
     param(
-        [Parameter(Mandatory)][string]$SourceLabel,
-        [Parameter(Mandatory)][string]$Role,
-        [Parameter(Mandatory)][string]$InboxRepo,
-        [Parameter(Mandatory)][string]$InboxPath,
-        [Parameter(Mandatory)][string]$VaultRepo,
-        [Parameter(Mandatory)][string]$VaultPath
+        [Parameter(Mandatory)][AllowEmptyString()][string]$SourceLabel,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Role,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$InboxRepo,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$InboxPath,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$VaultRepo,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$VaultPath
     )
     $dir = Join-Path $HOME '.config/worklog'
     $dest = Join-Path $dir 'config'
@@ -110,12 +114,14 @@ function Install-Worklog {
     Write-WorklogRuntimeConfig -SourceLabel $source -Role $role `
         -InboxRepo $inboxRepo -InboxPath $inboxPath -VaultRepo $vaultRepo -VaultPath $vaultPath
     Install-WorklogCommand -Name 'worklog'
-    Sync-WorklogRepo -Repo $inboxRepo -Dest $inboxPath -Label 'worklog-inbox'
+    if ($inboxRepo) { Sync-WorklogRepo -Repo $inboxRepo -Dest $inboxPath -Label 'worklog-inbox' }
+    else { Write-Warn 'worklog.inbox_repo is empty - /worklog will clone lazily once configured' }
 
     if ($role -eq 'curator') {
         Write-Header 'Worklog - curator (vault + sync)'
         Install-WorklogCommand -Name 'worklog-sync'
-        Sync-WorklogRepo -Repo $vaultRepo -Dest $vaultPath -Label 'obsidian-notes vault'
+        if ($vaultRepo) { Sync-WorklogRepo -Repo $vaultRepo -Dest $vaultPath -Label 'obsidian-notes vault' }
+        else { Write-Warn 'worklog.vault_repo is empty - set it for curator machines' }
         Write-Info 'Vault auto-sync is obsidian-git (Obsidian-app side) - open the vault + enable the plugin once.'
     }
 }

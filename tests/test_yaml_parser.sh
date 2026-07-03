@@ -181,4 +181,70 @@ output="$(yaml_parse "/nonexistent/file.yaml" 2>&1 || true)"
 assert_contains "$output" "file not found" "missing file reports error"
 
 # =============================================================================
+# =============================================================================
+suite "Inline comments vs quoted # (parity with lib/Config.psm1)"
+# =============================================================================
+
+parse_fixture <<'YAML'
+tricky:
+  quoted_hash: "a # b"   # trailing comment
+  color: "#ff0000"
+  single: 'x # y'  # another comment
+  plain: value  # stripped
+YAML
+
+assert_eq "a # b"   "$(cfg_get "tricky.quoted_hash")" "double-quoted value keeps its #"
+assert_eq "#ff0000" "$(cfg_get "tricky.color")"       "leading-# value survives"
+assert_eq "x # y"   "$(cfg_get "tricky.single")"      "single-quoted value keeps its #"
+assert_eq "value"   "$(cfg_get "tricky.plain")"       "unquoted inline comment still stripped"
+
+# =============================================================================
+suite "Parser lint warnings (unsupported forms are no longer silent)"
+# =============================================================================
+
+_lint_yaml="$TEST_TMPDIR/lint.yaml"
+printf 'flat:
+- item
+' > "$_lint_yaml"
+_warn="$(yaml_parse "$_lint_yaml" 2>&1 >/dev/null)"
+assert_contains "$_warn" "flat" "flat-style list item triggers a warning"
+
+printf 'odd:
+   three_spaces: v
+' > "$_lint_yaml"
+_warn="$(yaml_parse "$_lint_yaml" 2>&1 >/dev/null)"
+assert_contains "$_warn" "indent" "odd (non-2-space) indentation triggers a warning"
+
+printf 'tabbed:
+	key: v
+' > "$_lint_yaml"
+_warn="$(yaml_parse "$_lint_yaml" 2>&1 >/dev/null)"
+assert_contains "$_warn" "tab" "leading tab triggers a warning"
+
+# Well-formed input stays silent on stderr
+printf 'ok:
+  key: v
+  list:
+    - a
+' > "$_lint_yaml"
+_warn="$(yaml_parse "$_lint_yaml" 2>&1 >/dev/null)"
+assert_eq "" "$_warn" "well-formed config produces no warnings"
+
+
+suite "load_config error handling"
+# =============================================================================
+
+# shellcheck source=lib/common.sh
+source "$PROJECT_ROOT/lib/common.sh"
+# shellcheck source=lib/config.sh
+source "$PROJECT_ROOT/lib/config.sh"
+export HOME="$TEST_TMPDIR/home"; mkdir -p "$HOME"; setup_logging
+
+# A typo'd --config path must be an error, not a silent fallback to the repo
+# config (which would then run with the wrong profile).
+rc=0; out="$(load_config "/nonexistent/custom.yaml" 2>&1)" || rc=$?
+assert_false $rc "explicit config path that does not exist is an error"
+assert_contains "$out" "/nonexistent/custom.yaml" "error names the missing path"
+
+# =============================================================================
 print_test_summary
