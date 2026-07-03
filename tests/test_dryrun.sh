@@ -91,41 +91,27 @@ DRY_RUN="true"
 suite "Full dry-run: setup.sh does not modify HOME"
 # =============================================================================
 
-# Take a snapshot of key files before dry-run
-declare -A checksums_before
-for f in "$HOME/.zshrc" "$HOME/.tmux.conf" "$HOME/.p10k.zsh"; do
-    if [[ -f "$f" ]]; then
-        checksums_before["$f"]="$(md5sum "$f" | cut -d' ' -f1)"
-    else
-        checksums_before["$f"]="MISSING"
-    fi
-done
+# Sandboxed HOME: if dry-run has a leak, it damages the sandbox and the test
+# fails — never the developer's real dotfiles (which this suite previously
+# risked by running against the real \$HOME and checksumming only 3 files).
+_dr_home="$TEST_TMPDIR/dryrun_home"
+mkdir -p "$_dr_home"
+printf 'user zshrc
+'  > "$_dr_home/.zshrc"
+printf 'user tmux
+'   > "$_dr_home/.tmux.conf"
+printf 'user p10k
+'   > "$_dr_home/.p10k.zsh"
 
-# Run setup.sh --dry-run --auto-yes (capture output, ignore exit code)
-bash "$PROJECT_ROOT/setup.sh" --dry-run --auto-yes &>/dev/null || true
+HOME="$_dr_home" bash "$PROJECT_ROOT/setup.sh" --dry-run --auto-yes &>/dev/null || true
 
-# Verify nothing changed
-all_same=true
-for f in "${!checksums_before[@]}"; do
-    if [[ -f "$f" ]]; then
-        after="$(md5sum "$f" | cut -d' ' -f1)"
-    else
-        after="MISSING"
-    fi
-    if [[ "${checksums_before[$f]}" != "$after" ]]; then
-        echo -e "  ${_T_RED}CHANGED${_T_NC}: $f"
-        all_same=false
-    fi
-done
+assert_eq "user zshrc" "$(cat "$_dr_home/.zshrc")"      "dry-run leaves .zshrc untouched"
+assert_eq "user tmux"  "$(cat "$_dr_home/.tmux.conf")"  "dry-run leaves .tmux.conf untouched"
+assert_eq "user p10k"  "$(cat "$_dr_home/.p10k.zsh")"   "dry-run leaves .p10k.zsh untouched"
 
-(( _TEST_TOTAL += 1 ))
-if $all_same; then
-    echo -e "  ${_T_GREEN}PASS${_T_NC}  setup.sh --dry-run does not modify dotfiles"
-    (( _TEST_PASS += 1 ))
-else
-    echo -e "  ${_T_RED}FAIL${_T_NC}  setup.sh --dry-run modified dotfiles!"
-    (( _TEST_FAIL += 1 ))
-fi
+# Nothing new may appear anywhere in the sandbox except the log dir
+_unexpected="$(cd "$_dr_home" && find . -path ./.env-setup -prune -o -type f -print     | grep -v -e '^\./\.zshrc$' -e '^\./\.tmux\.conf$' -e '^\./\.p10k\.zsh$' || true)"
+assert_eq "" "$_unexpected" "dry-run creates no files outside ~/.env-setup logs"
 
 # =============================================================================
 suite "dry_run_rm"

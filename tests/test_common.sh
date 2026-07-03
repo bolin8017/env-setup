@@ -63,8 +63,10 @@ suite "command_exists"
 
 command_exists bash; assert_true $? "command_exists detects 'bash'"
 command_exists git;  assert_true $? "command_exists detects 'git'"
-command_exists __nonexistent_cmd_12345__ || true
-assert_false 1 "command_exists returns false for missing command"
+set +e
+command_exists __nonexistent_cmd_12345__
+assert_false $? "command_exists returns false for missing command"
+set -e
 
 # =============================================================================
 suite "Logging functions"
