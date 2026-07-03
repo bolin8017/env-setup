@@ -21,6 +21,7 @@ echo ""
 tests=(
     "test_yaml_parser.sh"
     "test_common.sh"
+    "test_package.sh"
     "test_dryrun.sh"
     "test_modules.sh"
     "test_worklog.sh"
