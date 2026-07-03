@@ -20,6 +20,13 @@ _install_homebrew() {
         eval "$(/usr/local/bin/brew shellenv)"
     fi
 
+    # Write the Homebrew fragment before the already-installed early return:
+    # a pre-installed brew (e.g. user-installed on Apple Silicon) still needs
+    # shellenv in the env-setup-managed .zshrc, or new shells lose brew's PATH.
+    write_generated_fragment "41-homebrew.zsh" << 'FRAGMENT'
+eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null
+FRAGMENT
+
     if command_exists brew; then
         log_success "Homebrew already installed"
         return 0
@@ -28,22 +35,11 @@ _install_homebrew() {
     log_info "Installing Homebrew..."
     dry_run_cmd /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-    # Set up PATH for current session and write a shell fragment
+    # Set up PATH for current session
     if [[ -f "/opt/homebrew/bin/brew" ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
     elif [[ -f "/usr/local/bin/brew" ]]; then
         eval "$(/usr/local/bin/brew shellenv)"
-    fi
-
-    # Write Homebrew fragment for future shells
-    local fragment_dir="$HOME/.config/zsh/fragments"
-    dry_run_mkdir "$fragment_dir"
-    local fragment_file="$fragment_dir/41-homebrew.zsh"
-    if [[ ! -f "$fragment_file" ]] || ! grep -q "brew shellenv" "$fragment_file" 2>/dev/null; then
-        log_info "Writing Homebrew shell fragment: $fragment_file"
-        dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
-eval \"\$(/opt/homebrew/bin/brew shellenv)\" 2>/dev/null || eval \"\$(/usr/local/bin/brew shellenv)\" 2>/dev/null
-FRAGMENT"
     fi
 
     if command_exists brew; then

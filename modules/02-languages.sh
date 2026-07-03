@@ -18,39 +18,34 @@ _install_nvm() {
         dry_run_cmd bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
     fi
 
-    # Write nvm fragment for future shells
-    local fragment_dir="$HOME/.config/zsh/fragments"
-    dry_run_mkdir "$fragment_dir"
-    local fragment_file="$fragment_dir/16-nvm.zsh"
-    if [[ ! -f "$fragment_file" ]] || ! grep -q "NVM_DIR" "$fragment_file" 2>/dev/null; then
-        log_info "Writing nvm shell fragment: $fragment_file"
-        # Sourcing nvm.sh eagerly runs nvm's auto-use on every shell start
-        # (~0.4s, often the single biggest startup cost). Avoid that, but still
-        # put the default Node's bin on PATH eagerly (~0ms) so node/npm/npx are
-        # real binaries — a lazy shell-function node is invisible to execvp, so
-        # non-interactive children (Claude Code MCP servers, scripts) can't find
-        # it. The `nvm` command itself stays lazy: rarely used interactively,
-        # and sourcing nvm.sh is the slow part.
-        dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
-export NVM_DIR=\"\$HOME/.nvm\"
-if [ -s \"\$NVM_DIR/nvm.sh\" ]; then
-  _nvm_bin=\"\$(command find \"\$NVM_DIR/versions/node\" -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1)\"
-  if [ -n \"\$_nvm_bin\" ]; then
-    case \":\$PATH:\" in
-      *\":\$_nvm_bin:\"*) ;;
-      *) PATH=\"\$_nvm_bin:\$PATH\" ;;
+    # Write nvm fragment for future shells (content-compared, so fixes reach
+    # already-provisioned machines).
+    # Sourcing nvm.sh eagerly runs nvm's auto-use on every shell start
+    # (~0.4s, often the single biggest startup cost). Avoid that, but still
+    # put the default Node's bin on PATH eagerly (~0ms) so node/npm/npx are
+    # real binaries — a lazy shell-function node is invisible to execvp, so
+    # non-interactive children (Claude Code MCP servers, scripts) can't find
+    # it. The `nvm` command itself stays lazy: rarely used interactively,
+    # and sourcing nvm.sh is the slow part.
+    write_generated_fragment "16-nvm.zsh" << 'FRAGMENT'
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  _nvm_bin="$(command find "$NVM_DIR/versions/node" -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1)"
+  if [ -n "$_nvm_bin" ]; then
+    case ":$PATH:" in
+      *":$_nvm_bin:"*) ;;
+      *) PATH="$_nvm_bin:$PATH" ;;
     esac
   fi
   unset _nvm_bin
   _envsetup_load_nvm() {
     unset -f nvm _envsetup_load_nvm
-    \\. \"\$NVM_DIR/nvm.sh\"
-    [ -s \"\$NVM_DIR/bash_completion\" ] && \\. \"\$NVM_DIR/bash_completion\"
+    \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
   }
-  nvm() { _envsetup_load_nvm; nvm \"\$@\"; }
+  nvm() { _envsetup_load_nvm; nvm "$@"; }
 fi
-FRAGMENT"
-    fi
+FRAGMENT
 
     # nvm.sh and nvm commands use uninitialized variables internally;
     # disable nounset for the entire nvm block to prevent crashes.
@@ -126,25 +121,20 @@ _install_pyenv() {
         fi
     fi
 
-    # Write pyenv fragment for future shells
-    local fragment_dir="$HOME/.config/zsh/fragments"
-    dry_run_mkdir "$fragment_dir"
-    local fragment_file="$fragment_dir/15-pyenv.zsh"
-    if [[ ! -f "$fragment_file" ]] || ! grep -q "PYENV_ROOT" "$fragment_file" 2>/dev/null; then
-        log_info "Writing pyenv shell fragment: $fragment_file"
-        # --no-rehash: skip the implicit 'pyenv rehash' that BOTH 'pyenv init
-        # --path' and 'pyenv init -' emit on every shell start. An interrupted
-        # rehash leaves a stale ~/.pyenv/shims/.pyenv-shim lock; subsequent
-        # rehashes then block ~60s each waiting for it, stalling shell startup
-        # by minutes. Shims are still refreshed by 'pyenv install' and a manual
-        # 'pyenv rehash' when needed.
-        dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
-export PYENV_ROOT=\"\$HOME/.pyenv\"
-[[ -d \"\$PYENV_ROOT/bin\" ]] && export PATH=\"\$PYENV_ROOT/bin:\$PATH\"
-eval \"\$(pyenv init --path --no-rehash)\" 2>/dev/null
-eval \"\$(pyenv init - --no-rehash)\" 2>/dev/null
-FRAGMENT"
-    fi
+    # Write pyenv fragment for future shells (content-compared, so fixes reach
+    # already-provisioned machines).
+    # --no-rehash: skip the implicit 'pyenv rehash' that BOTH 'pyenv init
+    # --path' and 'pyenv init -' emit on every shell start. An interrupted
+    # rehash leaves a stale ~/.pyenv/shims/.pyenv-shim lock; subsequent
+    # rehashes then block ~60s each waiting for it, stalling shell startup
+    # by minutes. Shims are still refreshed by 'pyenv install' and a manual
+    # 'pyenv rehash' when needed.
+    write_generated_fragment "15-pyenv.zsh" << 'FRAGMENT'
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path --no-rehash)" 2>/dev/null
+eval "$(pyenv init - --no-rehash)" 2>/dev/null
+FRAGMENT
 
     # Ensure pyenv is in PATH for current session (disable nounset for pyenv init).
     # --no-rehash matches the generated fragment; 'pyenv install' below rehashes.
@@ -219,25 +209,20 @@ _install_conda() {
         fi
     fi
 
-    # Write conda fragment for future shells
-    local fragment_dir="$HOME/.config/zsh/fragments"
-    dry_run_mkdir "$fragment_dir"
-    local fragment_file="$fragment_dir/17-conda.zsh"
-    if [[ ! -f "$fragment_file" ]] || ! grep -q "conda" "$fragment_file" 2>/dev/null; then
-        log_info "Writing conda shell fragment: $fragment_file"
-        dry_run_cmd bash -c "cat > '$fragment_file' << 'FRAGMENT'
+    # Write conda fragment for future shells (content-compared, so fixes reach
+    # already-provisioned machines).
+    write_generated_fragment "17-conda.zsh" << 'FRAGMENT'
 # Conda (auto-generated by env-setup)
-if [ -f \"\$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then
-    . \"\$HOME/miniconda3/etc/profile.d/conda.sh\"
-elif [ -f \"/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh\" ]; then
-    . \"/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh\"
-elif [ -f \"/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh\" ]; then
-    . \"/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh\"
+if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+    . "$HOME/miniconda3/etc/profile.d/conda.sh"
+elif [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+    . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+elif [ -f "/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+    . "/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh"
 else
-    export PATH=\"\$HOME/miniconda3/bin:\$PATH\"
+    export PATH="$HOME/miniconda3/bin:$PATH"
 fi
-FRAGMENT"
-    fi
+FRAGMENT
 
     log_success "Conda installed (restart terminal to activate)"
 }

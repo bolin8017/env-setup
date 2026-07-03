@@ -29,6 +29,10 @@ LOG_DIR="${LOG_DIR:-$HOME/.env-setup}"
 INSTALL_LOG="${INSTALL_LOG:-$LOG_DIR/install.log}"
 ERROR_LOG="${ERROR_LOG:-$LOG_DIR/error.log}"
 
+# Global error tally. The module runners snapshot this around each module so
+# the final summary can flag modules that "succeeded" while logging errors.
+ENVSETUP_ERROR_COUNT="${ENVSETUP_ERROR_COUNT:-0}"
+
 setup_logging() {
     mkdir -p "$LOG_DIR"
     touch "$INSTALL_LOG" "$ERROR_LOG"
@@ -55,6 +59,7 @@ log_warn() {
 
 log_error() {
     local msg="${RED}[ERROR]${NC} $1"
+    ENVSETUP_ERROR_COUNT=$((ENVSETUP_ERROR_COUNT + 1))
     echo -e "$msg" >&2
     echo -e "$msg" >> "$ERROR_LOG"
     echo -e "$msg" >> "$INSTALL_LOG"

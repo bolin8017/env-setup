@@ -37,10 +37,50 @@ function Set-LocalExecutionPolicy {
     catch { Write-Warning "Could not set execution policy (continuing): $_" }
 }
 
+function Update-SessionPath {
+    # winget installs update the registry PATH, not this session's copy; without
+    # a refresh the very next `git`/`pwsh` call is CommandNotFound and the
+    # one-liner aborts on a truly fresh box.
+    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $user    = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = (@($machine, $user, $env:Path) | Where-Object { $_ }) -join ';'
+}
+
 function Initialize-Git {
     if (Get-Command git -ErrorAction SilentlyContinue) { return }
     Write-Host 'Installing Git via winget...'
     winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        throw "winget install Git.Git failed (exit $LASTEXITCODE) - install Git manually, then re-run this one-liner"
+    }
+    Update-SessionPath
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        throw 'git is still not on PATH after install - open a new terminal and re-run this one-liner'
+    }
+}
+
+function Initialize-Pwsh {
+    # The engine's JSON handling (JSONC comments, BOM-less writes, native
+    # stderr redirects) assumes PowerShell 7, while the pasted one-liner
+    # usually starts in Windows PowerShell 5.1. Best-effort install so setup
+    # can re-exec under pwsh (Select-EngineRuntime); on failure continue under
+    # 5.1 rather than blocking the bootstrap.
+    if ($PSVersionTable.PSVersion.Major -ge 6) { return }
+    if (Get-Command pwsh -ErrorAction SilentlyContinue) { return }
+    Write-Host 'Installing PowerShell 7 via winget...'
+    winget install --id Microsoft.PowerShell -e --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning 'PowerShell 7 install failed; continuing under Windows PowerShell 5.1'
+        return
+    }
+    Update-SessionPath
+}
+
+function Select-EngineRuntime {
+    # The pwsh CommandInfo to re-exec setup under, or $null to run in-process
+    # (already on 6+, or pwsh unavailable).
+    if ($PSVersionTable.PSVersion.Major -ge 6) { return $null }
+    return (Get-Command pwsh -ErrorAction SilentlyContinue)
 }
 
 function Initialize-Scoop {
@@ -78,9 +118,19 @@ function Invoke-Bootstrap {
         [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     Set-LocalExecutionPolicy
     Initialize-Git
+    Initialize-Pwsh
     Initialize-Scoop
     Sync-Repo
-    & (Join-Path $InstallDir 'setup.ps1') @ForwardArgs
+    $setup = Join-Path $InstallDir 'setup.ps1'
+    $runtime = Select-EngineRuntime
+    if ($runtime) {
+        Write-Host 'Re-launching setup under PowerShell 7...'
+        # No `exit` here: the one-liner runs via `irm | iex` inside the user's
+        # interactive session, and exiting would close their console.
+        & $runtime.Source -NoProfile -ExecutionPolicy Bypass -File $setup @ForwardArgs
+        return
+    }
+    & $setup @ForwardArgs
 }
 
 # Guarded entrypoint: skipped when dot-sourced by tests.

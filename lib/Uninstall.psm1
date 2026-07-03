@@ -20,6 +20,9 @@ function Test-ProtectedPath {
     # Return $true if the path must never be removed.
     param([Parameter(Mandatory)][string]$Path)
     $abs  = Get-AbsPath $Path
+    # Get-AbsPath normalizes '/' to '' and 'C:\' to 'C:'; treat filesystem and
+    # drive roots as always protected.
+    if (-not $abs -or $abs -match '^[A-Za-z]:$') { return $true }
     $home0 = $HOME.TrimEnd('\', '/')
     if ($abs -ieq $home0) { return $true }
 
@@ -55,9 +58,7 @@ function Remove-ManagedFile {
     if (-not $RepoSrc -or -not (Test-Path -LiteralPath $RepoSrc)) {
         Write-Warn "${Label}: cannot verify (no repo source) - preserved"; return
     }
-    $same = $false
-    try { $same = -not (Compare-Object (Get-Content -LiteralPath $RepoSrc) (Get-Content -LiteralPath $Dest)) }
-    catch { $same = $false }
+    $same = Test-FileContentEqual -PathA $RepoSrc -PathB $Dest
     if (-not $same) { Write-Warn "$Label modified locally - preserved"; return }
     Remove-OrDryRun -Path $Dest
     Write-Success "Removed $Label"

@@ -57,9 +57,28 @@ Describe 'Install-Pkg surfaces failure instead of silently succeeding' {
     }
     It 'throws when scoop is unavailable (not dry-run)' {
         $env:ENVSETUP_DRY_RUN = $null
-        # Neither this Linux dev box nor the windows-latest runner has scoop,
-        # so Test-ScoopAvailable is false and Install-Pkg throws before any
-        # real install - never silently reporting success.
+        # Force the unavailable path so the test is hermetic even on a dev box
+        # that actually has scoop (a real `scoop install` must never run here).
+        Mock -ModuleName Package Test-ScoopAvailable { $false }
         { Install-Pkg -Name 'ripgrep' } | Should -Throw
+    }
+}
+
+Describe 'Install-Pkg gates on scoop exit code' {
+    AfterEach {
+        $env:ENVSETUP_DRY_RUN = $null
+        Remove-Item function:global:scoop -ErrorAction Ignore
+    }
+    It 'throws when scoop exits non-zero' {
+        $env:ENVSETUP_DRY_RUN = $null
+        # A global function shadows any real scoop, so this runs nothing real
+        # and also satisfies Test-ScoopAvailable on scoop-less CI runners.
+        function global:scoop { $global:LASTEXITCODE = 1; "Couldn't find manifest" }
+        { Install-Pkg -Name 'no-such-pkg' } | Should -Throw -ExpectedMessage '*exit 1*'
+    }
+    It 'does not throw when scoop exits zero (fresh or already installed)' {
+        $env:ENVSETUP_DRY_RUN = $null
+        function global:scoop { $global:LASTEXITCODE = 0; 'ok' }
+        { Install-Pkg -Name 'fine-pkg' } | Should -Not -Throw
     }
 }

@@ -117,7 +117,7 @@ function Sync-ClaudeSettings {
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync - skipping'; return }
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
-    Set-Content -LiteralPath $dest -Value $merged -Encoding utf8
+    Write-Utf8NoBom -Path $dest -Content $merged
     Write-Success "Merged $($keys.Count) whitelisted key(s) into settings.json"
 }
 
@@ -133,7 +133,7 @@ function Sync-ClaudeMcp {
     if (-not (Test-Path $dest)) { Write-Warn "$dest not found - run Claude Code once first; skipping MCP sync"; return }
     $merged = Merge-McpServers -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src)
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
-    Set-Content -LiteralPath $dest -Value $merged -Encoding utf8
+    Write-Utf8NoBom -Path $dest -Content $merged
     Write-Success "Synced $count MCP server(s)"
 }
 
@@ -142,7 +142,7 @@ function Register-ClaudeMarketplaces {
     if (-not (Test-Command 'claude')) { Write-Warn 'claude CLI not found - skipping marketplace registration'; return }
     foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace add $repo"; continue }
-        claude plugin marketplace add $repo *> $null
+        Invoke-Native claude plugin marketplace add $repo | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Success "Registered marketplace: $repo" } else { Write-Warn "Failed to register marketplace: $repo" }
     }
 }
@@ -157,7 +157,7 @@ function Install-ClaudePlugins {
     foreach ($p in $settings.enabledPlugins.PSObject.Properties) {
         if ($p.Value -ne $true) { continue }
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin install $($p.Name)"; continue }
-        claude plugin install $p.Name *> $null
+        Invoke-Native claude plugin install $p.Name | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Success "Installed plugin: $($p.Name)" } else { Write-Warn "Failed to install plugin: $($p.Name)" }
     }
 }
@@ -213,7 +213,7 @@ function Uninstall-ClaudeSettings {
     $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would strip $($keys.Count) env-setup key(s) from settings.json"; return }
     $stripped = Remove-ManagedSettingsKeys -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
-    Set-Content -LiteralPath $dest -Value $stripped -Encoding utf8
+    Write-Utf8NoBom -Path $dest -Content $stripped
     Write-Success 'Stripped env-setup keys from settings.json'
 }
 
@@ -273,13 +273,13 @@ function Uninstall-ClaudeCode {
                     foreach ($p in $settings.enabledPlugins.PSObject.Properties) {
                         if ($p.Value -ne $true) { continue }
                         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin uninstall $($p.Name)" }
-                        else { claude plugin uninstall $p.Name *> $null }
+                        else { Invoke-Native claude plugin uninstall $p.Name | Out-Null }
                     }
                 }
             }
             foreach ($repo in (Get-CfgList 'claude_code.marketplaces')) {
                 if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: claude plugin marketplace remove $repo" }
-                else { claude plugin marketplace remove $repo *> $null }
+                else { Invoke-Native claude plugin marketplace remove $repo | Out-Null }
             }
         }
         $launcher = Join-Path $HOME '.local/bin/claude.exe'

@@ -110,6 +110,8 @@ assert_contains "$content_55" 'HEAD..@{u}'                 "55: compares against
 assert_contains "$content_55" "pull --ff-only"             "55: fast-forward-only pull"
 assert_contains "$content_55" "-o interactive"             "55: interactive-only guard"
 assert_contains "$content_55" "ENVSETUP_UPDATE_FREQ_DAYS"  "55: reads cadence from state"
+assert_contains "$content_55" "GIT_TERMINAL_PROMPT=0"      "55: git never prompts for credentials"
+assert_not_contains "$content_55" "read -q"                "55: no interactive prompt during zshrc init"
 
 # 60: Aliases
 content_60="$(cat "$FRAG_DIR/60-aliases.zsh")"
@@ -154,4 +156,14 @@ suite "P10k config file"
 assert_file_exists "$PROJECT_ROOT/configs/p10k/.p10k.zsh" "p10k config exists"
 
 # =============================================================================
+# =============================================================================
+suite "tmux config"
+# =============================================================================
+
+content_tmux="$(cat "$PROJECT_ROOT/configs/tmux/tmux.conf")"
+assert_not_contains "$content_tmux" "| bc" "tmux: no bc-based version detection (breaks on 3.2a/3.5a)"
+assert_not_contains "$content_tmux" "status-bg" "tmux: no pre-2.9 legacy style options"
+assert_not_contains "$content_tmux" "pane-border-fg" "tmux: no legacy pane border options"
+assert_contains "$content_tmux" "status-style" "tmux: uses modern -style options"
+
 print_test_summary

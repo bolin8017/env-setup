@@ -85,3 +85,73 @@ Describe 'Invoke-WithRetry' {
             Should -Throw -ExpectedMessage '*always*'
     }
 }
+
+
+Describe 'Write-Utf8NoBom' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:Tmp2 = Join-Path ([IO.Path]::GetTempPath()) ("envsetup-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Tmp2 -Force | Out-Null
+    }
+    AfterAll { Remove-Item -Recurse -Force $script:Tmp2 -ErrorAction Ignore }
+
+    It 'writes UTF-8 without a BOM' {
+        $p = Join-Path $script:Tmp2 'nobom.json'
+        Write-Utf8NoBom -Path $p -Content '{"a":1}'
+        $bytes = [IO.File]::ReadAllBytes($p)
+        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+        [IO.File]::ReadAllText($p) | Should -Be '{"a":1}'
+    }
+}
+
+Describe 'Invoke-Native' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:OnWin = Test-IsWindows
+    }
+    It 'captures stderr without throwing and preserves the exit code' {
+        { Invoke-Native git '--no-such-flag' | Out-Null } | Should -Not -Throw
+        $LASTEXITCODE | Should -Not -Be 0
+    }
+    It 'returns stdout and exit code 0 on success' {
+        (Invoke-Native git '--version') -join "`n" | Should -Match 'git version'
+        $LASTEXITCODE | Should -Be 0
+    }
+    It 'does not throw under Windows PowerShell 5.1 with EAP=Stop' -Skip:($env:OS -ne 'Windows_NT') {
+        # 5.1 throws RemoteException when a native command writes to a
+        # redirected stderr under EAP=Stop; Invoke-Native must shield that.
+        $mod = (Resolve-Path "$PSScriptRoot/../lib/Common.psm1").Path
+        $cmd = "`$ErrorActionPreference='Stop'; Import-Module '$mod'; try { Invoke-Native git '--no-such-flag' | Out-Null; exit 0 } catch { exit 1 }"
+        powershell.exe -NoProfile -Command $cmd | Out-Null
+        $LASTEXITCODE | Should -Be 0
+    }
+}
+
+Describe 'Test-FileContentEqual' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:Tmp = Join-Path ([IO.Path]::GetTempPath()) ("envsetup-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Tmp -Force | Out-Null
+    }
+    AfterAll { Remove-Item -Recurse -Force $script:Tmp -ErrorAction Ignore }
+
+    It 'returns true for byte-identical files' {
+        $a = Join-Path $script:Tmp 'a.txt'; [IO.File]::WriteAllText($a, "l1`nl2`n")
+        $b = Join-Path $script:Tmp 'b.txt'; [IO.File]::WriteAllText($b, "l1`nl2`n")
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeTrue
+    }
+    It 'returns false when the same lines are reordered' {
+        $a = Join-Path $script:Tmp 'c.txt'; [IO.File]::WriteAllText($a, "l1`nl2`n")
+        $b = Join-Path $script:Tmp 'd.txt'; [IO.File]::WriteAllText($b, "l2`nl1`n")
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeFalse
+    }
+    It 'returns false when only the encoding differs (BOM)' {
+        $a = Join-Path $script:Tmp 'e.txt'; [IO.File]::WriteAllText($a, "x`n", [Text.UTF8Encoding]::new($false))
+        $b = Join-Path $script:Tmp 'f.txt'; [IO.File]::WriteAllText($b, "x`n", [Text.UTF8Encoding]::new($true))
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeFalse
+    }
+    It 'returns false when either file is missing' {
+        $a = Join-Path $script:Tmp 'g.txt'; [IO.File]::WriteAllText($a, "x")
+        Test-FileContentEqual -PathA $a -PathB (Join-Path $script:Tmp 'nope.txt') | Should -BeFalse
+    }
+}

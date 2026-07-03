@@ -203,8 +203,10 @@ install_cli_tools() {
 uninstall_cli_tools() {
     print_header "Uninstall: CLI Tools"
 
-    # C — shell integration fragment
-    remove_fragment "50-tools.zsh"
+    # C — shell integration fragment (byte-compare against the repo copy so a
+    # user-customized fragment is preserved, matching 06-shell's teardown)
+    remove_managed_file "$HOME/.config/zsh/fragments/50-tools.zsh" \
+        "${ENV_SETUP_DIR}/configs/zshrc/50-tools.zsh" "fragment 50-tools.zsh"
 
     # P — the tools themselves
     if [[ "${PURGE:-false}" == "true" ]]; then
