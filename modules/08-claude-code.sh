@@ -653,10 +653,13 @@ install_claude_code() {
 # _latest_bak <basefile> — echo the newest <basefile>.bak.* (empty if none).
 # =============================================================================
 _latest_bak() {
+    # Compare NAMES, not mtimes: cp -p preserves the source's mtime, so a
+    # manually restored old file makes an older backup look newest. The
+    # filename stamp (yyyymmdd_hhmmss) is authoritative and sorts lexically.
     local base="$1" newest="" f
     shopt -s nullglob
     for f in "${base}".bak.*; do
-        [[ -z "$newest" || "$f" -nt "$newest" ]] && newest="$f"
+        [[ -z "$newest" || "$f" > "$newest" ]] && newest="$f"
     done
     shopt -u nullglob
     echo "$newest"

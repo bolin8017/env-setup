@@ -53,7 +53,7 @@ _worklog_write_config() {
 
 # _worklog_has_access <owner/repo> — true if the active gh account can see it
 _worklog_has_access() {
-    command -v gh >/dev/null 2>&1 || return 1
+    command_exists gh || return 1
     gh repo view "$1" >/dev/null 2>&1
 }
 

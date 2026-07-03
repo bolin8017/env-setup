@@ -149,7 +149,9 @@ if [[ "$KEEP_EXISTING" == "true" ]]; then
     AUTO_YES="false"
 fi
 
-export KEEP_EXISTING
+# Export all three (CLAUDE.md documents them as exported; uninstall.sh already
+# does) so child bash processes a module may spawn see the same flags.
+export DRY_RUN AUTO_YES KEEP_EXISTING
 
 # =============================================================================
 # Verify-only mode

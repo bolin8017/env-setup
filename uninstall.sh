@@ -108,7 +108,7 @@ NO_RESTORE="false"
 export DRY_RUN AUTO_YES KEEP_TOOLS PURGE NO_RESTORE
 
 # Mark configured user_dirs.paths as protected (absolute, newline-separated).
-PROTECTED_EXTRA="$(while IFS= read -r p; do [[ -n "$p" ]] && echo "${HOME}/${p}"; done < <(cfg_list "user_dirs.paths"))"
+PROTECTED_EXTRA="$(while IFS= read -r p; do [[ -n "$p" ]] && echo "${HOME}/${p}"; done < <(cfg_list "user_dirs.paths") || true)"
 export PROTECTED_EXTRA
 
 # =============================================================================

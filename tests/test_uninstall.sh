@@ -239,4 +239,31 @@ KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
 assert_file_not_exists "$_skill_dest/SKILL.md" "pristine skill removed on uninstall"
 assert_file_not_exists "$_skill_dest" "empty skill dir pruned on uninstall"
 
+suite "backup.sh: list past first entry + retention + name-sorted _latest_bak"
+
+# shellcheck source=lib/backup.sh
+source "$PROJECT_ROOT/lib/backup.sh"
+mkdir -p "$BACKUP_DIR"
+for _d in 20260101 20260102 20260103 20260104 20260105 20260106 20260107; do
+    mkdir -p "$BACKUP_DIR/backup_${_d}_000000"
+done
+_out="$(bash "$PROJECT_ROOT/lib/backup.sh" list 2>&1)"
+assert_contains "$_out" "Total: 7" "list survives past the first entry (count++ errexit fix)"
+
+printf 'zshrc
+' > "$HOME/.zshrc"
+DRY_RUN="false" backup_configs >/dev/null 2>&1
+_n=$(find "$BACKUP_DIR" -maxdepth 1 -type d -name 'backup_*' | wc -l)
+assert_eq "5" "$(echo "$_n" | tr -d ' ')" "retention keeps only the newest 5 snapshots"
+
+# _latest_bak (08-claude-code) must pick by filename stamp, not mtime
+_base="$HOME/.claude/settings.json"
+mkdir -p "$(dirname "$_base")"
+printf 'old
+' > "${_base}.bak.20250101_000000"
+printf 'new
+' > "${_base}.bak.20260101_000000"
+touch -d '2020-01-01' "${_base}.bak.20260101_000000" 2>/dev/null || true
+assert_eq "${_base}.bak.20260101_000000" "$(_latest_bak "$_base")" "_latest_bak sorts by name, not mtime"
+
 print_test_summary

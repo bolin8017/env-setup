@@ -142,6 +142,18 @@ assert_file_exists "$_keepfile" "dry_run_rm does not remove the file in dry-run 
 DRY_RUN="false"
 
 # =============================================================================
+suite "deploy_config never prompts during dry-run"
+# =============================================================================
+
+_dc_src="$TEST_TMPDIR/dc_src"; printf 'repo
+' > "$_dc_src"
+_dc_dst="$TEST_TMPDIR/dc_dst"; printf 'local edit
+' > "$_dc_dst"
+_out="$(DRY_RUN="true" AUTO_YES="false" deploy_config "$_dc_src" "$_dc_dst" "dc" < /dev/null 2>&1)"
+assert_contains "$_out" "Would ask to overwrite" "differing dest previews the overwrite question"
+assert_eq "local edit" "$(cat "$_dc_dst")" "dry-run leaves the destination untouched"
+
+# =============================================================================
 suite "write_generated_fragment content-compares"
 # =============================================================================
 

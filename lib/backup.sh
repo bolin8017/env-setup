@@ -53,6 +53,7 @@ backup_configs() {
     if [[ "$backed_up" == true ]]; then
         if [[ "${DRY_RUN:-false}" != "true" ]]; then
             echo "$backup_path" > "${BACKUP_DIR}/.latest"
+            _prune_old_backups
         fi
         log_success "Backup created: $backup_path"
     else
@@ -61,6 +62,36 @@ backup_configs() {
             rm -rf "$backup_path"
         fi
     fi
+}
+
+# =============================================================================
+# _prune_old_backups — Keep only the newest BACKUP_KEEP snapshots.
+# Every setup run snapshots (including the full ~/.oh-my-zsh tree), and
+# nothing ever pruned - tens of MB per run, forever. Timestamped names sort
+# lexically, so "newest" is just the sorted tail.
+# =============================================================================
+BACKUP_KEEP="${BACKUP_KEEP:-5}"
+
+_prune_old_backups() {
+    local dirs=() d
+    for d in "$BACKUP_DIR"/backup_*; do
+        [[ -d "$d" ]] && dirs+=("$d")
+    done
+    local excess=$(( ${#dirs[@]} - BACKUP_KEEP ))
+    (( excess <= 0 )) && return 0
+
+    # Never prune the snapshot .latest points at (restore_configs needs it).
+    local latest=""
+    [[ -f "${BACKUP_DIR}/.latest" ]] && latest="$(cat "${BACKUP_DIR}/.latest")"
+
+    local i=0
+    for d in "${dirs[@]}"; do
+        (( i >= excess )) && break
+        if [[ "$d" == "$latest" ]]; then continue; fi
+        rm -rf "$d"
+        log_info "  Pruned old backup: $(basename "$d")"
+        i=$((i + 1))
+    done
 }
 
 # =============================================================================
@@ -140,7 +171,9 @@ list_backups() {
         local label=""
         [[ "$entry" == "$latest" ]] && label=" ${GREEN}(latest)${NC}"
         echo -e "  $(basename "$entry")${label}"
-        ((count++))
+        # count+1, not ((count++)): post-increment from 0 evaluates to 0,
+        # which is exit status 1 - fatal under the standalone errexit.
+        count=$((count + 1))
     done
 
     if [[ $count -eq 0 ]]; then

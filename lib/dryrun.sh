@@ -76,6 +76,16 @@ deploy_config() {
     fi
 
     if [[ -f "$dest" ]]; then
+        # A dry run must never block on a prompt: nothing will be mutated, so
+        # just preview the decision that a real run would ask about.
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            if cmp -s "$src" "$dest" 2>/dev/null; then
+                log_info "${label}: identical to repo version — skipping"
+            else
+                echo "[DRY-RUN] Would ask to overwrite ${dest} (differs from repo)"
+            fi
+            return 0
+        fi
         if [[ "${KEEP_EXISTING:-false}" == "true" ]]; then
             log_info "[SKIP] Keeping existing ${label} (--keep-existing)"
             return 0
