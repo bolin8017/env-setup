@@ -82,29 +82,7 @@ Either bumps the **major** version under semantic versioning.
 
 ## Examples
 
-### Good — with body
-
-```
-feat(docker): mount host project dir and switch to HTTPS git auth
-
-Previously the Docker run mode required either copying the repo into
-the image (broke incremental runs) or mounting ~/.ssh read-write
-(security risk, flaky under WSL agent forwarding).
-
-HTTPS + PAT reuses the existing GITHUB_TOKEN from .env, so no new
-secret surface. Tradeoff: PAT now needs `repo` scope instead of
-`public_repo`. Documented in .env.example.
-
-Closes #12
-```
-
-### Good — trivial change, body omitted
-
-```
-fix: typo in README installation section
-```
-
-### Good — breaking change
+### Good — subject + why-focused body + footers in one
 
 ```
 feat(api)!: drop /v1 endpoints
@@ -114,6 +92,8 @@ have migrated to /v2 based on access logs from the past 30 days.
 
 BREAKING CHANGE: /api/v1/* is removed. Clients must use /api/v2/*.
 ```
+
+(Truly obvious changes may omit the body: `fix: typo in README`.)
 
 ### Bad — reasons noted
 

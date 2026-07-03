@@ -86,6 +86,21 @@ function Sync-ClaudeDir {
     }
 }
 
+function Sync-ClaudeSkills {
+    # Skills are directories (SKILL.md + optional support files); each file is
+    # deployed individually so user modifications keep overwrite protection.
+    # Additive: machine-only skills are preserved.
+    $srcRoot = Join-Path $script:ClaudeCfg 'skills'
+    if (-not (Test-Path $srcRoot)) { Write-Info 'skills source missing - skipping'; return }
+    foreach ($skill in @(Get-ChildItem $srcRoot -Directory -ErrorAction Ignore)) {
+        $destDir = Join-Path $HOME ".claude/skills/$($skill.Name)"
+        New-DirOrDryRun -Path $destDir
+        foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
+            Deploy-Config -Source $f.FullName -Destination (Join-Path $destDir $f.Name) -Label "skills/$($skill.Name)/$($f.Name)"
+        }
+    }
+}
+
 function Sync-ClaudeSettings {
     $src = Join-Path $script:ClaudeCfg 'settings.json'
     $dest = Join-Path $HOME '.claude/settings.json'
@@ -165,6 +180,7 @@ function Install-ClaudeCode {
     if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' }
     if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' }
     if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' }
+    if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills }
     Sync-ClaudeSettings
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
@@ -224,6 +240,18 @@ function Uninstall-ClaudeCode {
         if (-not (Test-Path $srcDir)) { continue }
         Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
             Remove-ManagedFile -Dest (Join-Path $HOME ".claude/$sub/$($_.Name)") -RepoSrc $_.FullName -Label "$sub/$($_.Name)"
+        }
+    }
+    $skillsRoot = Join-Path $script:ClaudeCfg 'skills'
+    if (Test-Path $skillsRoot) {
+        foreach ($skill in @(Get-ChildItem $skillsRoot -Directory -ErrorAction Ignore)) {
+            foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
+                Remove-ManagedFile -Dest (Join-Path $HOME ".claude/skills/$($skill.Name)/$($f.Name)") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$($f.Name)"
+            }
+            $destDir = Join-Path $HOME ".claude/skills/$($skill.Name)"
+            if (-not (Test-DryRun) -and (Test-Path $destDir) -and -not @(Get-ChildItem $destDir -Force)) {
+                Remove-Item -LiteralPath $destDir
+            }
         }
     }
 

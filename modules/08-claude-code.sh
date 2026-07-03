@@ -192,6 +192,38 @@ _sync_claude_agents() {
 }
 
 # =============================================================================
+# _sync_claude_skills — Sync ~/.claude/skills/<name>/ from configs/claude/skills/.
+# Skills are directories (SKILL.md + optional support files); each file is
+# deployed individually so user modifications keep overwrite protection.
+# Additive: machine-only skills are preserved.
+# =============================================================================
+_sync_claude_skills() {
+    if ! cfg_enabled "claude_code.sync_skills"; then
+        log_info "sync_skills disabled — skipping"
+        return 0
+    fi
+
+    local src_root="${ENV_SETUP_DIR}/configs/claude/skills"
+    local dest_root="${HOME}/.claude/skills"
+
+    if [[ ! -d "$src_root" ]]; then
+        log_warn "skills source dir not found: ${src_root}"
+        return 0
+    fi
+
+    local dir f name
+    shopt -s nullglob
+    for dir in "$src_root"/*/; do
+        name="$(basename "$dir")"
+        dry_run_mkdir "${dest_root}/${name}"
+        for f in "$dir"*; do
+            [[ -f "$f" ]] && deploy_config "$f" "${dest_root}/${name}/$(basename "$f")" "skill ${name}/$(basename "$f")"
+        done
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
 # _merge_claude_settings — Whitelist jq-merge of ~/.claude/settings.json.
 # For each top-level key in claude_code.settings_merge_keys, copies that field
 # from the repo's settings.json into the user's. Other keys (e.g. internal
@@ -609,6 +641,7 @@ install_claude_code() {
     _sync_claude_rules
     _sync_claude_commands
     _sync_claude_agents
+    _sync_claude_skills
     _merge_claude_settings
     _set_ccstatusline_command
     _register_plugin_marketplaces
@@ -740,6 +773,16 @@ uninstall_claude_code() {
     for f in "${cdir}/rules"/*.md;    do remove_managed_file "${HOME}/.claude/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
     for f in "${cdir}/commands"/*.md; do remove_managed_file "${HOME}/.claude/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
     for f in "${cdir}/agents"/*.md;   do remove_managed_file "${HOME}/.claude/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
+    local skill_dir skill_name
+    for skill_dir in "${cdir}/skills"/*/; do
+        skill_name="$(basename "$skill_dir")"
+        for f in "$skill_dir"*; do
+            [[ -f "$f" ]] && remove_managed_file "${HOME}/.claude/skills/${skill_name}/$(basename "$f")" "$f" "skill ${skill_name}/$(basename "$f")"
+        done
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            rmdir "${HOME}/.claude/skills/${skill_name}" 2>/dev/null || true
+        fi
+    done
     shopt -u nullglob
 
     _uninstall_claude_settings

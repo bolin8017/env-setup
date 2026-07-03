@@ -218,4 +218,25 @@ cp "$PROJECT_ROOT/configs/zshrc/50-tools.zsh" "$_frag_dir/50-tools.zsh"
 uninstall_cli_tools >/dev/null 2>&1
 assert_file_not_exists "$_frag_dir/50-tools.zsh" "pristine 50-tools.zsh removed"
 
+suite "claude skills sync + uninstall roundtrip"
+
+# shellcheck source=modules/08-claude-code.sh
+source "$PROJECT_ROOT/modules/08-claude-code.sh"
+
+_skill_dest="$HOME/.claude/skills/weekly-review"
+_sync_claude_skills >/dev/null 2>&1
+assert_file_exists "$_skill_dest/SKILL.md" "skill deployed to ~/.claude/skills"
+
+# User-modified skill survives uninstall (KEEP_TOOLS avoids the plugin/CLI branch)
+printf '# customized
+' >> "$_skill_dest/SKILL.md"
+KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
+assert_file_exists "$_skill_dest/SKILL.md" "modified skill preserved on uninstall"
+
+# Pristine skill is removed and its dir pruned
+cp "$PROJECT_ROOT/configs/claude/skills/weekly-review/SKILL.md" "$_skill_dest/SKILL.md"
+KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
+assert_file_not_exists "$_skill_dest/SKILL.md" "pristine skill removed on uninstall"
+assert_file_not_exists "$_skill_dest" "empty skill dir pruned on uninstall"
+
 print_test_summary
