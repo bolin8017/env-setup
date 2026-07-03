@@ -1,3 +1,7 @@
+---
+description: Analyze the project and scaffold CLAUDE.md plus path-scoped .claude/rules per official memory guidance
+---
+
 Analyze the current project and set up Claude Code memory management, aligning with the official guidance at https://code.claude.com/docs/en/memory.
 
 ## Quick start: prefer `/init` for first-time setup

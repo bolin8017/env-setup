@@ -31,7 +31,8 @@
 
 Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Full
 spec, examples, industry references, and PR sizing rules live in
-@~/.claude/rules/conventional-commits.md.
+`~/.claude/rules/conventional-commits.md` — already auto-loaded as a rule, so
+no `@import` here (that would put the same content into context twice).
 
 **TL;DR:**
 - Format: `<type>(<scope>): <description>` — lowercase, imperative, no period
