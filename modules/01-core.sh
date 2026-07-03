@@ -33,7 +33,10 @@ FRAGMENT
     fi
 
     log_info "Installing Homebrew..."
-    dry_run_cmd /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # Single quotes defer the curl to execution time: with "$(curl ...)" the
+    # substitution runs BEFORE dry_run_cmd sees it — a dry run still hit the
+    # network and dumped the whole installer into the log.
+    dry_run_cmd bash -c 'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | /bin/bash'
 
     # Set up PATH for current session
     if [[ -f "/opt/homebrew/bin/brew" ]]; then
