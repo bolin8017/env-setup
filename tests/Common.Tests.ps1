@@ -126,3 +126,32 @@ Describe 'Invoke-Native' {
         $LASTEXITCODE | Should -Be 0
     }
 }
+
+Describe 'Test-FileContentEqual' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:Tmp = Join-Path ([IO.Path]::GetTempPath()) ("envsetup-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Tmp -Force | Out-Null
+    }
+    AfterAll { Remove-Item -Recurse -Force $script:Tmp -ErrorAction Ignore }
+
+    It 'returns true for byte-identical files' {
+        $a = Join-Path $script:Tmp 'a.txt'; [IO.File]::WriteAllText($a, "l1`nl2`n")
+        $b = Join-Path $script:Tmp 'b.txt'; [IO.File]::WriteAllText($b, "l1`nl2`n")
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeTrue
+    }
+    It 'returns false when the same lines are reordered' {
+        $a = Join-Path $script:Tmp 'c.txt'; [IO.File]::WriteAllText($a, "l1`nl2`n")
+        $b = Join-Path $script:Tmp 'd.txt'; [IO.File]::WriteAllText($b, "l2`nl1`n")
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeFalse
+    }
+    It 'returns false when only the encoding differs (BOM)' {
+        $a = Join-Path $script:Tmp 'e.txt'; [IO.File]::WriteAllText($a, "x`n", [Text.UTF8Encoding]::new($false))
+        $b = Join-Path $script:Tmp 'f.txt'; [IO.File]::WriteAllText($b, "x`n", [Text.UTF8Encoding]::new($true))
+        Test-FileContentEqual -PathA $a -PathB $b | Should -BeFalse
+    }
+    It 'returns false when either file is missing' {
+        $a = Join-Path $script:Tmp 'g.txt'; [IO.File]::WriteAllText($a, "x")
+        Test-FileContentEqual -PathA $a -PathB (Join-Path $script:Tmp 'nope.txt') | Should -BeFalse
+    }
+}

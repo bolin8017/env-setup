@@ -104,3 +104,31 @@ deploy_config() {
     dry_run_cp "$src" "$dest"
     log_success "Deployed ${label}"
 }
+
+# =============================================================================
+# write_generated_fragment — Write a module-generated zsh fragment from stdin.
+# Content-compared, not marker-guarded: an existing fragment with stale content
+# is rewritten, so fragment fixes actually reach already-provisioned machines
+# via self-update. Identical content is a silent no-op. Honours DRY_RUN.
+# Usage: write_generated_fragment <name> << 'FRAGMENT' ... FRAGMENT
+# =============================================================================
+write_generated_fragment() {
+    local name="$1"
+    local dest_dir="$HOME/.config/zsh/fragments"
+    local dest="$dest_dir/$name"
+    local content
+    content="$(cat)"
+
+    if [[ -f "$dest" ]] && [[ "$(cat "$dest")" == "$content" ]]; then
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY-RUN] Would write fragment: $dest"
+        return 0
+    fi
+
+    mkdir -p "$dest_dir"
+    printf '%s\n' "$content" > "$dest"
+    log_info "Wrote fragment: $dest"
+}

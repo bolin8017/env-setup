@@ -148,4 +148,42 @@ assert_file_exists "$_keepfile" "dry_run_rm does not remove the file in dry-run 
 DRY_RUN="false"
 
 # =============================================================================
+suite "write_generated_fragment content-compares"
+# =============================================================================
+
+_frag_home="$TEST_TMPDIR/frag_home"
+mkdir -p "$_frag_home"
+_frag="$_frag_home/.config/zsh/fragments/16-nvm.zsh"
+
+# Creates the fragment when absent
+HOME="$_frag_home" DRY_RUN="false" write_generated_fragment "16-nvm.zsh" << 'CONTENT' >/dev/null
+export NVM_DIR="$HOME/.nvm"
+CONTENT
+assert_file_exists "$_frag" "creates fragment when absent"
+assert_contains "$(cat "$_frag")" "NVM_DIR" "fragment carries the content"
+
+# Identical content -> no rewrite (no log output)
+_out="$(HOME="$_frag_home" DRY_RUN="false" write_generated_fragment "16-nvm.zsh" << 'CONTENT'
+export NVM_DIR="$HOME/.nvm"
+CONTENT
+)"
+assert_not_contains "$_out" "fragment" "identical content is a silent no-op"
+
+# Stale content -> UPDATED in place (the self-update regression: the old
+# marker-grep guard never refreshed an existing fragment)
+HOME="$_frag_home" DRY_RUN="false" write_generated_fragment "16-nvm.zsh" << 'CONTENT' >/dev/null
+export NVM_DIR="$HOME/.nvm"
+# v2 adds eager node on PATH
+CONTENT
+assert_contains "$(cat "$_frag")" "eager node" "stale fragment is refreshed with new content"
+
+# Dry-run: differing content is reported but not written
+_out="$(HOME="$_frag_home" DRY_RUN="true" write_generated_fragment "16-nvm.zsh" << 'CONTENT'
+totally different
+CONTENT
+)"
+assert_contains "$_out" "[DRY-RUN]" "dry-run announces the write"
+assert_contains "$(cat "$_frag")" "eager node" "dry-run leaves the file untouched"
+
+# =============================================================================
 print_test_summary

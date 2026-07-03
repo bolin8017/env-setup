@@ -147,7 +147,7 @@ fi
 # =============================================================================
 # Module runner (reverse order)
 # =============================================================================
-declare -a REMOVED=() FAILED=() SKIPPED=()
+declare -a REMOVED=() FAILED=() SKIPPED=() WITH_ERRORS=()
 
 _module_in_filter() {
     local module_name="$1"
@@ -177,7 +177,17 @@ run_uninstall_module() {
     if ! declare -f "$fn" >/dev/null; then
         log_error "Function $fn not found in $module_file"; FAILED+=("$module_name"); return 0
     fi
-    if "$fn"; then REMOVED+=("$module_name"); else log_error "Module $module_name failed"; FAILED+=("$module_name"); fi
+    # errexit is suspended inside the `if` condition, so a module can return 0
+    # after logging errors mid-way; snapshot the tally to flag those.
+    local errors_before="${ENVSETUP_ERROR_COUNT:-0}"
+    if "$fn"; then
+        REMOVED+=("$module_name")
+        if [[ "${ENVSETUP_ERROR_COUNT:-0}" -gt "$errors_before" ]]; then
+            WITH_ERRORS+=("$module_name")
+        fi
+    else
+        log_error "Module $module_name failed"; FAILED+=("$module_name")
+    fi
 }
 
 # Reverse dependency order (10 → 01)
@@ -209,6 +219,7 @@ echo -e "${BOLD}${RED}  Uninstall Summary${NC}"
 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 [[ ${#REMOVED[@]} -gt 0 ]] && { echo -e "  ${GREEN}Processed:${NC}"; for m in "${REMOVED[@]}"; do echo "    [OK]   $m"; done; }
 [[ ${#SKIPPED[@]} -gt 0 ]] && { echo -e "  ${YELLOW}Skipped:${NC}"; for m in "${SKIPPED[@]}"; do echo "    [SKIP] $m"; done; }
+[[ ${#WITH_ERRORS[@]} -gt 0 ]] && { echo -e "  ${YELLOW}Completed with errors (see ${ERROR_LOG}):${NC}"; for m in "${WITH_ERRORS[@]}"; do echo "    [WARN] $m"; done; }
 [[ ${#FAILED[@]}  -gt 0 ]] && { echo -e "  ${RED}Failed:${NC}"; for m in "${FAILED[@]}"; do echo "    [FAIL] $m"; done; }
 echo ""
 [[ "${DRY_RUN}" == "true" ]] && echo -e "  ${YELLOW}This was a dry run — no changes were made.${NC}"
