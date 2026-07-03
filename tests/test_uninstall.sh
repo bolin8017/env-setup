@@ -188,4 +188,29 @@ echo x > "$HOME/.config/zsh/fragments/50-tools.zsh"
 bash "$PROJECT_ROOT/uninstall.sh" --dry-run --auto-yes >/dev/null 2>&1
 assert_file_exists "$HOME/.config/zsh/fragments/50-tools.zsh" "dry-run removes nothing"
 
+suite "uninstall_cli_tools fragment safety"
+
+# shellcheck source=lib/yaml.sh
+source "$PROJECT_ROOT/lib/yaml.sh"
+# shellcheck source=lib/config.sh
+source "$PROJECT_ROOT/lib/config.sh"
+# shellcheck source=lib/package.sh
+source "$PROJECT_ROOT/lib/package.sh"
+load_config "$PROJECT_ROOT/config.yaml"
+# shellcheck source=modules/05-cli-tools.sh
+source "$PROJECT_ROOT/modules/05-cli-tools.sh"
+
+_frag_dir="$HOME/.config/zsh/fragments"
+mkdir -p "$_frag_dir"
+
+# User-modified fragment must survive uninstall
+printf '# user customized\n' > "$_frag_dir/50-tools.zsh"
+uninstall_cli_tools >/dev/null 2>&1
+assert_file_exists "$_frag_dir/50-tools.zsh" "modified 50-tools.zsh preserved"
+
+# Pristine (repo-identical) fragment is removed
+cp "$PROJECT_ROOT/configs/zshrc/50-tools.zsh" "$_frag_dir/50-tools.zsh"
+uninstall_cli_tools >/dev/null 2>&1
+assert_file_not_exists "$_frag_dir/50-tools.zsh" "pristine 50-tools.zsh removed"
+
 print_test_summary
