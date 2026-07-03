@@ -21,7 +21,7 @@ general:
   # Print what *would* be done without making any changes
   dry_run: false
 
-  # Back up existing dotfiles before overwriting (~/.config/env-setup/backups/)
+  # Back up existing dotfiles before overwriting (~/.env-setup/backups/)
   backup: true
 
 # -----------------------------------------------------------------------------

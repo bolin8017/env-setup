@@ -193,4 +193,13 @@ assert_not_contains "$shell_src" 'if [[ -d "$omz_dir" ]]; then
     "install_oh_my_zsh: no bare-directory early return"
 
 # =============================================================================
+# =============================================================================
+suite "nvm half-install repair (02-languages)"
+# =============================================================================
+
+_nvm_home="$TEST_TMPDIR/nvm_home"
+mkdir -p "$_nvm_home/.nvm"    # directory exists, loader missing
+_out="$(HOME="$_nvm_home" DRY_RUN="true" _install_nvm 2>&1)"
+assert_contains "$_out" "Incomplete nvm install" "bare ~/.nvm dir triggers repair, not a false 'already installed'"
+
 print_test_summary

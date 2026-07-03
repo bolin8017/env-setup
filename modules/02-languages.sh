@@ -11,11 +11,18 @@ _install_nvm() {
     # Setup NVM environment
     export NVM_DIR="$HOME/.nvm"
 
-    if [[ -d "$HOME/.nvm" ]]; then
+    # Probe the loader, not just the directory: an interrupted install leaves
+    # ~/.nvm without nvm.sh, and a bare -d check then skips the repair forever
+    # (same class as the Oh My Zsh half-install fix).
+    if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
         log_success "nvm already installed"
     else
+        if [[ -d "$HOME/.nvm" ]]; then
+            log_warn "Incomplete nvm install detected; removing and reinstalling..."
+            dry_run_rm "$HOME/.nvm"
+        fi
         log_info "Installing nvm..."
-        dry_run_cmd bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+        dry_run_cmd bash -c 'curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
     fi
 
     # Write nvm fragment for future shells (content-compared, so fixes reach
@@ -117,7 +124,7 @@ _install_pyenv() {
                 log_warn "pyenv build dependencies deferred to administrator (pyenv itself will still install but Python builds will fail)"
             fi
             # pyenv itself installs into $HOME — no sudo required
-            dry_run_cmd bash -c 'curl https://pyenv.run | bash'
+            dry_run_cmd bash -c 'curl -fsSL https://pyenv.run | bash'
         fi
     fi
 

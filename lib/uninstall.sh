@@ -170,10 +170,17 @@ strip_block_from_file() {
 
     local tmp
     tmp="$(mktemp)"
-    awk -v b="$begin" -v e="$end" '
+    # cat-over instead of mv: mv would replace the dotfile with mktemp's 600
+    # mode; cat preserves the original permissions/ownership.
+    if awk -v b="$begin" -v e="$end" '
         index($0, b) { skip = 1 }
         !skip        { print }
         index($0, e) { skip = 0 }
-    ' "$file" > "$tmp" && mv "$tmp" "$file"
-    log_success "Stripped managed block from ${file}"
+    ' "$file" > "$tmp"; then
+        cat "$tmp" > "$file"
+        log_success "Stripped managed block from ${file}"
+    else
+        log_warn "Failed to strip managed block from ${file} — left intact"
+    fi
+    rm -f "$tmp"
 }
