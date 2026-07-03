@@ -23,6 +23,8 @@ yaml_parse() {
     awk '
     BEGIN {
         depth = 0
+        header_indent = -1
+        header_line = 0
     }
 
     # Skip blank lines and pure comment lines
@@ -30,6 +32,17 @@ yaml_parse() {
     /^[[:space:]]*#/ { next }
 
     {
+        # Lint: the supported subset is 2-space indentation, no tabs. Anything
+        # else lands values in the wrong CFG_ namespace — warn instead of
+        # corrupting silently (this file is hand-edited).
+        if ($0 ~ /^ *\t/) {
+            printf "yaml_parse: %s:%d: leading tab is unsupported (use 2-space indents)\n", FILENAME, NR > "/dev/stderr"
+        }
+        match($0, /^ */);
+        if (RLENGTH % 2 == 1) {
+            printf "yaml_parse: %s:%d: odd indentation (%d spaces) — use 2-space indents\n", FILENAME, NR, RLENGTH > "/dev/stderr"
+        }
+
         # Calculate indentation level (2 spaces per level)
         match($0, /^[[:space:]]*/);
         indent = int(RLENGTH / 2);
@@ -39,16 +52,25 @@ yaml_parse() {
         sub(/^[[:space:]]+/, "", line)
         sub(/[[:space:]]+$/, "", line)
 
-        # Strip inline comments (not inside quotes)
-        if (match(line, /[^"'\''#]*#/)) {
-            # Only strip if # is not inside quotes
-            tmp = line
-            gsub(/"[^"]*"/, "", tmp)
-            gsub(/'\''[^'\'']*'\''/, "", tmp)
-            if (match(tmp, /[[:space:]]+#/)) {
-                sub(/[[:space:]]+#.*$/, "", line)
+        # Strip inline comments: cut at the first "#" that sits OUTSIDE any
+        # quoted span and is preceded by whitespace, so values like "#ff0000"
+        # or "a # b" keep their "#". Character scan mirroring the PowerShell
+        # reader (lib/Config.psm1 Remove-InlineComment); the previous regex
+        # approach corrupted quoted values containing " #".
+        quote = ""
+        for (ci = 1; ci <= length(line); ci++) {
+            ch = substr(line, ci, 1)
+            if (quote != "") {
+                if (ch == quote) quote = ""
+            } else if (ch == "\"" || ch == "'\''") {
+                quote = ch
+            } else if (ch == "#" && ci > 1 && substr(line, ci - 1, 1) ~ /[[:space:]]/) {
+                line = substr(line, 1, ci - 1)
+                break
             }
         }
+        sub(/[[:space:]]+$/, "", line)
+        if (line == "") { next }
 
         # Trim depth stack to current level
         if (indent < depth) {
@@ -57,6 +79,11 @@ yaml_parse() {
 
         # List item: "- value"
         if (match(line, /^- /)) {
+            # Lint: a list item at its key'\''s own indent (flat style) binds to
+            # the PARENT key — unsupported here; indent items two spaces.
+            if (indent == header_indent && NR > header_line) {
+                printf "yaml_parse: %s:%d: flat-style list item (same indent as its key) is unsupported — indent it two spaces\n", FILENAME, NR > "/dev/stderr"
+            }
             value = substr(line, 3)
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
             value = strip_quotes(value)
@@ -92,6 +119,8 @@ yaml_parse() {
             # Set current level key
             keys[indent] = key_part
             depth = indent + 1
+            header_indent = indent
+            header_line = NR
 
             if (val_part != "") {
                 # Scalar value — build key from stack 0..indent
@@ -106,6 +135,10 @@ yaml_parse() {
             # else: section header, children will follow
             next
         }
+
+        # Lint: neither a list item nor a key — the line would be dropped
+        # silently, which reads as "configured" while doing nothing.
+        printf "yaml_parse: %s:%d: unrecognized line (outside the supported YAML subset): %s\n", FILENAME, NR, line > "/dev/stderr"
     }
 
     function build_key(d,    k, i) {
