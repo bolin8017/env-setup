@@ -1,7 +1,12 @@
 # Claude Config Harness — Design Spec (2026-07-03)
 
-**Status:** DRAFT — awaiting user approval (approach choice A/B/C pending; A
-is drafted here as the recommendation).
+**Status:** APPROVED 2026-07-03 — approach A confirmed by the user.
+Open-question resolutions: (1) approach A as specced; (2) trim the two long
+"Good" examples from `conventional-commits.md`, keeping one compact good
+example and the "Bad" table; (3) seed one skill:
+`configs/claude/skills/weekly-review/SKILL.md` (aggregates the worklog inbox
+into a weekly vault summary), which also gives `sync_skills` its first real
+consumer.
 
 ## Problem
 
