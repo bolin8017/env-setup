@@ -78,3 +78,24 @@ Describe 'Enable-SessionFonts' {
         ) } | Should -Not -Throw
     }
 }
+
+
+Describe 'Set-WindowsTerminalFont idempotency' {
+    BeforeAll {
+        $script:OldLocal = $env:LOCALAPPDATA
+        $env:LOCALAPPDATA = Join-Path $TestDrive 'localappdata'
+        $wtDir = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState'
+        New-Item -ItemType Directory -Path $wtDir -Force | Out-Null
+        Set-Content (Join-Path $wtDir 'settings.json') '{"profiles":{"defaults":{}}}'
+        $env:ENVSETUP_DRY_RUN = $null
+    }
+    AfterAll { $env:LOCALAPPDATA = $script:OldLocal; $env:ENVSETUP_DRY_RUN = 'true' }
+
+    It 'writes once, then skips (no backup churn) when already merged' {
+        Mock Backup-File { }
+        Set-WindowsTerminalFont
+        Should -Invoke Backup-File -Times 1 -Exactly
+        Set-WindowsTerminalFont
+        Should -Invoke Backup-File -Times 1 -Exactly   # unchanged: second run skipped
+    }
+}

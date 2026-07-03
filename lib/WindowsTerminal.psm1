@@ -13,6 +13,11 @@ function Merge-WtSettings {
     )
     $s = $CurrentJson | ConvertFrom-Json
 
+    if ($s.PSObject.Properties['profiles'] -and $s.profiles -is [System.Collections.IList]) {
+        # Legacy array-form "profiles": [...] - Add-Member below would pipeline
+        # over the elements and inject a bogus "defaults" into every profile.
+        throw 'settings.json uses the legacy array form of "profiles" - set the default font manually'
+    }
     if (-not $s.PSObject.Properties['profiles']) { $s | Add-Member -NotePropertyName profiles -NotePropertyValue ([pscustomobject]@{}) }
     if (-not $s.profiles.PSObject.Properties['defaults']) { $s.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) }
     if (-not $s.profiles.defaults.PSObject.Properties['font']) { $s.profiles.defaults | Add-Member -NotePropertyName font -NotePropertyValue ([pscustomobject]@{}) }
