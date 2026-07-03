@@ -85,3 +85,44 @@ Describe 'Invoke-WithRetry' {
             Should -Throw -ExpectedMessage '*always*'
     }
 }
+
+
+Describe 'Write-Utf8NoBom' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:Tmp2 = Join-Path ([IO.Path]::GetTempPath()) ("envsetup-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Tmp2 -Force | Out-Null
+    }
+    AfterAll { Remove-Item -Recurse -Force $script:Tmp2 -ErrorAction Ignore }
+
+    It 'writes UTF-8 without a BOM' {
+        $p = Join-Path $script:Tmp2 'nobom.json'
+        Write-Utf8NoBom -Path $p -Content '{"a":1}'
+        $bytes = [IO.File]::ReadAllBytes($p)
+        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+        [IO.File]::ReadAllText($p) | Should -Be '{"a":1}'
+    }
+}
+
+Describe 'Invoke-Native' {
+    BeforeAll {
+        Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force
+        $script:OnWin = Test-IsWindows
+    }
+    It 'captures stderr without throwing and preserves the exit code' {
+        { Invoke-Native git '--no-such-flag' | Out-Null } | Should -Not -Throw
+        $LASTEXITCODE | Should -Not -Be 0
+    }
+    It 'returns stdout and exit code 0 on success' {
+        (Invoke-Native git '--version') -join "`n" | Should -Match 'git version'
+        $LASTEXITCODE | Should -Be 0
+    }
+    It 'does not throw under Windows PowerShell 5.1 with EAP=Stop' -Skip:($env:OS -ne 'Windows_NT') {
+        # 5.1 throws RemoteException when a native command writes to a
+        # redirected stderr under EAP=Stop; Invoke-Native must shield that.
+        $mod = (Resolve-Path "$PSScriptRoot/../lib/Common.psm1").Path
+        $cmd = "`$ErrorActionPreference='Stop'; Import-Module '$mod'; try { Invoke-Native git '--no-such-flag' | Out-Null; exit 0 } catch { exit 1 }"
+        powershell.exe -NoProfile -Command $cmd | Out-Null
+        $LASTEXITCODE | Should -Be 0
+    }
+}

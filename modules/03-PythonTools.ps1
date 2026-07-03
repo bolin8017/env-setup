@@ -36,8 +36,8 @@ function Uninstall-PythonTools {
             if (Test-DryRun) {
                 Write-Info '[DRY-RUN] Would run: pipx uninstall poetry; pipx uninstall jupyterlab'
             } else {
-                pipx uninstall poetry 2>$null
-                pipx uninstall jupyterlab 2>$null
+                Invoke-Native pipx uninstall poetry | Out-Null
+                Invoke-Native pipx uninstall jupyterlab | Out-Null
             }
         }
         Remove-Pkg -Name 'uv'
