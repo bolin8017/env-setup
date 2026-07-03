@@ -12,6 +12,7 @@ source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 source "$PROJECT_ROOT/lib/package.sh"
 source "$PROJECT_ROOT/lib/config.sh"
+source "$PROJECT_ROOT/lib/uninstall.sh"
 
 # Load config so cfg_* functions work inside modules
 setup_logging
@@ -218,5 +219,43 @@ CFG_SHELL_ENABLED="false"
 _out="$(install_shell 2>&1)"
 assert_contains "$_out" "disabled" "shell.enabled=false skips the module"
 CFG_SHELL_ENABLED="true"
+
+# =============================================================================
+# =============================================================================
+suite "claude account profiles (08-claude-code)"
+# =============================================================================
+
+# Declared profiles get the file-based harness synced into ~/.claude-<name>
+CFG_CLAUDE_CODE_PROFILES_COUNT=1
+CFG_CLAUDE_CODE_PROFILES_0="work"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" ".claude-work" "profiles: assets deploy under ~/.claude-work"
+CFG_CLAUDE_CODE_PROFILES_COUNT=0
+
+# No profiles declared -> quiet no-op
+_out="$(DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" "no claude profiles" "profiles: empty list is a quiet no-op"
+
+# Invalid names (path separators, dot-dot, empty) are rejected, not deployed
+CFG_CLAUDE_CODE_PROFILES_COUNT=2
+CFG_CLAUDE_CODE_PROFILES_0="team/alpha"
+CFG_CLAUDE_CODE_PROFILES_1="../evil"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" "invalid profile name" "profiles: path-like names are rejected with a warning"
+assert_not_contains "$_out" "Would copy" "profiles: nothing is deployed for invalid names"
+CFG_CLAUDE_CODE_PROFILES_COUNT=0
+
+# Uninstall touches only DECLARED profile dirs — a user's ~/.claude-backup
+# (or any third-party ~/.claude-* dir) must never be swept.
+_uhome="$TEST_TMPDIR/uninstall_home"
+mkdir -p "$_uhome/.claude-backup" "$_uhome/.claude-work"
+cp "$PROJECT_ROOT/configs/claude/CLAUDE.md" "$_uhome/.claude-backup/CLAUDE.md"
+cp "$PROJECT_ROOT/configs/claude/CLAUDE.md" "$_uhome/.claude-work/CLAUDE.md"
+CFG_CLAUDE_CODE_PROFILES_COUNT=1
+CFG_CLAUDE_CODE_PROFILES_0="work"
+_out="$(HOME="$_uhome" DRY_RUN="true" uninstall_claude_code 2>&1)"
+assert_contains "$_out" ".claude-work" "uninstall: declared profile dir is processed"
+assert_not_contains "$_out" ".claude-backup" "uninstall: undeclared ~/.claude-* dirs are left alone"
+CFG_CLAUDE_CODE_PROFILES_COUNT=0
 
 print_test_summary
