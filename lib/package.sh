@@ -196,7 +196,8 @@ pkg_install() {
     local had_failure=false
     for pkg in "$@"; do
         if is_macos; then
-            dry_run_cmd brew install "$pkg"
+            dry_run_cmd brew install "$pkg" \
+                || { log_error "Failed to install ${pkg}"; had_failure=true; }
         elif is_linux; then
             if ! sudo_available; then
                 record_missing_apt_package "$pkg"
@@ -205,11 +206,14 @@ pkg_install() {
                 continue
             fi
             if command_exists apt-get; then
-                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
+                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg" \
+                    || { log_error "Failed to install ${pkg}"; had_failure=true; }
             elif command_exists dnf; then
-                dry_run_cmd sudo dnf install -y "$pkg"
+                dry_run_cmd sudo dnf install -y "$pkg" \
+                    || { log_error "Failed to install ${pkg}"; had_failure=true; }
             elif command_exists yum; then
-                dry_run_cmd sudo yum install -y "$pkg"
+                dry_run_cmd sudo yum install -y "$pkg" \
+                    || { log_error "Failed to install ${pkg}"; had_failure=true; }
             else
                 log_error "No supported package manager found"
                 return 1
@@ -253,11 +257,11 @@ pkg_remove() {
                 continue
             fi
             if command_exists apt-get; then
-                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y "$pkg"
+                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y "$pkg" || had_failure=true
             elif command_exists dnf; then
-                dry_run_cmd sudo dnf remove -y "$pkg"
+                dry_run_cmd sudo dnf remove -y "$pkg" || had_failure=true
             elif command_exists yum; then
-                dry_run_cmd sudo yum remove -y "$pkg"
+                dry_run_cmd sudo yum remove -y "$pkg" || had_failure=true
             else
                 log_error "No supported package manager found"
                 return 1

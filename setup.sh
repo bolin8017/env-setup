@@ -193,6 +193,7 @@ show_welcome
 declare -a MODULES_INSTALLED=()
 declare -a MODULES_SKIPPED=()
 declare -a MODULES_FAILED=()
+declare -a MODULES_WITH_ERRORS=()
 
 # Check whether a module should run based on --modules filter
 _module_in_filter() {
@@ -246,9 +247,15 @@ run_module() {
         return 0
     fi
 
-    # Run the function, catch errors
+    # Run the function, catch errors. Bash suspends errexit inside an `if`
+    # condition, so a module can "succeed" (last command exit 0) after logging
+    # errors mid-way; snapshot the error tally to flag those in the summary.
+    local errors_before="${ENVSETUP_ERROR_COUNT:-0}"
     if "$install_fn"; then
         MODULES_INSTALLED+=("$module_name")
+        if [[ "${ENVSETUP_ERROR_COUNT:-0}" -gt "$errors_before" ]]; then
+            MODULES_WITH_ERRORS+=("$module_name")
+        fi
     else
         log_error "Module $module_name failed"
         MODULES_FAILED+=("$module_name")
@@ -294,6 +301,13 @@ show_summary() {
         done
     fi
 
+    if [[ ${#MODULES_WITH_ERRORS[@]} -gt 0 ]]; then
+        echo -e "  ${YELLOW}Completed with errors (see ${ERROR_LOG}):${NC}"
+        for m in "${MODULES_WITH_ERRORS[@]}"; do
+            echo -e "    ${YELLOW}[WARN]${NC} $m"
+        done
+    fi
+
     if [[ ${#MODULES_FAILED[@]} -gt 0 ]]; then
         echo -e "  ${RED}Failed:${NC}"
         for m in "${MODULES_FAILED[@]}"; do
@@ -302,7 +316,7 @@ show_summary() {
     fi
 
     echo ""
-    echo -e "  ${CYAN}Total:${NC} ${#MODULES_INSTALLED[@]} installed, ${#MODULES_SKIPPED[@]} skipped, ${#MODULES_FAILED[@]} failed"
+    echo -e "  ${CYAN}Total:${NC} ${#MODULES_INSTALLED[@]} installed, ${#MODULES_SKIPPED[@]} skipped, ${#MODULES_FAILED[@]} failed, ${#MODULES_WITH_ERRORS[@]} with errors"
     echo ""
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
