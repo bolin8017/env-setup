@@ -92,24 +92,13 @@ _deploy_tmux_config() {
     # shellcheck disable=SC2088  # tilde is intentional display label
     deploy_config "${src_dir}/tmux.conf" "${HOME}/.tmux.conf" "~/.tmux.conf"
 
-    # macOS-specific: append source-file directive so the main config
-    # conditionally loads the macOS overrides.
+    # macOS overrides: the repo tmux.conf already sources this file behind a
+    # Darwin guard, so deploying the override file is all that's needed. No
+    # install-time append — that made ~/.tmux.conf differ from the repo copy
+    # forever, so uninstall could never recognize an unmodified deploy (and
+    # the append also ignored --keep-existing).
     if is_macos && [[ -f "${src_dir}/tmux.macos.conf" ]]; then
         deploy_config "${src_dir}/tmux.macos.conf" "${HOME}/.tmux/tmux.macos.conf" "tmux.macos.conf"
-
-        # Append source-if-exists for the macOS config (idempotent)
-        local source_line='if-shell "uname | grep -q Darwin" "source-file ~/.tmux/tmux.macos.conf"'
-        if ! grep -qF "tmux.macos.conf" "${HOME}/.tmux.conf" 2>/dev/null; then
-            if [[ "${DRY_RUN:-false}" == "true" ]]; then
-                echo "[DRY-RUN] Would append macOS source-file to ~/.tmux.conf"
-            else
-                {
-                    echo ""
-                    echo "# macOS-specific overrides"
-                    echo "$source_line"
-                } >> "${HOME}/.tmux.conf"
-            fi
-        fi
     fi
 
     # Dev layout
