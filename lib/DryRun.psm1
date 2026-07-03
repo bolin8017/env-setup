@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 # functions from a parent script's scope (e.g. setup.ps1). Plain import is a
 # no-op once loaded; tests reload with -Force at their own BeforeAll.
 Import-Module "$PSScriptRoot/Common.psm1"
+Import-Module "$PSScriptRoot/Backup.psm1"
 
 function Invoke-OrDryRun {
     param(
@@ -57,6 +58,14 @@ function Deploy-Config {
 
     $parent = Split-Path $Destination -Parent
     if ($parent) { New-DirOrDryRun -Path $parent }
+    # Back up a differing existing file before overwriting it - the Windows
+    # analog of the Bash engine's pre-install snapshot (general.backup).
+    # Without this, the first deploy over a user's pre-existing profile.ps1
+    # was unrecoverable.
+    if ((Test-Path -LiteralPath $Destination) -and -not (Test-DryRun) `
+        -and -not (Test-FileContentEqual -PathA $Source -PathB $Destination)) {
+        Backup-File -Path $Destination | Out-Null
+    }
     Copy-OrDryRun -Source $Source -Destination $Destination
     Write-Success "Deployed $Label"
 }

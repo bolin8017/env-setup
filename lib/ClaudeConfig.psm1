@@ -63,8 +63,11 @@ function Remove-ManagedSettingsKeys {
     foreach ($k in $WhitelistKeys) {
         if (-not $cur.PSObject.Properties[$k]) { continue }
         if (-not $src.PSObject.Properties[$k]) { continue }
-        $curV = $cur.$k | ConvertTo-Json -Depth 32 -Compress
-        $srcV = $src.$k | ConvertTo-Json -Depth 32 -Compress
+        # -InputObject, not pipeline: piping unwraps a one-element array to its
+        # bare element, so a user's ["x"] compared equal to the repo's "x" and
+        # the diverged key was wrongly stripped.
+        $curV = ConvertTo-Json -InputObject $cur.$k -Depth 32 -Compress
+        $srcV = ConvertTo-Json -InputObject $src.$k -Depth 32 -Compress
         if ($curV -eq $srcV) { $cur.PSObject.Properties.Remove($k) }
     }
     return ($cur | ConvertTo-Json -Depth 32)

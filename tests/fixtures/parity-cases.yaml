@@ -1,11 +1,13 @@
-# Edge cases BOTH parsers must agree on. Known divergences (quoted '#' inside
-# values, duplicate section headers, flat-style lists, non-2-space indent) are
-# tracked in docs/reviews/2026-07-03-comprehensive-review.md and stay excluded
-# until fixed — add each here as its fix lands.
+# Edge cases BOTH parsers must agree on. Known divergences (duplicate section
+# headers, flat-style lists, non-2-space indent) are tracked in
+# docs/reviews/2026-07-03-comprehensive-review.md and stay excluded until
+# fixed — add each here as its fix lands.
 general:
   plain: value
   with_comment: value2  # inline comment
   quoted_double: "hello world"
+  quoted_hash: "a # b"   # trailing comment
+  color: "#ff0000"
   quoted_single: 'single quoted'
   number: 42
   bool_true: true

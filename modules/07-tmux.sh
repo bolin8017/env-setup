@@ -15,12 +15,7 @@ _install_tmux_bin() {
     log_info "Installing tmux..."
     pkg_install tmux
 
-    if command_exists tmux; then
-        log_success "tmux installed"
-    else
-        log_error "tmux installation failed"
-        return 1
-    fi
+    verify_installed tmux "tmux" || return 1
 }
 
 # =============================================================================
@@ -66,7 +61,7 @@ _install_tpm() {
         log_info "Installing Tmux Plugin Manager (TPM)..."
         dry_run_mkdir "${HOME}/.tmux/plugins"
         dry_run_cmd git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
-        if [[ -d "$tpm_dir" ]]; then
+        if [[ "${DRY_RUN:-false}" == "true" ]] || [[ -d "$tpm_dir" ]]; then
             log_success "TPM installed"
         else
             log_error "TPM installation failed"
@@ -92,24 +87,13 @@ _deploy_tmux_config() {
     # shellcheck disable=SC2088  # tilde is intentional display label
     deploy_config "${src_dir}/tmux.conf" "${HOME}/.tmux.conf" "~/.tmux.conf"
 
-    # macOS-specific: append source-file directive so the main config
-    # conditionally loads the macOS overrides.
+    # macOS overrides: the repo tmux.conf already sources this file behind a
+    # Darwin guard, so deploying the override file is all that's needed. No
+    # install-time append — that made ~/.tmux.conf differ from the repo copy
+    # forever, so uninstall could never recognize an unmodified deploy (and
+    # the append also ignored --keep-existing).
     if is_macos && [[ -f "${src_dir}/tmux.macos.conf" ]]; then
         deploy_config "${src_dir}/tmux.macos.conf" "${HOME}/.tmux/tmux.macos.conf" "tmux.macos.conf"
-
-        # Append source-if-exists for the macOS config (idempotent)
-        local source_line='if-shell "uname | grep -q Darwin" "source-file ~/.tmux/tmux.macos.conf"'
-        if ! grep -qF "tmux.macos.conf" "${HOME}/.tmux.conf" 2>/dev/null; then
-            if [[ "${DRY_RUN:-false}" == "true" ]]; then
-                echo "[DRY-RUN] Would append macOS source-file to ~/.tmux.conf"
-            else
-                {
-                    echo ""
-                    echo "# macOS-specific overrides"
-                    echo "$source_line"
-                } >> "${HOME}/.tmux.conf"
-            fi
-        fi
     fi
 
     # Dev layout
@@ -143,7 +127,13 @@ _install_tmux_plugins() {
             dry_run_cmd tmux start-server
             dry_run_cmd tmux new-session -d -s _tpm_install
             dry_run_cmd "$tpm_install"
-            dry_run_cmd tmux kill-session -t _tpm_install 2>/dev/null || true
+            # Redirect only outside dry-run, or the [DRY-RUN] preview line is
+            # swallowed and the dry run under-reports its actions.
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                dry_run_cmd tmux kill-session -t _tpm_install
+            else
+                tmux kill-session -t _tpm_install 2>/dev/null || true
+            fi
         fi
         log_success "tmux plugins installed"
     else
@@ -186,7 +176,13 @@ uninstall_tmux() {
 
     if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
         if command_exists tmux; then
-            dry_run_cmd tmux kill-session -t _tpm_install 2>/dev/null || true
+            # Redirect only outside dry-run, or the [DRY-RUN] preview line is
+            # swallowed and the dry run under-reports its actions.
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                dry_run_cmd tmux kill-session -t _tpm_install
+            else
+                tmux kill-session -t _tpm_install 2>/dev/null || true
+            fi
         fi
         remove_managed_dir "${HOME}/.tmux/plugins" "tmux plugins (TPM)"
         if [[ "${DRY_RUN:-false}" != "true" ]]; then

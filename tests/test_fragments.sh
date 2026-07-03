@@ -182,5 +182,6 @@ assert_not_contains "$content_tmux" "| bc" "tmux: no bc-based version detection 
 assert_not_contains "$content_tmux" "status-bg" "tmux: no pre-2.9 legacy style options"
 assert_not_contains "$content_tmux" "pane-border-fg" "tmux: no legacy pane border options"
 assert_contains "$content_tmux" "status-style" "tmux: uses modern -style options"
+assert_contains "$content_tmux" "tmux.macos.conf" "tmux: macOS overrides sourced from the repo file itself (no install-time append)"
 
 print_test_summary

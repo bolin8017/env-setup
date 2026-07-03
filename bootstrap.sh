@@ -39,7 +39,16 @@ fi
 # ---------- Clone or update ----------
 if [[ -d "$INSTALL_DIR/.git" ]]; then
     echo "Updating existing installation..."
-    git -C "$INSTALL_DIR" pull --ff-only
+    if ! git -C "$INSTALL_DIR" pull --ff-only; then
+        echo "" >&2
+        echo "Error: could not fast-forward $INSTALL_DIR." >&2
+        echo "Local commits or edits to tracked files (e.g. config.yaml) block the update." >&2
+        echo "Recover with one of:" >&2
+        echo "  - move machine-specific settings into config.local.yaml, then:" >&2
+        echo "      git -C '$INSTALL_DIR' stash && git -C '$INSTALL_DIR' pull --ff-only && git -C '$INSTALL_DIR' stash pop" >&2
+        echo "  - or inspect what diverged:  git -C '$INSTALL_DIR' status" >&2
+        exit 1
+    fi
 else
     echo "Cloning env-setup..."
     mkdir -p "$(dirname "$INSTALL_DIR")"

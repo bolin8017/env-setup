@@ -102,6 +102,13 @@ function Set-WindowsTerminalFont {
     if ($raw -match '(?m)^\s*//|/\*') {
         Write-Warn 'Windows Terminal settings.json contains comments; the rewrite cannot preserve them (a backup is kept)'
     }
+    # Idempotency: without this every setup run backed up + rewrote the file,
+    # so backups piled up and the "newest backup" the uninstall restores had
+    # already converged to the merged content (restore became a no-op).
+    $curNorm = $null
+    try { $curNorm = ($raw | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress) } catch { $curNorm = $null }
+    $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+    if ($curNorm -eq $newNorm) { Write-Info 'Windows Terminal font already configured - skipping'; return }
     Backup-File -Path $wt -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Write-Utf8NoBom -Path $wt -Content $merged
     Write-Success 'Configured Windows Terminal font'
@@ -218,14 +225,16 @@ function Remove-NerdFont {
     $regKey  = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
     $files = 'MesloLGS NF Regular.ttf', 'MesloLGS NF Bold.ttf',
              'MesloLGS NF Italic.ttf', 'MesloLGS NF Bold Italic.ttf'
+    $removed = 0
     foreach ($f in $files) {
         $face = [IO.Path]::GetFileNameWithoutExtension($f)
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would remove font $f + registry key"; continue }
         $dest = Join-Path $fontDir $f
-        if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue; $removed++ }
         Remove-ItemProperty -Path $regKey -Name "$face (TrueType)" -ErrorAction SilentlyContinue
     }
-    Write-Success 'Removed MesloLGS NF font (open a new terminal to apply)'
+    if ($removed -gt 0) { Write-Success 'Removed MesloLGS NF font (open a new terminal to apply)' }
+    elseif (-not (Test-DryRun)) { Write-Info 'MesloLGS NF font not present' }
 }
 
 function Remove-UpdateState {
@@ -244,8 +253,11 @@ function Uninstall-Shell {
     Write-Header 'Uninstall: Shell'
     $cfg = (Resolve-Path (Join-Path $PSScriptRoot '../configs')).Path
 
-    # C - $PROFILE targets
-    foreach ($target in (Get-ProfileTargetPaths)) {
+    # C - $PROFILE targets. Detection-driven: check BOTH editions' paths, not
+    # the current config - flipping windows.powershell5_profile off before
+    # uninstalling would otherwise orphan the 5.1 profile.
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    foreach ($target in @((Join-Path $docs 'PowerShell/profile.ps1'), (Join-Path $docs 'WindowsPowerShell/profile.ps1'))) {
         Remove-ManagedFile -Dest $target -RepoSrc (Join-Path $cfg 'pwsh.profile.base') -Label "PowerShell profile ($target)"
     }
 
@@ -268,6 +280,13 @@ function Uninstall-Shell {
     if ($env:LOCALAPPDATA) {
         $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
         Restore-NewestBak -Path $wt
+    }
+
+    # Prune now-empty managed directories (fragments, powershell, oh-my-posh)
+    if (-not (Test-DryRun)) {
+        foreach ($d in @($fragments, (Join-Path $HOME '.config/powershell'), (Join-Path $HOME '.config/oh-my-posh'))) {
+            if ((Test-Path -LiteralPath $d) -and -not @(Get-ChildItem -LiteralPath $d -Force)) { Remove-Item -LiteralPath $d }
+        }
     }
 
     # T - PSGallery modules + Nerd Font

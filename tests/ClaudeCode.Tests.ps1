@@ -56,3 +56,20 @@ claude_code:
         Should -Invoke Deploy-Config -Times 0
     }
 }
+
+
+Describe 'plugin/marketplace idempotency pre-checks' {
+    It 'detects an already-registered marketplace from known_marketplaces.json' {
+        $j = Join-Path $TestDrive 'known.json'
+        Set-Content $j '{"superpowers-marketplace":{"source":{"repo":"obra/superpowers-marketplace"}}}'
+        Test-ClaudeMarketplaceRegistered -Repo 'obra/superpowers-marketplace' -JsonPath $j | Should -BeTrue
+        Test-ClaudeMarketplaceRegistered -Repo 'other/repo' -JsonPath $j | Should -BeFalse
+        Test-ClaudeMarketplaceRegistered -Repo 'x/y' -JsonPath (Join-Path $TestDrive 'missing.json') | Should -BeFalse
+    }
+    It 'detects an already-installed plugin from installed_plugins.json' {
+        $j = Join-Path $TestDrive 'installed.json'
+        Set-Content $j '{"plugins":{"superpowers@superpowers-marketplace":[{"scope":"user"}]}}'
+        Test-ClaudePluginInstalled -Name 'superpowers@superpowers-marketplace' -JsonPath $j | Should -BeTrue
+        Test-ClaudePluginInstalled -Name 'nope@nowhere' -JsonPath $j | Should -BeFalse
+    }
+}

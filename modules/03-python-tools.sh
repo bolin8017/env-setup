@@ -13,7 +13,7 @@ _install_jupyter() {
 
     log_info "Installing Jupyter Lab..."
     dry_run_cmd python3 -m pip install jupyterlab notebook
-    log_success "Jupyter Lab installed"
+    verify_installed jupyter "Jupyter Lab"
 }
 
 # =============================================================================
@@ -28,7 +28,7 @@ _install_poetry() {
     log_info "Installing Poetry..."
     dry_run_cmd bash -c 'curl -sSL https://install.python-poetry.org | python3 -'
     export PATH="$HOME/.local/bin:$PATH"
-    log_success "Poetry installed"
+    verify_installed poetry "Poetry"
 }
 
 # =============================================================================
@@ -47,7 +47,7 @@ _install_uv() {
         dry_run_cmd bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
         export PATH="$HOME/.local/bin:$PATH"
     fi
-    log_success "uv installed"
+    verify_installed uv "uv"
 }
 
 # =============================================================================

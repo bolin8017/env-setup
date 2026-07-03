@@ -161,7 +161,14 @@ function Install-Languages {
         $ver = Get-CfgValue 'languages.node.version'
         if (-not $ver) { $ver = 'lts' }
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: nvm install $ver; nvm use $ver" }
-        else { nvm install $ver; nvm use $ver }
+        else {
+            nvm install $ver
+            if ($LASTEXITCODE -ne 0) { Write-Warn "nvm install $ver exited $LASTEXITCODE" }
+            # nvm-windows creates a symlink; without Developer Mode or an
+            # elevated shell this quietly fails and node stays unusable.
+            nvm use $ver
+            if ($LASTEXITCODE -ne 0) { Write-Warn "nvm use $ver exited $LASTEXITCODE (needs Developer Mode or one elevated 'nvm use')" }
+        }
     }
 
     if (Test-CfgEnabled 'languages.python.enabled') {
@@ -184,7 +191,13 @@ function Install-Languages {
                         $pyver = $resolved
                     }
                 }
-                if ($pyver) { Install-PyenvPython -Version $pyver; pyenv global $pyver }
+                if ($pyver) {
+                    Install-PyenvPython -Version $pyver
+                    # Don't point 'global' at a version whose build failed.
+                    $pyDir = Join-Path $HOME ".pyenv/pyenv-win/versions/$pyver"
+                    if (Test-Path -LiteralPath $pyDir) { pyenv global $pyver }
+                    else { Write-Warn "Python $pyver not present after install - skipping 'pyenv global'" }
+                }
             }
         }
     }

@@ -82,3 +82,23 @@ Describe 'Install-Pkg gates on scoop exit code' {
         { Install-Pkg -Name 'fine-pkg' } | Should -Not -Throw
     }
 }
+
+
+Describe 'Install-App defers on unelevated winget failure' {
+    BeforeEach { Clear-MissingAdmin; $env:ENVSETUP_DRY_RUN = $null }
+    AfterEach { Remove-Item function:global:winget -ErrorAction Ignore }
+
+    It 'records the package and continues when not elevated' {
+        # Mirrors the Bash no-sudo defer: a failed winget on a non-admin box
+        # must feed the admin summary, not fail the whole module.
+        Mock -ModuleName Package Test-Elevated { $false }
+        function global:winget { $global:LASTEXITCODE = 1; 'access denied' }
+        { Install-App -Id 'Big.App' } | Should -Not -Throw
+        (Get-MissingAdminPackage) | Should -Be @('Big.App')
+    }
+    It 'still throws on failure when already elevated' {
+        Mock -ModuleName Package Test-Elevated { $true }
+        function global:winget { $global:LASTEXITCODE = 1; 'boom' }
+        { Install-App -Id 'Big.App' } | Should -Throw
+    }
+}
