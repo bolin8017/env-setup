@@ -143,6 +143,13 @@ _deploy_tool_configs() {
 # install_cli_tools — Main entry point
 # =============================================================================
 install_cli_tools() {
+    # Master switch (also the SKIP_CLI_TOOLS env override's landing site).
+    # Explicit-false check: an absent key keeps the module enabled.
+    if [[ "$(cfg_get "cli_tools.enabled")" == "false" ]]; then
+        log_info "CLI tools module disabled in config — skipping"
+        return 0
+    fi
+
     print_header "CLI Tools"
 
     # Iterate over the tool registry

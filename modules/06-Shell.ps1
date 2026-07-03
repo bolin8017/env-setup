@@ -196,6 +196,8 @@ function Initialize-PSGallery {
 }
 
 function Install-Shell {
+    # Master switch (SKIP_SHELL_SETUP lands on shell.enabled).
+    if ((Get-CfgValue 'shell.enabled') -eq 'false') { Write-Info 'Shell module disabled in config - skipping'; return }
     Write-Header 'Shell (PowerShell 7 + Oh My Posh)'
     Install-App -Id 'Microsoft.PowerShell'
     Install-App -Id 'JanDeDobbeleer.OhMyPosh'

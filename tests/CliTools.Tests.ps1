@@ -44,3 +44,15 @@ Describe 'Install-CliTools skips Windows-unavailable tools' {
         Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'httpie' }
     }
 }
+
+
+Describe 'cli_tools master switch' {
+    It 'skips the module when cli_tools.enabled is false' {
+        $yaml = "cli_tools:`n  enabled: false`n  ripgrep: true`n"
+        $f = Join-Path $TestDrive 'off.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Install-Pkg { }
+        Install-CliTools
+        Should -Invoke Install-Pkg -Times 0
+    }
+}

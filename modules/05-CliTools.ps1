@@ -29,6 +29,8 @@ function Get-CliScoopPackage {
 }
 
 function Install-CliTools {
+    # Master switch (SKIP_CLI_TOOLS lands on cli_tools.enabled).
+    if ((Get-CfgValue 'cli_tools.enabled') -eq 'false') { Write-Info 'CLI tools module disabled in config - skipping'; return }
     Write-Header 'CLI tools'
     foreach ($key in $script:CliToolMap.Keys) {
         if (Test-CfgEnabled "cli_tools.$key") {

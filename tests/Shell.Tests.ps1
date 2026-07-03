@@ -80,6 +80,17 @@ Describe 'Enable-SessionFonts' {
 }
 
 
+Describe 'shell master switch' {
+    It 'skips the module when shell.enabled is false' {
+        $yaml = "shell:`n  enabled: false`n"
+        $f = Join-Path $TestDrive 'shoff.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Deploy-Config { }
+        Install-Shell
+        Should -Invoke Deploy-Config -Times 0
+    }
+}
+
 Describe 'Set-WindowsTerminalFont idempotency' {
     BeforeAll {
         $script:OldLocal = $env:LOCALAPPDATA
