@@ -41,8 +41,10 @@ plugins=(
     fzf
 
     # --- External: must come BEFORE zsh-autosuggestions and zsh-syntax-highlighting ---
+    # (the extra-completions package is intentionally absent here: it is
+    # fpath-registered by the 05-completions-fpath.zsh fragment BEFORE
+    # compinit, which is the only way its src/ functions actually register.)
     fzf-tab
-    zsh-completions
     zsh-you-should-use
     zsh-autosuggestions
 

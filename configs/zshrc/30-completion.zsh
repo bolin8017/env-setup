@@ -2,8 +2,8 @@
 # Completion Configuration
 # ================================================================
 
-# Load additional completions
-fpath+=${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src
+# (extra-completions fpath registration lives in 05-completions-fpath.zsh:
+# compinit has already run by this point, so fpath changes here are inert.)
 
 # Case-insensitive completion
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
