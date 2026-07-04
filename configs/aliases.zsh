@@ -169,6 +169,15 @@ claude-as() {
     fi
     local profile="$1"
     shift
+    # Refuse while this profile's credential is checked out into ~/.claude
+    # (claude-swap): running both copies would rotate the same refresh-token
+    # family from two files and can invalidate the account everywhere.
+    if [[ -f "$HOME/.claude/.credential-owner" ]] \
+        && [[ "$(cat "$HOME/.claude/.credential-owner")" == "$profile" ]]; then
+        echo "claude-as: '$profile' credential is checked out into ~/.claude (claude-swap)." >&2
+        echo "run 'claude' directly, or swap it home first: claude-swap default" >&2
+        return 1
+    fi
     CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" command claude "$@"
 }
 
@@ -199,6 +208,9 @@ _claude_logout_root() {
 # credential lives in the Keychain — if a session is still signed in
 # afterwards, run /logout inside claude.
 claude-logout() {
+    local owner=""
+    [[ -f "$HOME/.claude/.credential-owner" ]] && owner="$(cat "$HOME/.claude/.credential-owner")"
+
     local -a pairs
     pairs=()
     case "${1:-}" in
@@ -217,9 +229,21 @@ claude-logout() {
             done
             ;;
         "")
+            # A checked-out profile credential lives in ~/.claude right now;
+            # deleting it here would destroy that profile's freshest copy.
+            if [[ -n "$owner" && "$owner" != "default" ]]; then
+                echo "claude-logout: '$owner' credential is checked out into ~/.claude (claude-swap)." >&2
+                echo "swap it home first (claude-swap default) or use --all." >&2
+                return 1
+            fi
             pairs=("$HOME/.claude|$HOME/.claude.json")
             ;;
         *)
+            if [[ "$owner" == "$1" ]]; then
+                echo "claude-logout: '$1' credential is checked out into ~/.claude (claude-swap)." >&2
+                echo "swap it home first (claude-swap default) or use --all." >&2
+                return 1
+            fi
             pairs=("$HOME/.claude-$1|$HOME/.claude-$1/.claude.json")
             ;;
     esac
@@ -233,6 +257,12 @@ claude-logout() {
             echo "no stored credential: $root"
         fi
     done
+    if [[ "${1:-}" == "--all" ]]; then
+        # The swap stash holds parked credentials — a logout that leaves them
+        # behind is not a logout.
+        rm -rf "$HOME/.claude/.credential-stash"
+        rm -f "$HOME/.claude/.credential-owner"
+    fi
     if [[ "$OSTYPE" == darwin* ]]; then
         echo "macOS: if a session is still signed in, run /logout inside claude (Keychain-stored credential)."
     fi

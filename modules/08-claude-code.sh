@@ -281,6 +281,28 @@ _sync_claude_profiles() {
 }
 
 # =============================================================================
+# _deploy_claude_swap — Put the credential check-out helper on PATH.
+# claude-swap moves account credentials between ~/.claude and the
+# ~/.claude-<profile> dirs (see scripts/claude-swap.sh for the rotation-safety
+# rationale); the /account-swap skill and the aliases call it by name.
+# =============================================================================
+_deploy_claude_swap() {
+    local src="${ENV_SETUP_DIR}/scripts/claude-swap.sh"
+    local dest="${HOME}/.local/bin/claude-swap"
+
+    if [[ ! -f "$src" ]]; then
+        log_warn "claude-swap source not found: ${src}"
+        return 0
+    fi
+
+    dry_run_mkdir "${HOME}/.local/bin"
+    deploy_config "$src" "$dest" "claude-swap"
+    if [[ "${DRY_RUN:-false}" != "true" ]] && [[ -f "$dest" ]]; then
+        chmod +x "$dest"
+    fi
+}
+
+# =============================================================================
 # _merge_claude_settings — Whitelist jq-merge of ~/.claude/settings.json.
 # For each top-level key in claude_code.settings_merge_keys, copies that field
 # from the repo's settings.json into the user's. Other keys (e.g. internal
@@ -696,6 +718,7 @@ install_claude_code() {
     print_header "Claude Code config sync"
     _sync_claude_assets "${HOME}/.claude"
     _sync_claude_profiles
+    _deploy_claude_swap
     _merge_claude_settings
     _set_ccstatusline_command
     _register_plugin_marketplaces
@@ -866,6 +889,9 @@ uninstall_claude_code() {
         log_info "Uninstalling claude profile assets: ${p}"
         _uninstall_claude_assets "$proot"
     done < <(cfg_list "claude_code.profiles")
+
+    remove_managed_file "${HOME}/.local/bin/claude-swap" \
+        "${ENV_SETUP_DIR}/scripts/claude-swap.sh" "claude-swap"
 
     _uninstall_claude_settings
     _uninstall_claude_mcp

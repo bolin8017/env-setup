@@ -51,6 +51,10 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*.claude-work*' }
     }
+    It 'deploys the claude-swap helper onto PATH' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*claude-swap*' }
+    }
     It 'skips entirely when claude_code.enabled is false' {
         $yaml = @'
 claude_code:
@@ -79,6 +83,13 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
         $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
         $aliases | Should -Match 'function claude-as'
         $aliases | Should -Match 'CLAUDE_CONFIG_DIR'
+    }
+
+    It 'guards claude-as against checked-out credentials and wraps claude-swap' {
+        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
+        $aliases | Should -Match '\.credential-owner'
+        $aliases | Should -Match 'function claude-swap'
+        $aliases | Should -Match '\.credential-stash'
     }
 
     It 'passes claude single-dash flags through instead of binding them' {
