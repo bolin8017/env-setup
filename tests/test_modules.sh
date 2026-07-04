@@ -173,6 +173,10 @@ assert_contains "$languages_src" 'uv python install "$python_version" --default'
 # pyenv must not come back as the installer; only legacy teardown may mention it.
 assert_not_contains "$languages_src" 'pyenv init'    "uv: no pyenv shell init left"
 assert_not_contains "$languages_src" 'pyenv install' "uv: no pyenv-driven python builds left"
+# Machines provisioned before the uv migration still carry the generated
+# 15-pyenv.zsh fragment, which re-injects ~/.pyenv/shims into every new shell
+# (pip then resolves into the dead pyenv tree). The install path must drop it.
+assert_contains "$languages_src" 'fragments/15-pyenv.zsh' "uv: legacy pyenv fragment dropped on upgrade"
 # nvm: the `nvm` command stays lazy (no auto-use on every shell start), but the
 # default Node's bin is added to PATH eagerly so node/npm/npx are real binaries
 # for non-interactive children (MCP servers, scripts), not shell-function stubs.
