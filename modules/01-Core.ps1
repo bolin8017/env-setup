@@ -25,9 +25,9 @@ function Install-Core {
     if (Test-CfgEnabled 'core.git')        { Install-App -Id 'Git.Git' }
     if (Test-CfgEnabled 'core.github_cli') { Install-App -Id 'GitHub.cli' }
     if (Test-CfgEnabled 'core.build_tools') {
-        # The Bash engine installs build-essential; on Windows pyenv-win ships
+        # The Bash engine installs build-essential; on Windows uv ships
         # prebuilt CPython, so heavy VS Build Tools are not installed by default.
-        Write-Info 'build_tools: skipped on Windows (pyenv-win uses prebuilt CPython).'
+        Write-Info 'build_tools: skipped on Windows (uv uses prebuilt CPython).'
     }
 }
 
