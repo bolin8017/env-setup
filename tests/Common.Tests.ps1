@@ -155,3 +155,11 @@ Describe 'Test-FileContentEqual' {
         Test-FileContentEqual -PathA $a -PathB (Join-Path $script:Tmp 'nope.txt') | Should -BeFalse
     }
 }
+
+Describe 'Send-EnvironmentChanged' {
+    BeforeAll { Import-Module "$PSScriptRoot/../lib/Common.psm1" -Force }
+
+    It 'broadcasts WM_SETTINGCHANGE without throwing' {
+        { Send-EnvironmentChanged } | Should -Not -Throw
+    }
+}
