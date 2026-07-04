@@ -6,6 +6,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/test_framework.sh"
+
+# Sandbox HOME before lib/common.sh binds LOG_DIR, so logging never touches
+# the real ~/.env-setup (test_uninstall.sh pattern).
+export HOME="${TEST_TMPDIR}/home"
+mkdir -p "$HOME"
+
 source "$PROJECT_ROOT/lib/common.sh"
 
 echo -e "${_T_BOLD}Test: Common Utilities${_T_NC}"
@@ -61,8 +67,14 @@ esac
 suite "command_exists"
 # =============================================================================
 
-command_exists bash; assert_true $? "command_exists detects 'bash'"
-command_exists git;  assert_true $? "command_exists detects 'git'"
+# set +e window: under the framework's errexit a failure would abort the
+# suite before assert_true could report it.
+set +e
+command_exists bash; rc_bash=$?
+command_exists git;  rc_git=$?
+set -e
+assert_true "$rc_bash" "command_exists detects 'bash'"
+assert_true "$rc_git"  "command_exists detects 'git'"
 set +e
 command_exists __nonexistent_cmd_12345__
 assert_false $? "command_exists returns false for missing command"

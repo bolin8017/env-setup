@@ -234,11 +234,13 @@ assert_eq "" "$_warn" "well-formed config produces no warnings"
 suite "load_config error handling"
 # =============================================================================
 
+# Sandbox HOME BEFORE lib/common.sh binds LOG_DIR (source-time binding).
+export HOME="$TEST_TMPDIR/home"; mkdir -p "$HOME"
 # shellcheck source=lib/common.sh
 source "$PROJECT_ROOT/lib/common.sh"
 # shellcheck source=lib/config.sh
 source "$PROJECT_ROOT/lib/config.sh"
-export HOME="$TEST_TMPDIR/home"; mkdir -p "$HOME"; setup_logging
+setup_logging
 
 # A typo'd --config path must be an error, not a silent fallback to the repo
 # config (which would then run with the wrong profile).

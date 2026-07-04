@@ -7,22 +7,32 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/test_framework.sh"
+
+# Re-point HOME at the test tmp dir BEFORE lib/common.sh binds LOG_DIR, so
+# neither logging nor deploys ever touch the real $HOME. (The former second
+# _setup_tmpdir call leaked its first tmpdir and is gone.)
+ORIG_HOME="$HOME"
+export HOME="$TEST_TMPDIR"
+mkdir -p "$HOME/.config" "$HOME/.claude"
+
 source "$PROJECT_ROOT/lib/common.sh"
 source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 source "$PROJECT_ROOT/lib/config.sh"
 
-_setup_tmpdir
 setup_logging
 load_config "$PROJECT_ROOT/config.yaml"
 DRY_RUN="false"
 AUTO_YES="true"
 export ENV_SETUP_DIR="$PROJECT_ROOT"
 
-# Re-point HOME at the test tmp dir so we never touch the real $HOME
-ORIG_HOME="$HOME"
-export HOME="$TEST_TMPDIR"
-mkdir -p "$HOME/.config" "$HOME/.claude"
+# The whole suite is a jq-driven JSON-merge exercise; without jq it used to
+# hard-crash mid-suite. Record a counted skip instead.
+if ! command -v jq >/dev/null 2>&1; then
+    skip "jq absent — ccstatusline suite not run"
+    print_test_summary
+    exit 0
+fi
 
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/modules/08-claude-code.sh"
@@ -40,13 +50,21 @@ suite "Template snapshot exists and parses"
 # ---------------------------------------------------------------------------
 assert_file_exists "$PROJECT_ROOT/configs/ccstatusline/settings.json" \
     "configs/ccstatusline/settings.json is in the repo"
+# set +e windows below: the framework's errexit would abort the suite
+# before the assert could report the failure.
+set +e
 jq empty "$PROJECT_ROOT/configs/ccstatusline/settings.json" 2>/dev/null
-assert_true "$?" "ccstatusline template is valid JSON"
+rc=$?
+set -e
+assert_true "$rc" "ccstatusline template is valid JSON"
 
 assert_file_exists "$PROJECT_ROOT/configs/claude/settings.json" \
     "configs/claude/settings.json is in the repo"
+set +e
 jq empty "$PROJECT_ROOT/configs/claude/settings.json" 2>/dev/null
-assert_true "$?" "claude settings template is valid JSON"
+rc=$?
+set -e
+assert_true "$rc" "claude settings template is valid JSON"
 
 # ---------------------------------------------------------------------------
 suite "Disabled config: nothing happens"
@@ -64,9 +82,12 @@ _reset
 _deploy_ccstatusline_config >/dev/null 2>&1
 assert_file_exists "$HOME/.config/ccstatusline/settings.json" \
     "ccstatusline settings.json deployed"
+set +e
 diff -q "$PROJECT_ROOT/configs/ccstatusline/settings.json" \
         "$HOME/.config/ccstatusline/settings.json" >/dev/null
-assert_true "$?" "deployed file is byte-identical to template"
+rc=$?
+set -e
+assert_true "$rc" "deployed file is byte-identical to template"
 
 # ---------------------------------------------------------------------------
 suite "Deploy: existing file under AUTO_YES is overwritten"
@@ -74,9 +95,12 @@ suite "Deploy: existing file under AUTO_YES is overwritten"
 mkdir -p "$HOME/.config/ccstatusline"
 echo '{ "version": 0, "lines": [] }' > "$HOME/.config/ccstatusline/settings.json"
 _deploy_ccstatusline_config >/dev/null 2>&1
+set +e
 diff -q "$PROJECT_ROOT/configs/ccstatusline/settings.json" \
         "$HOME/.config/ccstatusline/settings.json" >/dev/null
-assert_true "$?" "overwrite restores template content"
+rc=$?
+set -e
+assert_true "$rc" "overwrite restores template content"
 
 # ---------------------------------------------------------------------------
 suite "Merge: missing ~/.claude/settings.json creates a fresh file"
@@ -84,8 +108,11 @@ suite "Merge: missing ~/.claude/settings.json creates a fresh file"
 _reset
 _merge_claude_settings >/dev/null 2>&1
 assert_file_exists "$HOME/.claude/settings.json" "settings.json created"
+set +e
 jq empty "$HOME/.claude/settings.json" 2>/dev/null
-assert_true "$?" "created file is valid JSON"
+rc=$?
+set -e
+assert_true "$rc" "created file is valid JSON"
 cmd="$(jq -r '.statusLine.command' "$HOME/.claude/settings.json")"
 assert_eq "npx -y ccstatusline@latest" "$cmd" \
     "statusLine.command merged from repo template"
@@ -185,8 +212,11 @@ suite "Launcher wrapper: repo file exists, executable, ensures node on PATH"
 # ---------------------------------------------------------------------------
 assert_file_exists "$PROJECT_ROOT/configs/ccstatusline/statusline.sh" \
     "configs/ccstatusline/statusline.sh is in the repo"
+set +e
 [[ -x "$PROJECT_ROOT/configs/ccstatusline/statusline.sh" ]]
-assert_true "$?" "launcher wrapper is executable"
+rc=$?
+set -e
+assert_true "$rc" "launcher wrapper is executable"
 wrapper_body="$(cat "$PROJECT_ROOT/configs/ccstatusline/statusline.sh")"
 assert_contains "$wrapper_body" "command -v node" "wrapper checks for node on PATH"
 assert_contains "$wrapper_body" "versions/node" "wrapper falls back to nvm node bin"
@@ -198,8 +228,11 @@ suite "Deploy: launcher wrapper is deployed executable"
 _reset
 _deploy_ccstatusline_config >/dev/null 2>&1
 assert_file_exists "$HOME/.config/ccstatusline/statusline.sh" "wrapper deployed"
+set +e
 [[ -x "$HOME/.config/ccstatusline/statusline.sh" ]]
-assert_true "$?" "deployed wrapper is executable"
+rc=$?
+set -e
+assert_true "$rc" "deployed wrapper is executable"
 
 # ---------------------------------------------------------------------------
 suite "Repoint: _set_ccstatusline_command points statusLine at the wrapper"

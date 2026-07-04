@@ -6,6 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/test_framework.sh"
+
+# Sandbox HOME before lib/common.sh binds LOG_DIR (test_uninstall.sh pattern).
+export HOME="${TEST_TMPDIR}/home"
+mkdir -p "$HOME"
+
 source "$PROJECT_ROOT/lib/common.sh"
 source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/config.sh"
@@ -46,8 +51,11 @@ assert_file_exists "$PROJECT_ROOT/configs/worklog/commands/worklog.md" "/worklog
 assert_file_exists "$PROJECT_ROOT/configs/worklog/commands/worklog-sync.md" "/worklog-sync command asset exists"
 
 suite "Dry-run install is clean and non-destructive"
+# set +e window: the framework's errexit would abort before the assert runs.
+set +e
 out="$(install_worklog 2>&1)"
 rc=$?
+set -e
 assert_eq "0" "$rc" "install_worklog returns 0 in dry-run"
 assert_contains "$out" "Worklog" "install prints the Worklog header"
 assert_contains "$out" "DRY-RUN" "dry-run mode logs [DRY-RUN] (no real writes)"

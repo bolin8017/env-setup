@@ -8,6 +8,7 @@ set -euo pipefail
 # Counters
 _TEST_PASS=0
 _TEST_FAIL=0
+_TEST_SKIP=0
 _TEST_TOTAL=0
 _TEST_CURRENT_SUITE=""
 
@@ -152,6 +153,16 @@ assert_dir_exists() {
     fi
 }
 
+# skip <message> — record a counted skip (missing optional tool, wrong
+# platform). A silent early-exit or a fake PASS hides shrinking coverage;
+# the summary must show what did not run.
+skip() {
+    local msg="$1"
+    (( _TEST_TOTAL += 1 ))
+    (( _TEST_SKIP += 1 ))
+    echo -e "  ${_T_YELLOW}SKIP${_T_NC}  $msg"
+}
+
 # assert_file_not_exists <path> <message>
 assert_file_not_exists() {
     local path="$1" msg="$2"
@@ -173,6 +184,9 @@ print_test_summary() {
     echo -e "${_T_CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${_T_NC}"
     echo -e "  ${_T_GREEN}Passed:${_T_NC}  ${_TEST_PASS}"
     echo -e "  ${_T_RED}Failed:${_T_NC}  ${_TEST_FAIL}"
+    if (( _TEST_SKIP > 0 )); then
+        echo -e "  ${_T_YELLOW}Skipped:${_T_NC} ${_TEST_SKIP}"
+    fi
     echo -e "  ${_T_BOLD}Total:   ${_TEST_TOTAL}${_T_NC}"
     echo -e "${_T_CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${_T_NC}"
     echo ""

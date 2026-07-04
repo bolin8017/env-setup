@@ -150,7 +150,7 @@ if command -v jq >/dev/null 2>&1; then
     assert_contains "$_after" "keepme" "user-owned authToken survives settings strip"
     assert_not_contains "$_after" "\"env\"" "whitelisted env key (== repo) is stripped"
 else
-    assert_true 0 "jq absent — settings strip test skipped"
+    skip "jq absent — settings strip test not run"
 fi
 
 suite "user-dir reclamation (empty only)"
