@@ -92,6 +92,8 @@ env-setup/
 ├── scripts/              # Maintenance and helper scripts
 │   ├── verify.ps1        # Post-install verification (Windows)
 │   └── verify.sh         # Post-install verification (Unix)
+├── docs/                 # Design docs: reviews/ (findings + resolution log),
+│                         #   superpowers/specs + superpowers/plans (skill-workflow docs)
 ├── PSScriptAnalyzerSettings.psd1  # Windows engine lint config
 └── .github/workflows/    # CI — Unix: shellcheck+dry-run; Windows: PSScriptAnalyzer+Pester+dry-run
 ```
@@ -120,6 +122,18 @@ env-setup/
   and the run continues with user-space installs. `show_missing_apt_summary`
   prints a consolidated admin instruction block at the end. macOS skips
   this path because brew runs as the user.
+- **Windows node activation is self-healing**: nvm-windows creates its node
+  symlink through an elevation helper and exits 0 even when that fails (no
+  Developer Mode, UAC declined), so `02-Languages.ps1` probes the symlink
+  target after `nvm use` and falls back to an unelevated NTFS junction
+  (scoop's own `current` trick). The probe-then-repair also tolerates the
+  helper landing its symlink concurrently — the final node.exe check is the
+  single verdict, never the exit code.
+- **Prompt font is engine-installed**: all three platforms install
+  Powerlevel10k's MesloLGS NF (per-user, no admin) and the shared .p10k.zsh
+  uses `nerdfont-complete` — its designed icon set. Windows Terminal's font
+  face is set automatically; macOS terminal profiles need the face selected
+  once by hand.
 - **Two sibling engines (Bash + PowerShell)**: macOS/Linux/WSL run the Bash
   engine (`setup.sh`); native Windows runs the PowerShell engine
   (`setup.ps1`). They never call each other and share one `config.yaml` plus
