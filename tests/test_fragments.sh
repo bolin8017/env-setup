@@ -155,6 +155,8 @@ assert_contains "$aliases_content" "CLAUDE_CONFIG_DIR" "aliases: claude-as route
 assert_contains "$aliases_content" "claude-logout()"    "aliases: defines claude-logout"
 assert_contains "$aliases_content" ".credentials.json"  "aliases: claude-logout removes the stored credential"
 assert_contains "$aliases_content" "oauthAccount"       "aliases: claude-logout scrubs account identity"
+assert_contains "$aliases_content" ".credential-owner"  "aliases: claude-as guards against checked-out credentials"
+assert_contains "$aliases_content" ".credential-stash"  "aliases: claude-logout clears the swap stash"
 assert_contains "$aliases_content" "rm -i"   "aliases: safety alias for rm"
 assert_contains "$aliases_content" "env-update()" "aliases: defines env-update command"
 

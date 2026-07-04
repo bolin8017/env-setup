@@ -26,11 +26,31 @@ function claude-as {
         Write-Error 'usage: claude-as <profile> [claude args...]'
         return
     }
+    # Refuse while this profile's credential is checked out into ~/.claude
+    # (claude-swap): running both copies would rotate the same refresh-token
+    # family from two files and can invalidate the account everywhere.
+    $marker = Join-Path $HOME '.claude/.credential-owner'
+    if ((Test-Path -LiteralPath $marker) -and ((Get-Content -LiteralPath $marker -Raw).Trim() -eq "$($args[0])")) {
+        Write-Error "claude-as: '$($args[0])' credential is checked out into ~/.claude (claude-swap). Run 'claude' directly, or swap it home first: claude-swap default"
+        return
+    }
     $prev = $env:CLAUDE_CONFIG_DIR
     $env:CLAUDE_CONFIG_DIR = Join-Path $HOME ".claude-$($args[0])"
     $rest = @($args | Select-Object -Skip 1)
     try { & claude @rest }
     finally { $env:CLAUDE_CONFIG_DIR = $prev }
+}
+
+# Check a different account's credential into ~/.claude (move semantics; see
+# scripts/claude-swap.sh). The logic lives in that bash script — Git Bash
+# ships with git on Windows, so shell out to it.
+function claude-swap {
+    $script = Join-Path $HOME '.local/bin/claude-swap'
+    if (-not (Test-Path -LiteralPath $script)) {
+        Write-Error 'claude-swap: helper not deployed - run setup module 08-ClaudeCode first'
+        return
+    }
+    & bash $script @args
 }
 
 # Log out one config root: remove the stored OAuth credential and scrub the
@@ -72,6 +92,10 @@ function Remove-ClaudeCredential {
 # Run it with no claude session open.
 function claude-logout {
     $first = if ($args.Count -gt 0) { "$($args[0])" } else { '' }
+    $marker = Join-Path $HOME '.claude/.credential-owner'
+    $owner = ''
+    if (Test-Path -LiteralPath $marker) { $owner = (Get-Content -LiteralPath $marker -Raw).Trim() }
+
     $targets = @()
     switch ($first) {
         { $_ -in '-h', '--help' } { Write-Host 'usage: claude-logout [<profile>|--all]'; return }
@@ -84,8 +108,20 @@ function claude-logout {
                 if (Test-Path -LiteralPath $state) { $targets += , @($d.FullName, $state) }
             }
         }
-        '' { $targets += , @((Join-Path $HOME '.claude'), (Join-Path $HOME '.claude.json')) }
+        '' {
+            # A checked-out profile credential lives in ~/.claude right now;
+            # deleting it here would destroy that profile's freshest copy.
+            if ($owner -and $owner -ne 'default') {
+                Write-Error "claude-logout: '$owner' credential is checked out into ~/.claude (claude-swap). Swap it home first (claude-swap default) or use --all."
+                return
+            }
+            $targets += , @((Join-Path $HOME '.claude'), (Join-Path $HOME '.claude.json'))
+        }
         default {
+            if ($owner -eq $first) {
+                Write-Error "claude-logout: '$first' credential is checked out into ~/.claude (claude-swap). Swap it home first (claude-swap default) or use --all."
+                return
+            }
             $root = Join-Path $HOME ".claude-$first"
             $targets += , @($root, (Join-Path $root '.claude.json'))
         }
@@ -93,6 +129,12 @@ function claude-logout {
     foreach ($t in $targets) {
         if (Remove-ClaudeCredential -Root $t[0] -StateJson $t[1]) { Write-Host "logged out: $($t[0])" }
         else { Write-Host "no stored credential: $($t[0])" }
+    }
+    if ($first -eq '--all') {
+        # The swap stash holds parked credentials — a logout that leaves them
+        # behind is not a logout.
+        Remove-Item -Recurse -Force (Join-Path $HOME '.claude/.credential-stash') -ErrorAction Ignore
+        Remove-Item -Force $marker -ErrorAction Ignore
     }
 }
 

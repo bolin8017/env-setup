@@ -245,6 +245,10 @@ assert_contains "$_out" "invalid profile name" "profiles: path-like names are re
 assert_not_contains "$_out" "Would copy" "profiles: nothing is deployed for invalid names"
 CFG_CLAUDE_CODE_PROFILES_COUNT=0
 
+# claude-swap script is deployed onto PATH
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _deploy_claude_swap 2>&1)"
+assert_contains "$_out" ".local/bin/claude-swap" "claude-swap deploys to ~/.local/bin"
+
 # Uninstall touches only DECLARED profile dirs — a user's ~/.claude-backup
 # (or any third-party ~/.claude-* dir) must never be swept.
 _uhome="$TEST_TMPDIR/uninstall_home"

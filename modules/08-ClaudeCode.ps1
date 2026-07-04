@@ -165,6 +165,17 @@ function Sync-ClaudeProfiles {
     }
 }
 
+function Install-ClaudeSwap {
+    # Put the credential check-out helper on PATH. It is a bash script (runs
+    # under Git Bash on Windows; claude sessions call it via their Bash tool
+    # and the claude-swap wrapper in aliases.ps1 shells out to bash).
+    $src = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.sh') -ErrorAction Ignore
+    if (-not $src) { Write-Warn 'claude-swap source not found - skipping'; return }
+    $bin = Join-Path $HOME '.local/bin'
+    New-DirOrDryRun -Path $bin
+    Deploy-Config -Source $src.Path -Destination (Join-Path $bin 'claude-swap') -Label 'claude-swap'
+}
+
 function Sync-ClaudeSettings {
     $src = Join-Path $script:ClaudeCfg 'settings.json'
     $dest = Join-Path $HOME '.claude/settings.json'
@@ -294,6 +305,7 @@ function Install-ClaudeCode {
     Add-ClaudeBinToPath
     Sync-ClaudeAssets -Root (Join-Path $HOME '.claude')
     Sync-ClaudeProfiles
+    Install-ClaudeSwap
     Sync-ClaudeSettings
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
@@ -376,6 +388,12 @@ function Uninstall-ClaudeCode {
         if (-not (Test-Path -LiteralPath $proot)) { continue }
         Write-Info "Uninstalling claude profile assets: $p"
         Uninstall-ClaudeAssets -Root $proot
+    }
+
+    $swapSrc = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.sh') -ErrorAction Ignore
+    if ($swapSrc) {
+        Remove-ManagedFile -Dest (Join-Path $HOME '.local/bin/claude-swap') `
+            -RepoSrc $swapSrc.Path -Label 'claude-swap'
     }
 
     Uninstall-ClaudeSettings

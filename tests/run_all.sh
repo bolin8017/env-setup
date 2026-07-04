@@ -32,6 +32,7 @@ tests=(
     "test_user_dirs.sh"
     "test_ccstatusline.sh"
     "test_claude_assets.sh"
+    "test_claude_swap.sh"
     "test_shellcheck.sh"
     "test_parser_parity.sh"
     "e2e/test_uninstall_roundtrip.sh"
