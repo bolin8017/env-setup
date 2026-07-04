@@ -129,6 +129,17 @@ _install_uv_python() {
     log_info "Installing Python $python_version (uv-managed)..."
     dry_run_cmd uv python install "$python_version" --default
     log_success "Python $python_version set as the default python"
+
+    # Machines provisioned before the uv migration still carry the generated
+    # 15-pyenv.zsh fragment, which re-injects ~/.pyenv/shims into every new
+    # shell — pip then resolves into the dead pyenv tree. Drop the fragment
+    # (marker-guarded like remove_fragment); the ~/.pyenv tree itself stays
+    # until uninstall.
+    local legacy_frag="$HOME/.config/zsh/fragments/15-pyenv.zsh"
+    if [[ -f "$legacy_frag" ]] && grep -qF 'PYENV_ROOT' "$legacy_frag"; then
+        dry_run_rm "$legacy_frag"
+        log_success "Removed legacy pyenv fragment (pre-uv provisioning)"
+    fi
 }
 
 # =============================================================================
