@@ -100,11 +100,17 @@ cd env-setup
 | **Python 工具** | JupyterLab、Poetry、uv |
 | **容器** | Docker Engine / Desktop |
 | **CLI 工具** | fzf、ripgrep、bat、fd、eza、zoxide、jq、btop、tldr、tree、httpie |
-| **Shell** | Zsh、Oh My Zsh、Powerlevel10k、zsh-autosuggestions、zsh-syntax-highlighting、zsh-completions |
+| **Shell** | Zsh、Oh My Zsh、Powerlevel10k、zsh-autosuggestions、zsh-syntax-highlighting、zsh-completions、MesloLGS NF 字型 |
 | **終端機** | tmux + TPM + 9 個外掛（Tokyo Night 主題） |
 | **AI 工具** | Claude Code CLI |
+| **工作紀錄** | /worklog 指令 + worklog-inbox（curator 機彙整進 Obsidian vault） |
 
 每個項目都可以在 `config.yaml` 中個別開關。
+
+> **字型備註**：三個平台都會自動安裝 Powerlevel10k 的 MesloLGS NF 字型
+> （prompt 的 `nerdfont-complete` 圖示集就是為它設計的）。Windows Terminal
+> 的字型由安裝程式自動設定；macOS 的 iTerm2／Terminal 需要手動在偏好設定
+> 選一次 MesloLGS NF，圖示才會正確顯示。
 
 **原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／uv，並設定 PSReadLine 預測與 Windows Terminal 字型。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
 
@@ -183,7 +189,8 @@ setup.sh 讀取 config.yaml → 依序執行模組
  ├─ 06-shell        Zsh → Oh My Zsh → P10k → plugins → .zshrc 組裝
  ├─ 07-tmux         tmux → TPM → config → plugins
  ├─ 08-claude-code  Claude Code CLI（原生安裝 + 設定同步 + 多帳號 profiles）
- └─ 09-user-dirs    在 $HOME 下建立個人目錄
+ ├─ 09-user-dirs    在 $HOME 下建立個人目錄
+ └─ 10-worklog      跨機工作紀錄（/worklog 指令；curator 機另建 vault 彙整）
 ```
 
 **PowerShell 引擎（原生 Windows）**
@@ -198,7 +205,8 @@ setup.ps1 讀取 config.yaml → 依序執行模組
  ├─ 06-Shell        PowerShell 7 → Oh My Posh → PSReadLine → 模組 → $PROFILE 組裝 → WT 字型
  ├─ 07-Multiplexer  zellij + dev layout
  ├─ 08-ClaudeCode   Claude Code CLI（原生安裝 + 設定同步 + 多帳號 profiles）
- └─ 09-UserDirs     在 $HOME 下建立個人目錄
+ ├─ 09-UserDirs     在 $HOME 下建立個人目錄
+ └─ 10-Worklog      跨機工作紀錄（/worklog 指令；curator 機另建 vault 彙整）
 ```
 
 PowerShell 沒有 Bash/awk YAML 解析器，因此 `lib/Config.psm1` 提供同一份設定子集的純 PowerShell 讀取器。跨模組旗標透過 `ENVSETUP_*` 環境變數傳遞（對應 Bash 引擎匯出的 `DRY_RUN`／`AUTO_YES`／`KEEP_EXISTING`）。原生 Windows 沒有 Docker 模組。
@@ -211,12 +219,14 @@ PowerShell 沒有 Bash/awk YAML 解析器，因此 `lib/Config.psm1` 提供同�
 ~/.zshrc                            ← 骨架（source fragments）
 ~/.config/zsh/fragments/
   ├── 00-p10k-instant-prompt.zsh    ← P10k（最先載入）
+  ├── 05-completions-fpath.zsh      ← 補全 fpath（OMZ 前）
   ├── 10-omz.zsh                    ← Oh My Zsh
   ├── 16-nvm.zsh                    ← nvm init（自動生成）
   ├── 20-history.zsh                ← 歷史設定
   ├── 30-completion.zsh             ← 補全設定
   ├── 40-env.zsh                    ← 環境變數
   ├── 50-tools.zsh                  ← CLI 工具整合
+  ├── 55-self-update.zsh            ← env-setup 自動更新檢查
   ├── 60-aliases.zsh                ← aliases
   └── 99-p10k-config.zsh           ← P10k 主題（最後載入）
 ~/.config/zsh/custom/               ← 你的自訂設定（不會被覆蓋）
@@ -248,9 +258,12 @@ macOS 不會走這條路徑：brew 安裝以使用者身份執行，初次安裝
 env-setup/
 ├── setup.sh                  # 主入口（Unix）
 ├── setup.ps1                 # 主入口（Windows）
+├── uninstall.sh              # 解除安裝入口（Unix，模組反序執行）
+├── uninstall.ps1             # 解除安裝入口（Windows）
 ├── bootstrap.sh              # 全新系統一行安裝（Unix）
 ├── bootstrap.ps1             # 全新系統一行安裝（Windows）
 ├── config.yaml               # 設定檔（兩平台共用）
+├── config.yaml.example       # 完整註解的設定參考
 ├── lib/                      # Bash 引擎（*.sh）+ Windows 引擎（*.psm1）
 │   ├── common.sh / Common.psm1     #   平台偵測、logging
 │   ├── yaml.sh                      #   YAML 解析器（Bash）
@@ -258,17 +271,20 @@ env-setup/
 │   ├── package.sh / Package.psm1    #   套件管理（brew/apt｜scoop/winget）
 │   ├── dryrun.sh / DryRun.psm1      #   dry-run + deploy
 │   ├── backup.sh / Backup.psm1      #   備份/還原
+│   ├── uninstall.sh / Uninstall.psm1  # 移除安全原語（protected-path 等）
 │   ├── WindowsTerminal.psm1         #   Windows Terminal 設定合併
 │   └── ClaudeConfig.psm1            #   Claude Code 設定 JSON 合併
 ├── modules/                  # 安裝模組（按依賴順序編號）
-│   ├── 01-core.sh  …  09-user-dirs.sh        # Unix（含 04-docker）
-│   └── 01-Core.ps1 …  09-UserDirs.ps1        # Windows（無 docker）
+│   ├── 01-core.sh  …  10-worklog.sh          # Unix（含 04-docker）
+│   └── 01-Core.ps1 …  10-Worklog.ps1         # Windows（無 docker）
 ├── configs/                  # 設定檔模板
 │   ├── zshrc/ , tmux/ , p10k/ , aliases.zsh  #   Unix
 │   └── pwsh/ , omp/ , zellij/ , aliases.ps1  #   Windows
 ├── scripts/
 │   ├── verify.sh             # 安裝驗證（Unix）
 │   └── verify.ps1            # 安裝驗證（Windows）
+├── tests/                    # Bash 測試套件 + Pester 測試（*.Tests.ps1）
+├── docs/                     # 設計文件（reviews/、superpowers/specs+plans）
 ├── PSScriptAnalyzerSettings.psd1   # Windows 引擎 lint 設定
 └── .github/workflows/        # CI（Unix：ShellCheck + dry-run｜Windows：PSScriptAnalyzer + Pester + dry-run）
 ```

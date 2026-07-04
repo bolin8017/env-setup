@@ -10,6 +10,20 @@ Severity: **H** = user-visible breakage or data-loss risk on realistic input;
 **M** = silent misbehavior, broken contract, or parity divergence;
 **L** = edge case, hygiene, or latent hazard.
 
+> **Resolution log (2026-07-04).** The bulk of these findings shipped as
+> #35–#52 (2026-07-03). The deliberately-deferred tail landed the next day:
+> ps-mod-4 (#72), ps-mod-11 + the conda notice (#71), the WM_SETTINGCHANGE
+> broadcast (#69), and the test-hygiene items — test-3 log sandboxing,
+> test-8 skip primitive, test-9 dead rc captures, review.yml test-summary
+> dedup, and a bash<4 fast-fail in run_all.sh (#73). Rollout testing of the
+> uv migration surfaced and fixed three adjacent issues: nvm-windows'
+> silent symlink failure → junction repair (#66, #70), stale pyenv residue
+> on upgraded machines on both engines (#67 Unix fragment, #69 Windows user
+> PATH), and the font/p10k-mode parity gap (#68). The only items
+> deliberately not adopted are the CI trio — integration.yml paths
+> narrowing, Pester caching/pinning, and workflow concurrency — per
+> maintainer decision.
+
 ---
 
 ## 1. Cross-cutting themes
