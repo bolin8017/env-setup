@@ -29,6 +29,84 @@ languages:
         Should -Invoke Install-Pkg -Times 0 -ParameterFilter { $Name -eq 'uv' }
     }
 
+    It 'repairs with a junction when nvm use leaves node inactive' {
+        $env:ENVSETUP_DRY_RUN = $null
+        $yaml = @'
+languages:
+  node:
+    enabled: true
+    version: lts
+  python:
+    enabled: false
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        function global:nvm { 'Now using node v9.9.9 (64-bit)'; $global:LASTEXITCODE = 0 }
+        try {
+            Mock Test-NodeActivation { $false }
+            Mock Repair-NodeActivation { $true }
+            Mock Write-Warn { }
+            Install-Languages
+            Should -Invoke Repair-NodeActivation -Times 1 -ParameterFilter {
+                $Version -eq '9.9.9'
+            }
+            Should -Invoke Write-Warn -Times 0
+        } finally {
+            Remove-Item function:global:nvm
+        }
+    }
+
+    It 'warns with remediation when the junction repair also fails' {
+        $env:ENVSETUP_DRY_RUN = $null
+        $yaml = @'
+languages:
+  node:
+    enabled: true
+    version: lts
+  python:
+    enabled: false
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        function global:nvm { 'Now using node v9.9.9 (64-bit)'; $global:LASTEXITCODE = 0 }
+        try {
+            Mock Test-NodeActivation { $false }
+            Mock Repair-NodeActivation { $false }
+            Mock Write-Warn { }
+            Install-Languages
+            Should -Invoke Write-Warn -Times 1 -ParameterFilter {
+                $Message -like '*Developer Mode*'
+            }
+        } finally {
+            Remove-Item function:global:nvm
+        }
+    }
+
+    It 'stays quiet when nvm use activated node' {
+        $env:ENVSETUP_DRY_RUN = $null
+        $yaml = @'
+languages:
+  node:
+    enabled: true
+    version: lts
+  python:
+    enabled: false
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        function global:nvm { 'Now using node v9.9.9 (64-bit)'; $global:LASTEXITCODE = 0 }
+        try {
+            Mock Test-NodeActivation { $true }
+            Mock Repair-NodeActivation { $true }
+            Mock Write-Warn { }
+            Install-Languages
+            Should -Invoke Repair-NodeActivation -Times 0
+            Should -Invoke Write-Warn -Times 0
+        } finally {
+            Remove-Item function:global:nvm
+        }
+    }
+
     It 'installs uv and announces the managed-python install when python enabled' {
         $yaml = @'
 languages:
@@ -48,5 +126,84 @@ languages:
         Should -Invoke Write-Info -Times 1 -ParameterFilter {
             $Message -like '*uv python install 3.12 --default*'
         }
+    }
+}
+
+Describe 'Test-NodeActivation' {
+    # nvm-windows exits 0 even when 'nvm use' fails to create the node
+    # symlink, so the check inspects the symlink target directly.
+
+    It 'returns true when settings.txt path points at a dir with node.exe' {
+        $link = Join-Path $TestDrive 'active'
+        New-Item -ItemType Directory -Path $link | Out-Null
+        Set-Content -Path (Join-Path $link 'node.exe') -Value ''
+        Set-Content -Path (Join-Path $TestDrive 'settings.txt') -Value "root: $TestDrive`npath: $link"
+        Test-NodeActivation -NvmHome $TestDrive -Symlink '' | Should -BeTrue
+    }
+
+    It 'returns false when settings.txt path has no node.exe' {
+        Set-Content -Path (Join-Path $TestDrive 'settings.txt') -Value "root: $TestDrive`npath: $(Join-Path $TestDrive 'missing')"
+        Test-NodeActivation -NvmHome $TestDrive -Symlink '' | Should -BeFalse
+    }
+
+    It 'falls back to the NVM_SYMLINK location when settings.txt has no path line' {
+        # scoop's nvm manifest omits 'path:' and sets NVM_SYMLINK instead
+        Set-Content -Path (Join-Path $TestDrive 'settings.txt') -Value "root: $TestDrive`narch: 64"
+        $link = Join-Path $TestDrive 'symlinked'
+        New-Item -ItemType Directory -Path $link | Out-Null
+        Set-Content -Path (Join-Path $link 'node.exe') -Value ''
+        Test-NodeActivation -NvmHome $TestDrive -Symlink $link | Should -BeTrue
+    }
+
+    It 'returns false when the NVM_SYMLINK location has no node.exe' {
+        Test-NodeActivation -NvmHome (Join-Path $TestDrive 'nowhere') -Symlink (Join-Path $TestDrive 'gone') | Should -BeFalse
+    }
+
+    It 'returns true when the symlink location is unknowable' {
+        Test-NodeActivation -NvmHome '' -Symlink '' | Should -BeTrue
+    }
+}
+
+Describe 'Repair-NodeActivation' {
+    # Junctions need no elevation, so they replace nvm's symlink when the
+    # machine has no Developer Mode. Real junctions in TestDrive.
+
+    BeforeEach {
+        $script:root = Join-Path $TestDrive 'nvmroot'
+        New-Item -ItemType Directory -Path (Join-Path $script:root 'v9.9.9') -Force | Out-Null
+        Set-Content -Path (Join-Path $script:root 'v9.9.9\node.exe') -Value ''
+        Set-Content -Path (Join-Path $TestDrive 'settings.txt') -Value "root: $script:root`narch: 64"
+        $script:link = Join-Path $script:root 'nodejs'
+        # TestDrive persists across Its in a Describe - drop leftover links
+        if (Test-Path $script:link) { [System.IO.Directory]::Delete($script:link, $true) }
+    }
+
+    It 'creates a junction to the version dir and reports node active' {
+        Repair-NodeActivation -Version '9.9.9' -NvmHome $TestDrive -Symlink $script:link | Should -BeTrue
+        (Get-Item $script:link).LinkType | Should -Be 'Junction'
+        Test-Path (Join-Path $script:link 'node.exe') | Should -BeTrue
+    }
+
+    It 'replaces a stale link at the symlink location' {
+        New-Item -ItemType Junction -Path $script:link -Target (Join-Path $script:root 'v9.9.9') | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $script:root 'v9.10.0') | Out-Null
+        Set-Content -Path (Join-Path $script:root 'v9.10.0\node.exe') -Value ''
+        Repair-NodeActivation -Version '9.10.0' -NvmHome $TestDrive -Symlink $script:link | Should -BeTrue
+        (Get-Item $script:link).Target | Should -Be (Join-Path $script:root 'v9.10.0')
+    }
+
+    It 'returns false when the requested version is not installed' {
+        Repair-NodeActivation -Version '1.0.0' -NvmHome $TestDrive -Symlink $script:link | Should -BeFalse
+    }
+
+    It 'refuses to touch a plain directory at the symlink location' {
+        New-Item -ItemType Directory -Path $script:link | Out-Null
+        Set-Content -Path (Join-Path $script:link 'keep.txt') -Value 'data'
+        Repair-NodeActivation -Version '9.9.9' -NvmHome $TestDrive -Symlink $script:link | Should -BeFalse
+        Test-Path (Join-Path $script:link 'keep.txt') | Should -BeTrue
+    }
+
+    It 'returns false when the symlink location is unknowable' {
+        Repair-NodeActivation -Version '9.9.9' -NvmHome '' -Symlink '' | Should -BeFalse
     }
 }

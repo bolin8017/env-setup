@@ -10,6 +10,63 @@ Import-Module "$PSScriptRoot/../lib/Config.psm1"
 Import-Module "$PSScriptRoot/../lib/Package.psm1"
 Import-Module "$PSScriptRoot/../lib/Uninstall.psm1"
 
+function Get-NvmSettingValue {
+    # nvm-windows keeps root/path in settings.txt next to nvm.exe; scoop's
+    # manifest omits 'path:' and pins the link via the NVM_SYMLINK env var.
+    param(
+        [Parameter(Mandatory)][string]$Key,
+        [string]$NvmHome = $env:NVM_HOME
+    )
+    if (-not $NvmHome) { return $null }
+    $settings = Join-Path $NvmHome 'settings.txt'
+    if (-not (Test-Path $settings)) { return $null }
+    $m = Select-String -Path $settings -Pattern "^${Key}:\s*(\S.*?)\s*$" | Select-Object -First 1
+    if ($m) { return $m.Matches[0].Groups[1].Value }
+    return $null
+}
+
+function Test-NodeActivation {
+    # 'nvm use' exits 0 even when it cannot create the node symlink (no
+    # Developer Mode, no elevation), so exit codes never catch the failure.
+    # Look for node.exe at the symlink target instead. Unknowable location
+    # -> $true, so we never cry wolf.
+    param(
+        [string]$NvmHome = $env:NVM_HOME,
+        [string]$Symlink = $env:NVM_SYMLINK
+    )
+    $link = Get-NvmSettingValue -Key 'path' -NvmHome $NvmHome
+    if (-not $link) { $link = $Symlink }
+    if (-not $link) { return $true }
+    return [bool](Test-Path (Join-Path $link 'node.exe'))
+}
+
+function Repair-NodeActivation {
+    # Junctions need no privilege on NTFS (scoop's own 'current' links rely
+    # on this), so when nvm's symlink silently failed, link the version dir
+    # with a junction instead. nvm happily removes/replaces it on the next
+    # 'nvm use'.
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [string]$NvmHome = $env:NVM_HOME,
+        [string]$Symlink = $env:NVM_SYMLINK
+    )
+    $link = Get-NvmSettingValue -Key 'path' -NvmHome $NvmHome
+    if (-not $link) { $link = $Symlink }
+    if (-not $link) { return $false }
+    $root = Get-NvmSettingValue -Key 'root' -NvmHome $NvmHome
+    if (-not $root) { $root = Split-Path $link }
+    $target = Join-Path $root "v$Version"
+    if (-not (Test-Path (Join-Path $target 'node.exe'))) { return $false }
+    if (Test-Path $link) {
+        # only ever replace a link - a real directory here is not ours
+        $item = Get-Item $link -Force
+        if (-not ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { return $false }
+        [System.IO.Directory]::Delete($link, $false)
+    }
+    New-Item -ItemType Junction -Path $link -Target $target | Out-Null
+    return [bool](Test-Path (Join-Path $link 'node.exe'))
+}
+
 function Install-Languages {
     Write-Header 'Languages'
 
@@ -21,10 +78,19 @@ function Install-Languages {
         else {
             nvm install $ver
             if ($LASTEXITCODE -ne 0) { Write-Warn "nvm install $ver exited $LASTEXITCODE" }
-            # nvm-windows creates a symlink; without Developer Mode or an
-            # elevated shell this quietly fails and node stays unusable.
-            nvm use $ver
+            $useOut = nvm use $ver 2>&1
+            $useOut | ForEach-Object { Write-Host $_ }
             if ($LASTEXITCODE -ne 0) { Write-Warn "nvm use $ver exited $LASTEXITCODE (needs Developer Mode or one elevated 'nvm use')" }
+            elseif (-not (Test-NodeActivation)) {
+                # nvm prints the resolved version ("Now using node v24.18.0")
+                # even for aliases like "lts" - that names the junction target.
+                $m = [regex]::Match(($useOut -join "`n"), 'Now using node v(\d+\.\d+\.\d+)')
+                if ($m.Success -and (Repair-NodeActivation -Version $m.Groups[1].Value)) {
+                    Write-Info "nvm's symlink needs elevation on this machine - linked node $($m.Groups[1].Value) via an unelevated junction instead"
+                } else {
+                    Write-Warn "nvm use $ver reported success but node is not activated - enable Windows Developer Mode or run 'nvm use $ver' once from an elevated shell, then re-run setup"
+                }
+            }
         }
     }
 
