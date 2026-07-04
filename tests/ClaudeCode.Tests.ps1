@@ -103,6 +103,49 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
     }
 }
 
+Describe 'aliases.ps1 claude-logout' {
+    BeforeAll {
+        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
+        $tokens = $null; $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
+        foreach ($name in @('claude-logout', 'Remove-ClaudeCredential')) {
+            $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true)
+            if ($fn) { Invoke-Expression $fn.Extent.Text }
+        }
+    }
+
+    It 'removes the credential file and scrubs identity keys, keeping the rest' {
+        $root = Join-Path $TestDrive 'croot'
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        Set-Content (Join-Path $root '.credentials.json') '{"claudeAiOauth":{"accessToken":"x"}}'
+        $state = Join-Path $TestDrive 'state.json'
+        Set-Content $state '{"oauthAccount":{"emailAddress":"a@b.c"},"userID":"u1","theme":"dark"}'
+
+        Remove-ClaudeCredential -Root $root -StateJson $state | Should -BeTrue
+        Test-Path (Join-Path $root '.credentials.json') | Should -BeFalse
+        $j = Get-Content -Raw $state | ConvertFrom-Json
+        $j.PSObject.Properties.Match('oauthAccount').Count | Should -Be 0
+        $j.PSObject.Properties.Match('userID').Count | Should -Be 0
+        $j.theme | Should -Be 'dark'
+    }
+
+    It 'returns false when there is no stored credential' {
+        $root = Join-Path $TestDrive 'empty-root'
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        Remove-ClaudeCredential -Root $root -StateJson (Join-Path $TestDrive 'nope.json') | Should -BeFalse
+    }
+
+    It 'does not write a UTF-8 BOM when scrubbing state json' {
+        $root = Join-Path $TestDrive 'bom-root'
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        $state = Join-Path $TestDrive 'bom-state.json'
+        Set-Content $state '{"oauthAccount":{"e":"x"},"k":1}'
+        Remove-ClaudeCredential -Root $root -StateJson $state | Out-Null
+        $bytes = [System.IO.File]::ReadAllBytes($state)
+        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+    }
+}
+
 Describe 'plugin/marketplace idempotency pre-checks' {
     It 'detects an already-registered marketplace from known_marketplaces.json' {
         $j = Join-Path $TestDrive 'known.json'

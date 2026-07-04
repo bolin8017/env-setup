@@ -172,6 +172,72 @@ claude-as() {
     CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" command claude "$@"
 }
 
+# Log out one config root: remove the stored OAuth credential and scrub the
+# account identity (oauthAccount/userID) from the state json. History,
+# settings, and plugins are untouched. Returns 0 if a credential was removed.
+_claude_logout_root() {
+    local root="$1" state="$2" removed=1
+    if [[ -f "$root/.credentials.json" ]]; then
+        rm -f "$root/.credentials.json" && removed=0
+    fi
+    if [[ -f "$state" ]] && command -v jq >/dev/null 2>&1; then
+        local tmp="$state.tmp.$$"
+        if jq 'del(.oauthAccount, .userID)' "$state" > "$tmp" 2>/dev/null; then
+            mv "$tmp" "$state"
+        else
+            rm -f "$tmp"
+        fi
+    fi
+    return $removed
+}
+
+# Clean logout without uninstalling anything — for handing the machine over.
+# usage: claude-logout            log out the default account (~/.claude)
+#        claude-logout <profile>  log out one profile (~/.claude-<profile>)
+#        claude-logout --all      default + every ~/.claude-<name> profile
+# Run it with no claude session open. macOS note: the default account's
+# credential lives in the Keychain — if a session is still signed in
+# afterwards, run /logout inside claude.
+claude-logout() {
+    local -a pairs
+    pairs=()
+    case "${1:-}" in
+        -h|--help)
+            echo "usage: claude-logout [<profile>|--all]"
+            return 0
+            ;;
+        --all)
+            pairs=("$HOME/.claude|$HOME/.claude.json")
+            local d
+            for d in "$HOME"/.claude-*/; do
+                # Only real Claude Code config dirs (they always carry
+                # .claude.json) — never touch third-party ~/.claude-* dirs.
+                [[ -f "${d}.claude.json" ]] || continue
+                pairs+=("${d%/}|${d}.claude.json")
+            done
+            ;;
+        "")
+            pairs=("$HOME/.claude|$HOME/.claude.json")
+            ;;
+        *)
+            pairs=("$HOME/.claude-$1|$HOME/.claude-$1/.claude.json")
+            ;;
+    esac
+
+    local pair root
+    for pair in "${pairs[@]}"; do
+        root="${pair%%|*}"
+        if _claude_logout_root "$root" "${pair#*|}"; then
+            echo "logged out: $root"
+        else
+            echo "no stored credential: $root"
+        fi
+    done
+    if [[ "$OSTYPE" == darwin* ]]; then
+        echo "macOS: if a session is still signed in, run /logout inside claude (Keychain-stored credential)."
+    fi
+}
+
 # ---------------------------
 # env-setup self-update
 # ---------------------------
