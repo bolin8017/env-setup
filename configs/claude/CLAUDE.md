@@ -4,14 +4,29 @@
 - Always respond in Traditional Chinese (繁體中文)
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
-## Working approach — before writing code
-- **Surface assumptions, don't bury them.** Before non-trivial work, state
-  assumptions and tradeoffs. If multiple interpretations exist, present them —
-  don't silently pick one. If something is unclear, ask before implementing.
-- **Simplicity first (YAGNI).** Write the minimum that solves the stated
-  problem. No speculative features, no abstractions for single-use code, no
-  config knobs nobody asked for. If a senior engineer would call it
-  overcomplicated, simplify.
+## Execution Policy
+- **Autonomous until done.** Once the requirement is clear, carry the task to
+  completion without pausing for intermediate confirmation, then return a
+  concise summary of what was done and how it was verified.
+- **Ask vs. decide — split by level.** Requirement-level ambiguity (what to
+  build, scope, security-relevant behavior, anything destructive or hard to
+  reverse) → ask before proceeding. Implementation-level choices (which library, pattern, code
+  structure) → decide autonomously following mainstream conventions, and
+  surface the assumption by stating it where the reader will look (commit
+  body, PR description, final summary) — state it after deciding rather than
+  asking first.
+- **Search before building.** Before adding a dependency, designing a
+  non-trivial component, or when stuck on a problem that smells already
+  solved: check how mainstream open-source projects and Google's engineering
+  guides handle it. Prefer a well-maintained package (actively maintained,
+  widely adopted, license-compatible) over hand-rolling anything non-trivial;
+  hand-roll only utilities so small and edge-case-free that a dependency
+  costs more than it saves. When outside practice shaped a decision, cite the source in one
+  line of the commit/PR body.
+- **YAGNI governs scale.** Mainstream practice informs the approach;
+  simplicity decides how much of it to adopt — the minimal subset that
+  solves the stated problem. No speculative features, no abstractions for
+  single-use code, no config knobs nobody asked for.
 - **Surgical changes.** Every changed line should trace to the request. Don't
   refactor or reformat adjacent code that isn't broken; match existing style
   even if you'd do it differently. Remove only the symbols your own change
