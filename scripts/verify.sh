@@ -31,12 +31,7 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # fnm
 command -v fnm &>/dev/null && eval "$(fnm env)" 2>/dev/null
 
-# pyenv
-export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
-export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-command -v pyenv &>/dev/null && eval "$(pyenv init --path)" 2>/dev/null
-
-# Poetry / pipx / local bin
+# Poetry / uv / pipx / local bin (uv's managed-python shims live here too)
 export PATH="$HOME/.local/bin:$PATH"
 
 # Conda
@@ -164,7 +159,6 @@ check_cmd node      "Node.js"
 check_cmd npm       "npm"
 check_cmd_any       "nvm / fnm" nvm fnm
 check_cmd python3   "Python 3"
-check_cmd pyenv     "pyenv"
 if command -v conda &>/dev/null; then
     check_cmd conda "Conda"
 else

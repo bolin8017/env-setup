@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 02-languages.sh — nvm/Node.js, pyenv/Python, Conda
+# 02-languages.sh — nvm/Node.js, uv/Python, Conda
 # All lib/ files are sourced by setup.sh before this module runs.
 
 # =============================================================================
@@ -93,78 +93,42 @@ FRAGMENT
 }
 
 # =============================================================================
-# pyenv & Python
+# uv & Python
 # =============================================================================
-_install_pyenv() {
-    print_header "pyenv & Python"
+_install_uv_python() {
+    print_header "uv & Python"
 
-    # Setup pyenv environment
-    export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-
-    if command_exists pyenv; then
-        log_success "pyenv already installed"
+    # uv is the Python manager: prebuilt standalone CPython, so no apt build
+    # deps and no compile step. It may already be present from a
+    # pre-migration install (03-python-tools ships it as a pip replacement).
+    if command_exists uv; then
+        log_success "uv already installed"
     else
-        log_info "Installing pyenv..."
+        log_info "Installing uv..."
         if is_macos; then
-            pkg_install pyenv pyenv-virtualenv
-        elif is_linux; then
-            # Install pyenv build dependencies (apt — needs sudo)
-            if sudo_available; then
-                pkg_update
-                dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-                    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
-                    libffi-dev liblzma-dev
-            else
-                record_missing_apt_package \
-                    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-                    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
-                    libffi-dev liblzma-dev
-                log_warn "pyenv build dependencies deferred to administrator (pyenv itself will still install but Python builds will fail)"
-            fi
-            # pyenv itself installs into $HOME — no sudo required
-            dry_run_cmd bash -c 'curl -fsSL https://pyenv.run | bash'
+            pkg_install uv
+        else
+            # Installs into ~/.local/bin — no sudo required.
+            dry_run_cmd bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
         fi
     fi
 
-    # Write pyenv fragment for future shells (content-compared, so fixes reach
-    # already-provisioned machines).
-    # --no-rehash: skip the implicit 'pyenv rehash' that BOTH 'pyenv init
-    # --path' and 'pyenv init -' emit on every shell start. An interrupted
-    # rehash leaves a stale ~/.pyenv/shims/.pyenv-shim lock; subsequent
-    # rehashes then block ~60s each waiting for it, stalling shell startup
-    # by minutes. Shims are still refreshed by 'pyenv install' and a manual
-    # 'pyenv rehash' when needed.
-    write_generated_fragment "15-pyenv.zsh" << 'FRAGMENT'
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init --path --no-rehash)" 2>/dev/null
-eval "$(pyenv init - --no-rehash)" 2>/dev/null
-FRAGMENT
+    # uv and its managed-python shims land in ~/.local/bin; the static
+    # fragment 40-env.zsh already puts that on PATH for future shells, so
+    # no generated fragment is needed — only the current session.
+    export PATH="$HOME/.local/bin:$PATH"
 
-    # Ensure pyenv is in PATH for current session (disable nounset for pyenv init).
-    # --no-rehash matches the generated fragment; 'pyenv install' below rehashes.
-    export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-    set +u
-    eval "$(pyenv init --path --no-rehash)" 2>/dev/null || true
-    eval "$(pyenv init - --no-rehash)" 2>/dev/null || true
-    set -u
-
-    # Install Python version specified in config
     local python_version
     python_version="$(cfg_get "languages.python.version")"
     python_version="${python_version:-3.12}"
 
-    if ! pyenv versions 2>/dev/null | grep -q "$python_version"; then
-        log_info "Installing Python $python_version..."
-        dry_run_cmd pyenv install "$python_version"
-        dry_run_cmd pyenv global "$python_version"
-        log_success "Python $python_version set as global"
-    else
-        log_success "Python $python_version already installed"
-        pyenv global "$python_version" 2>/dev/null || true
-    fi
+    # uv resolves "3.12" to its newest patch itself, and re-running against
+    # an installed version is a fast no-op. --default (uv preview feature)
+    # adds the bare python/python3 shims — the moral equivalent of the old
+    # `pyenv global`.
+    log_info "Installing Python $python_version (uv-managed)..."
+    dry_run_cmd uv python install "$python_version" --default
+    log_success "Python $python_version set as the default python"
 }
 
 # =============================================================================
@@ -243,7 +207,7 @@ install_languages() {
     fi
 
     if cfg_enabled "languages.python.enabled"; then
-        _install_pyenv
+        _install_uv_python
     fi
 
     if cfg_enabled "languages.conda.enabled"; then
@@ -259,7 +223,8 @@ install_languages() {
 uninstall_languages() {
     print_header "Uninstall: Languages"
 
-    # C — auto-generated fragments this module wrote
+    # C — auto-generated fragments this module wrote (15-pyenv.zsh is legacy:
+    # written by pre-uv-migration installs only)
     remove_fragment "15-pyenv.zsh" "PYENV_ROOT"
     remove_fragment "16-nvm.zsh" "NVM_DIR"
     remove_fragment "17-conda.zsh" "conda"
@@ -277,11 +242,31 @@ uninstall_languages() {
     # T — user-space tool trees
     if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
         remove_managed_dir "$HOME/.nvm" "nvm"
-        remove_managed_dir "$HOME/.pyenv" "pyenv"
+
+        # uv-managed CPython. 03-python-tools tears down uv itself (teardown
+        # runs 09→01), so by now `uv python dir` may be unaskable — fall back
+        # to uv's default location. The bare python/python3[.X] shims in
+        # ~/.local/bin are symlinks into that tree; sweep them too or they
+        # dangle once the tree goes.
+        local uv_python_dir="$HOME/.local/share/uv/python"
+        if command_exists uv; then
+            uv_python_dir="$(uv python dir 2>/dev/null || echo "$uv_python_dir")"
+        fi
+        remove_managed_dir "$uv_python_dir" "uv-managed Python"
+        local shim
+        for shim in "$HOME/.local/bin/python" "$HOME/.local/bin/python3" "$HOME/.local/bin"/python3.*; do
+            [[ -L "$shim" ]] || continue
+            case "$(readlink "$shim")" in
+                *uv/python/*) dry_run_rm "$shim" ;;
+            esac
+        done
+
+        remove_managed_dir "$HOME/.pyenv" "pyenv"   # legacy (pre-uv installs)
         remove_managed_dir "$HOME/miniconda3" "Miniconda"
     fi
 
-    # P — macOS brew-managed language tooling
+    # P — macOS brew-managed language tooling (pyenv formulas are legacy:
+    # only pre-uv-migration installs put them there; uv itself is 03's)
     if [[ "${PURGE:-false}" == "true" ]] && is_macos; then
         pkg_remove pyenv pyenv-virtualenv
         pkg_remove_cask miniconda

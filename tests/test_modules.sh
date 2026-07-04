@@ -166,12 +166,13 @@ suite "Language shell-init hardening (02-languages.sh)"
 # =============================================================================
 
 languages_src="$(cat "$PROJECT_ROOT/modules/02-languages.sh")"
-# pyenv: both init forms must pass --no-rehash so an interrupted rehash's stale
-# shims lock can't stall every future shell ~60s waiting on it.
-assert_contains "$languages_src" "pyenv init --path --no-rehash" "pyenv: 'init --path' skips rehash"
-assert_contains "$languages_src" "pyenv init - --no-rehash"      "pyenv: 'init -' skips rehash"
-assert_not_contains "$languages_src" 'pyenv init --path)' "pyenv: no rehash-on-init via 'init --path'"
-assert_not_contains "$languages_src" 'pyenv init -)'      "pyenv: no rehash-on-init via 'init -'"
+# uv: Python is uv-managed. The version request passes through untouched (uv
+# resolves "3.12" to its newest patch itself) and --default supplies the bare
+# python/python3 shims that replaced pyenv's global shim.
+assert_contains "$languages_src" 'uv python install "$python_version" --default' "uv: managed install with --default shims"
+# pyenv must not come back as the installer; only legacy teardown may mention it.
+assert_not_contains "$languages_src" 'pyenv init'    "uv: no pyenv shell init left"
+assert_not_contains "$languages_src" 'pyenv install' "uv: no pyenv-driven python builds left"
 # nvm: the `nvm` command stays lazy (no auto-use on every shell start), but the
 # default Node's bin is added to PATH eagerly so node/npm/npx are real binaries
 # for non-interactive children (MCP servers, scripts), not shell-function stubs.

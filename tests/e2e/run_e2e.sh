@@ -61,12 +61,7 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # shellcheck source=/dev/null
 [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null
 
-# pyenv
-export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
-export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-command -v pyenv &>/dev/null && eval "$(pyenv init --path)" 2>/dev/null
-
-# Local bin
+# Local bin (uv + its managed-python shims)
 export PATH="$HOME/.local/bin:$PATH"
 
 # Conda
@@ -91,7 +86,7 @@ echo -e "${CYAN}--- Languages ---${NC}"
 check "nvm installed"                command -v nvm
 check "node installed"               command -v node
 check "npm installed"                command -v npm
-check "pyenv installed"              command -v pyenv
+check "uv installed"                 command -v uv
 check "python3 installed"            command -v python3
 
 echo ""
@@ -148,7 +143,6 @@ check "00-p10k-instant-prompt"       test -f "$HOME/.config/zsh/fragments/00-p10
 check "10-omz.zsh"                   test -f "$HOME/.config/zsh/fragments/10-omz.zsh"
 check "20-history.zsh"               test -f "$HOME/.config/zsh/fragments/20-history.zsh"
 check "50-tools.zsh"                 test -f "$HOME/.config/zsh/fragments/50-tools.zsh"
-check "15-pyenv.zsh (dynamic)"       test -f "$HOME/.config/zsh/fragments/15-pyenv.zsh"
 check "16-nvm.zsh (dynamic)"         test -f "$HOME/.config/zsh/fragments/16-nvm.zsh"
 
 # =============================================================================
