@@ -57,13 +57,21 @@ function Repair-NodeActivation {
     if (-not $root) { $root = Split-Path $link }
     $target = Join-Path $root "v$Version"
     if (-not (Test-Path (Join-Path $target 'node.exe'))) { return $false }
-    if (Test-Path $link) {
-        # only ever replace a link - a real directory here is not ours
-        $item = Get-Item $link -Force
-        if (-not ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { return $false }
-        [System.IO.Directory]::Delete($link, $false)
+    try {
+        if (Test-Path $link) {
+            # only ever replace a link - a real directory here is not ours
+            $item = Get-Item $link -Force
+            if (-not ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { return $false }
+            [System.IO.Directory]::Delete($link, $false)
+        }
+        New-Item -ItemType Junction -Path $link -Target $target | Out-Null
+    } catch {
+        # nvm's elevate helper can land its symlink between our check and
+        # the mklink (seen live: "directory cannot be removed because it is
+        # not empty"). Whoever won, the probe below is the verdict - a
+        # throw here would kill the whole module under EAP=Stop.
+        Write-Info "node link changed underneath the repair ($($_.Exception.Message)) - probing the result"
     }
-    New-Item -ItemType Junction -Path $link -Target $target | Out-Null
     return [bool](Test-Path (Join-Path $link 'node.exe'))
 }
 
