@@ -7,6 +7,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/test_framework.sh"
+
+# Sandbox HOME before lib/common.sh binds LOG_DIR (test_uninstall.sh pattern).
+export HOME="${TEST_TMPDIR}/home"
+mkdir -p "$HOME"
+
 source "$PROJECT_ROOT/lib/common.sh"
 
 # Force dry-run for dryrun.sh

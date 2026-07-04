@@ -33,6 +33,9 @@ done < <(
 )
 
 # Parse config.yaml and check each key exists
+# Sandbox HOME BEFORE lib/common.sh binds LOG_DIR (source-time binding).
+export HOME="${TEST_TMPDIR}/home"
+mkdir -p "$HOME"
 source "$PROJECT_ROOT/lib/common.sh"
 source "$PROJECT_ROOT/lib/yaml.sh"
 setup_logging
