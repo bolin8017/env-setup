@@ -121,9 +121,25 @@ function Test-FileContentEqual {
     } catch { return $false }
 }
 
+function Send-EnvironmentChanged {
+    # User-scope env writes go to the registry, which running processes never
+    # re-read; Explorer only refreshes its copy on WM_SETTINGCHANGE. Broadcast
+    # it so shells launched from the taskbar pick up PATH edits without a
+    # re-logon. (06-Shell's Enable-SessionFonts does the same for fonts.)
+    if (-not ([System.Management.Automation.PSTypeName]'EnvSetup.NativeEnv').Type) {
+        Add-Type -Namespace EnvSetup -Name NativeEnv -MemberDefinition @'
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+'@
+    }
+    $res = [UIntPtr]::Zero
+    # 0xFFFF = HWND_BROADCAST, 0x001A = WM_SETTINGCHANGE, 2 = SMTO_ABORTIFHUNG
+    [void][EnvSetup.NativeEnv]::SendMessageTimeout([IntPtr]0xFFFF, 0x001A, [UIntPtr]::Zero, 'Environment', 2, 1000, [ref]$res)
+}
+
 Export-ModuleMember -Function `
     Write-Info, Write-Success, Write-Warn, Write-Err, Write-Header, `
     Test-Command, Test-IsWindows, Assert-Windows, Invoke-WithRetry, `
     Test-DryRun, Test-AutoYes, Test-KeepExisting, Confirm-Action, `
     Test-KeepTools, Test-Purge, Test-NoRestore, Test-FileContentEqual, `
-    Write-Utf8NoBom, Invoke-Native
+    Write-Utf8NoBom, Invoke-Native, Send-EnvironmentChanged

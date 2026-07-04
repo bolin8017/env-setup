@@ -48,6 +48,7 @@ function Add-ClaudeBinToPath {
         if ($entries | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') }) { return }
         $newRaw = if ([string]::IsNullOrEmpty($raw)) { $bin } else { $raw.TrimEnd(';') + ';' + $bin }
         $key.SetValue('Path', $newRaw, $kind)
+        Send-EnvironmentChanged
         # Marker: uninstall must only remove the entry WE added - ~/.local/bin
         # is a shared convention dir (pipx uses it too).
         New-Item -ItemType Directory -Path (Split-Path $marker -Parent) -Force | Out-Null
@@ -76,6 +77,7 @@ function Remove-ClaudeBinFromPath {
         $kept = $raw -split ';' | Where-Object { $_ -ne '' -and $_.TrimEnd('\') -ine $bin.TrimEnd('\') }
         if (($raw -split ';' | Where-Object { $_ -ne '' }).Count -eq $kept.Count) { return }
         $key.SetValue('Path', ($kept -join ';'), $kind)
+        Send-EnvironmentChanged
         Write-Success "Removed $bin from the user PATH"
     } finally { $key.Close() }
 }

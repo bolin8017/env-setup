@@ -67,6 +67,37 @@ function Repair-NodeActivation {
     return [bool](Test-Path (Join-Path $link 'node.exe'))
 }
 
+function Get-PathWithoutLegacyPyenv {
+    # Pure filter: drop pyenv-win bin/shims entries; everything else (incl.
+    # unexpanded %VAR% forms) passes through untouched.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    $kept = $Path -split ';' | Where-Object { $_ -ne '' -and $_ -notmatch '\\pyenv-win\\(bin|shims)\\?$' }
+    return ($kept -join ';')
+}
+
+function Remove-LegacyPyenvPath {
+    # Machines provisioned before the uv migration still have pyenv-win's
+    # bin/shims on the user PATH (the scoop manifest wrote them), so pip
+    # resolves into the dead pyenv tree - python wins only by PATH order.
+    # Strip the entries; the pyenv install itself stays until uninstall.
+    # Windows sibling of the Unix fragment cleanup (#67).
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    try {
+        if ($null -eq $key.GetValue('Path')) { return }
+        $raw  = [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+        $kind = $key.GetValueKind('Path')
+        $new  = Get-PathWithoutLegacyPyenv -Path $raw
+        $before = @($raw -split ';' | Where-Object { $_ -ne '' })
+        if (@($new -split ';' | Where-Object { $_ -ne '' }).Count -eq $before.Count) { return }
+        if (Test-DryRun) { Write-Info '[DRY-RUN] Would strip pyenv-win entries from the user PATH'; return }
+        $key.SetValue('Path', $new, $kind)
+    } finally { $key.Close() }
+    # Scrub the current session too so this run's children resolve cleanly.
+    $env:Path = Get-PathWithoutLegacyPyenv -Path $env:Path
+    Send-EnvironmentChanged
+    Write-Success 'Stripped legacy pyenv-win entries from the user PATH'
+}
+
 function Install-Languages {
     Write-Header 'Languages'
 
@@ -110,6 +141,7 @@ function Install-Languages {
                 if ($LASTEXITCODE -ne 0) { Write-Warn "uv python install $pyver exited $LASTEXITCODE" }
             }
         }
+        Remove-LegacyPyenvPath
     }
 }
 

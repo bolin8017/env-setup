@@ -107,6 +107,28 @@ languages:
         }
     }
 
+    It 'strips legacy pyenv PATH entries after the uv install' {
+        $env:ENVSETUP_DRY_RUN = $null
+        $yaml = @'
+languages:
+  node:
+    enabled: false
+  python:
+    enabled: true
+    version: "3.12"
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        function global:uv { $global:LASTEXITCODE = 0 }
+        try {
+            Mock Remove-LegacyPyenvPath { }
+            Install-Languages
+            Should -Invoke Remove-LegacyPyenvPath -Times 1
+        } finally {
+            Remove-Item function:global:uv
+        }
+    }
+
     It 'installs uv and announces the managed-python install when python enabled' {
         $yaml = @'
 languages:
@@ -126,6 +148,26 @@ languages:
         Should -Invoke Write-Info -Times 1 -ParameterFilter {
             $Message -like '*uv python install 3.12 --default*'
         }
+    }
+}
+
+Describe 'Get-PathWithoutLegacyPyenv' {
+    # Pure filter behind Remove-LegacyPyenvPath: pyenv-win's scoop manifest
+    # wrote bin/shims into the user PATH; after the uv migration they only
+    # shadow pip into the dead pyenv tree (Windows sibling of #67).
+
+    It 'strips scoop pyenv-win bin and shims entries' {
+        $in = 'C:\foo;C:\Users\u\scoop\apps\pyenv\current\pyenv-win\bin;C:\Users\u\scoop\apps\pyenv\current\pyenv-win\shims;C:\bar'
+        Get-PathWithoutLegacyPyenv -Path $in | Should -Be 'C:\foo;C:\bar'
+    }
+
+    It 'strips pyenv-win under a plain .pyenv root too' {
+        Get-PathWithoutLegacyPyenv -Path 'C:\x;%USERPROFILE%\.pyenv\pyenv-win\shims' | Should -Be 'C:\x'
+    }
+
+    It 'keeps unrelated and unexpanded %VAR% entries untouched' {
+        $in = '%USERPROFILE%\bin;C:\tools;C:\Users\u\scoop\shims'
+        Get-PathWithoutLegacyPyenv -Path $in | Should -Be $in
     }
 }
 
