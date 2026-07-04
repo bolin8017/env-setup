@@ -41,7 +41,7 @@ vim config.yaml
 不碰 apt/brew 系統套件、不刪個人資料夾。若安裝時有備份，會自動還原安裝前的設定。
 
 ```bash
-./uninstall.sh                    # 移除設定檔 + 使用者空間工具（nvm/pyenv/oh-my-zsh…）
+./uninstall.sh                    # 移除設定檔 + 使用者空間工具（nvm/uv/oh-my-zsh…）
 ./uninstall.sh --dry-run          # 預覽會移除什麼，不實際執行
 ./uninstall.sh --keep-tools       # 只移除設定檔，保留所有工具
 ./uninstall.sh --purge            # 額外移除系統套件（git/docker/zsh…）與還原預設 shell
@@ -96,7 +96,7 @@ cd env-setup
 | 類別 | 工具 |
 |------|------|
 | **核心** | Homebrew (macOS)、Git、GitHub CLI、build tools |
-| **語言** | Node.js (nvm)、Python (pyenv)、Conda (選用) |
+| **語言** | Node.js (nvm)、Python (uv 管理)、Conda (選用) |
 | **Python 工具** | JupyterLab、Poetry、uv |
 | **容器** | Docker Engine / Desktop |
 | **CLI 工具** | fzf、ripgrep、bat、fd、eza、zoxide、jq、btop、tldr、tree、httpie |
@@ -177,7 +177,7 @@ claude_code:
 setup.sh 讀取 config.yaml → 依序執行模組
  │
  ├─ 01-core         Homebrew → Git → gh → build tools
- ├─ 02-languages    nvm/Node.js → pyenv/Python → Conda
+ ├─ 02-languages    nvm/Node.js → uv/Python → Conda
  ├─ 03-python-tools Jupyter → Poetry → uv
  ├─ 04-docker       Docker
  ├─ 05-cli-tools    11 個 CLI 工具
@@ -213,7 +213,6 @@ PowerShell 沒有 Bash/awk YAML 解析器，因此 `lib/Config.psm1` 提供同�
 ~/.config/zsh/fragments/
   ├── 00-p10k-instant-prompt.zsh    ← P10k（最先載入）
   ├── 10-omz.zsh                    ← Oh My Zsh
-  ├── 15-pyenv.zsh                  ← pyenv init（自動生成）
   ├── 16-nvm.zsh                    ← nvm init（自動生成）
   ├── 20-history.zsh                ← 歷史設定
   ├── 30-completion.zsh             ← 補全設定
@@ -237,7 +236,7 @@ PowerShell 沒有 Bash/awk YAML 解析器，因此 `lib/Config.psm1` 提供同�
 
 - 首次需要 sudo 時會跳一次 `sudo -v` 密碼提示；密碼由 sudo 直接從 TTY 讀取，env-setup 不會看到、紀錄或傳遞它
 - 通過後背景會定期刷新 sudo timestamp，後續安裝不會再被問
-- 若驗證失敗（不在 sudoers、密碼錯誤、Ctrl+C、無 TTY）會自動轉成「跳過 apt」模式，繼續完成所有 user-space 工具（nvm、pyenv、Oh My Zsh、Claude Code…）的安裝（`--auto-yes` 只代表「檔案覆寫免確認」，互動終端機上仍會出現一次 sudo 密碼提示）
+- 若驗證失敗（不在 sudoers、密碼錯誤、Ctrl+C、無 TTY）會自動轉成「跳過 apt」模式，繼續完成所有 user-space 工具（nvm、uv、Oh My Zsh、Claude Code…）的安裝（`--auto-yes` 只代表「檔案覆寫免確認」，互動終端機上仍會出現一次 sudo 密碼提示）
 - 安裝結束時印出一段 admin 指令清單，可以拿給系統管理員裝缺漏的 apt 套件，再重跑 `./setup.sh` 即可繼續
 
 macOS 不會走這條路徑：brew 安裝以使用者身份執行，初次安裝 Homebrew 時由官方 installer 自行處理授權。

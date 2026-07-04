@@ -63,13 +63,13 @@ languages:
     version: "lts"
 
   python:
-    # Install Python via pyenv
+    # Install Python via uv (managed CPython)
     enabled: true
-    # Version: any version string supported by pyenv (e.g. "3.12", "3.11.7")
+    # Version: any version request uv accepts (e.g. "3.12", "3.11.7")
     version: "3.12"
 
   conda:
-    # Install Miniconda — disabled by default (use pyenv + venv instead)
+    # Install Miniconda — disabled by default (use uv-managed Python + venv instead)
     enabled: false
 
 # -----------------------------------------------------------------------------
