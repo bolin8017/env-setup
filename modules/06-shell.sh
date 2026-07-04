@@ -92,7 +92,43 @@ install_powerlevel10k() {
         log_success "Powerlevel10k installed"
     fi
 
-    log_info "Tip: install a Nerd Font (MesloLGS NF recommended) for best experience"
+    _install_nerd_font
+}
+
+# =============================================================================
+# 3a. _install_nerd_font — MesloLGS NF into the user font dir (no sudo)
+# =============================================================================
+_install_nerd_font() {
+    # The repo-wide .p10k.zsh uses the nerdfont-complete icon set and the
+    # Windows engine already installs MesloLGS NF (Powerlevel10k's own font,
+    # same four files). Without it here, prompt icons render as tofu or
+    # question marks. Terminal profiles still need the face selected
+    # manually; installing the family is the part we can automate.
+    local font_dir
+    if is_macos; then
+        font_dir="$HOME/Library/Fonts"
+    else
+        font_dir="$HOME/.local/share/fonts"
+    fi
+
+    local base="https://github.com/romkatv/powerlevel10k-media/raw/master"
+    local f added=0
+    dry_run_mkdir "$font_dir"
+    for f in "MesloLGS NF Regular.ttf" "MesloLGS NF Bold.ttf" \
+             "MesloLGS NF Italic.ttf" "MesloLGS NF Bold Italic.ttf"; do
+        [[ -f "$font_dir/$f" ]] && continue
+        dry_run_cmd curl -fsSL -o "$font_dir/$f" "$base/${f// /%20}"
+        added=$((added + 1))
+    done
+
+    if (( added > 0 )); then
+        if is_linux && command_exists fc-cache; then
+            dry_run_cmd fc-cache -f "$font_dir"
+        fi
+        log_success "Installed MesloLGS NF ($added file(s)) - select it in your terminal profile"
+    else
+        log_info "MesloLGS NF already installed"
+    fi
 }
 
 # =============================================================================

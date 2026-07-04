@@ -206,6 +206,19 @@ assert_not_contains "$shell_src" 'if [[ -d "$omz_dir" ]]; then
         log_info "Oh My Zsh already installed' \
     "install_oh_my_zsh: no bare-directory early return"
 
+# The Windows engine installs MesloLGS NF (Powerlevel10k's font); macOS/Linux
+# must install the same family instead of only printing a tip, or the
+# nerdfont-complete icon set renders as tofu/question marks.
+assert_contains "$shell_src" 'powerlevel10k-media' "font: MesloLGS NF fetched from the p10k media repo"
+assert_contains "$shell_src" 'Library/Fonts'       "font: macOS user font dir covered"
+assert_contains "$shell_src" '.local/share/fonts'  "font: Linux user font dir covered"
+
+p10k_src="$(cat "$PROJECT_ROOT/configs/p10k/.p10k.zsh")"
+# All engines now ship MesloLGS NF, so the prompt uses the full icon set the
+# font was built for (compatible mode was a workaround for font-less boxes).
+assert_contains "$p10k_src" 'POWERLEVEL9K_MODE=nerdfont-complete' \
+    "p10k: nerdfont-complete icon set enabled"
+
 # =============================================================================
 # =============================================================================
 suite "nvm half-install repair (02-languages)"

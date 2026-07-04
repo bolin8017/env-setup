@@ -118,7 +118,10 @@
   )
 
   # Defines character set used by powerlevel10k. It's best to let `p10k configure` set it for you.
-  typeset -g POWERLEVEL9K_MODE=compatible
+  # nerdfont-complete: every engine installs MesloLGS NF (the font this icon
+  # set was designed for). `compatible` was a workaround from a machine whose
+  # terminal font predated that install.
+  typeset -g POWERLEVEL9K_MODE=nerdfont-complete
   # When set to `moderate`, some icons will have an extra space after them. This is meant to avoid
   # icon overlap when using non-monospace fonts. When set to `none`, spaces are not added.
   typeset -g POWERLEVEL9K_ICON_PADDING=none
