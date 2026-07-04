@@ -431,6 +431,9 @@ function Uninstall-ClaudeCode {
         }
         $launcher = Join-Path $HOME '.local/bin/claude.exe'
         if (Test-Path -LiteralPath $launcher) { Remove-OrDryRun -Path $launcher }
+        # The native installer keeps its versioned binaries in
+        # ~/.local/share/claude (can be hundreds of MB); Bash removes it too.
+        Remove-ManagedDir -Dir (Join-Path $HOME '.local/share/claude') -Label 'Claude CLI store'
         Remove-ClaudeBinFromPath
         Write-Info 'Claude CLI removed where found; ~/.claude data (auth/history) preserved.'
     }

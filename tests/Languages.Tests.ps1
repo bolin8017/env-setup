@@ -129,6 +129,24 @@ languages:
         }
     }
 
+    It 'tells the user conda is unmanaged on Windows instead of ignoring it' {
+        $yaml = @'
+languages:
+  node:
+    enabled: false
+  python:
+    enabled: false
+  conda:
+    enabled: true
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Install-Languages
+        Should -Invoke Write-Info -Times 1 -ParameterFilter {
+            $Message -like '*conda*'
+        }
+    }
+
     It 'installs uv and announces the managed-python install when python enabled' {
         $yaml = @'
 languages:
