@@ -54,7 +54,7 @@ vim config.yaml
 
 ### 原生 Windows（PowerShell）
 
-原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、pyenv-win、uv/poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）、Claude Code（原生安裝 + 設定同步）、個人目錄與安裝後驗證。
+原生 Windows 走獨立的 PowerShell 引擎（`setup.ps1` / `bootstrap.ps1`），與 WSL2 完全脫鉤，並與 macOS/Linux 共用同一份 `config.yaml`。涵蓋：核心引擎、套件安裝（scoop/winget、git/gh、現代 CLI 工具）、語言（nvm-windows、uv 管理 Python、poetry/jupyter）、shell 體驗（PowerShell 7、Oh My Posh prompt、PSReadLine 預測、模組、zellij 多工器、Windows Terminal 字型）、Claude Code（原生安裝 + 設定同步）、個人目錄與安裝後驗證。
 
 全新系統（一行安裝，在 PowerShell 7 執行）：
 
@@ -106,7 +106,7 @@ cd env-setup
 
 每個項目都可以在 `config.yaml` 中個別開關。
 
-**原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／pyenv-win，並設定 PSReadLine 預測與 Windows Terminal 字型。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
+**原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／uv，並設定 PSReadLine 預測與 Windows Terminal 字型。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
 
 ## 設定
 
@@ -193,7 +193,7 @@ setup.sh 讀取 config.yaml → 依序執行模組
 setup.ps1 讀取 config.yaml → 依序執行模組
  │
  ├─ 01-Core         scoop/winget → Git → gh
- ├─ 02-Languages    nvm-windows/Node.js → pyenv-win/Python
+ ├─ 02-Languages    nvm-windows/Node.js → uv/Python
  ├─ 03-PythonTools  Jupyter → Poetry → uv
  ├─ 05-CliTools     現代 CLI 工具
  ├─ 06-Shell        PowerShell 7 → Oh My Posh → PSReadLine → 模組 → $PROFILE 組裝 → WT 字型
