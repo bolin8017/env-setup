@@ -92,6 +92,11 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
         $aliases | Should -Match '\.credential-stash'
     }
 
+    It 'hands bash a forward-slash helper path (Git Bash eats backslashes)' {
+        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
+        $aliases | Should -Match ('-replace ' + [regex]::Escape("'\\', '/'"))
+    }
+
     It 'passes claude single-dash flags through instead of binding them' {
         function global:claude { $global:CapturedArgs = $args; $global:CapturedDir = $env:CLAUDE_CONFIG_DIR }
         try {
