@@ -248,4 +248,17 @@ Describe 'Repair-NodeActivation' {
     It 'returns false when the symlink location is unknowable' {
         Repair-NodeActivation -Version '9.9.9' -NvmHome '' -Symlink '' | Should -BeFalse
     }
+
+    It 'reports the final state instead of throwing when the junction cannot be created' {
+        # Losing the race with nvm's elevate helper surfaces as New-Item
+        # blowing up on a link path that just became occupied. Simulate an
+        # uncreatable link path (parent is a file) - the function must not
+        # throw (a crash kills the whole module under EAP=Stop) and must
+        # answer from the final node.exe probe.
+        $blocker = Join-Path $TestDrive 'blocker'
+        Set-Content -Path $blocker -Value ''
+        $badLink = Join-Path $blocker 'nodejs'
+        { Repair-NodeActivation -Version '9.9.9' -NvmHome $TestDrive -Symlink $badLink } | Should -Not -Throw
+        Repair-NodeActivation -Version '9.9.9' -NvmHome $TestDrive -Symlink $badLink | Should -BeFalse
+    }
 }
