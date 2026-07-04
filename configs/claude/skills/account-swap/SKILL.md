@@ -1,6 +1,6 @@
 ---
 name: account-swap
-description: Use when the user wants the current/default claude session to run on a different logged-in account's credential without /login — typically a usage limit was hit mid-session and they want to continue on another account. Args: <profile> | default | --status.
+description: "Use when the user wants the current/default claude session to run on a different logged-in account's credential without /login — typically a usage limit was hit mid-session and they want to continue on another account. Args: <profile> | default | --status."
 ---
 
 Swap which account's credential occupies `~/.claude` by running the

@@ -1,6 +1,6 @@
 ---
 name: repo-optimize
-description: Use when a repo needs a systematic optimization or health pass and you don't know where to start — "this project probably has issues", an inherited or legacy codebase, a pre-release audit, or recurring mystery bugs. Args: [quick|deep] [report|fix], default "deep report".
+description: "Use when a repo needs a systematic optimization or health pass and you don't know where to start — \"this project probably has issues\", an inherited or legacy codebase, a pre-release audit, or recurring mystery bugs. Args: [quick|deep] [report|fix], default \"deep report\"."
 ---
 
 Comprehensive repo review that ends in verified findings, a severity-ranked
