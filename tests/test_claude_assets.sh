@@ -89,6 +89,36 @@ done
 shopt -u nullglob
 
 # =============================================================================
+suite "frontmatter descriptions parse under strict YAML"
+# =============================================================================
+
+# An unquoted scalar containing ": " reads as a nested mapping in strict YAML
+# parsers (VS Code frontmatter preview, agentskills tooling), even though
+# Claude Code's lenient loader accepts it. Require quoting in that case.
+_check_desc_strict_yaml() {
+    local f="$1" label="$2"
+    local desc val
+    desc="$(awk '/^---$/{n++} n==1 && /^description:/{print; exit}' "$f" | tr -d '\r')"
+    [[ -z "$desc" ]] && return 0
+    val="${desc#description:}"
+    val="${val# }"
+    if [[ "$val" == \"* ]] || [[ "$val" == \'* ]] || [[ "$val" != *": "* ]]; then
+        assert_true 0 "$label description is strict-YAML-safe"
+    else
+        assert_true 1 "$label description contains unquoted ': ' — quote the value"
+    fi
+}
+
+shopt -s nullglob
+for f in "$CLAUDE_DIR/commands"/*.md; do
+    _check_desc_strict_yaml "$f" "command $(basename "$f")"
+done
+for f in "$CLAUDE_DIR/skills"/*/SKILL.md; do
+    _check_desc_strict_yaml "$f" "skill $(basename "$(dirname "$f")")"
+done
+shopt -u nullglob
+
+# =============================================================================
 suite "skills tree shape"
 # =============================================================================
 
