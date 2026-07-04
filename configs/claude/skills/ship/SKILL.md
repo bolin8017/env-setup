@@ -24,7 +24,12 @@ skill supplies the loop and the repo-specific tail, not the rules.
 2. Open the PR/MR — title = the future squash subject:
    - `gh pr create --title <t> --body <b>`
    - `glab mr create --title <t> --description <b>`
-3. Watch CI to a verdict: `gh pr checks --watch` / `glab ci status --live`.
+3. Watch CI, then read the verdict: `gh pr checks --watch` /
+   `glab ci status --live`, and AFTER it returns run `gh pr checks` /
+   `glab ci status` once more and read every line — the watch command's
+   exit code is 0 even when checks failed, so exit-code-0 is not a verdict.
+   The merge in step 4 is issued only after this read, as its own command:
+   never chain watch/checks and merge in one shell line.
    Red → read the failing job's log, fix, push, re-watch. Never merge red,
    never bypass hooks. After 2 failed fix attempts, stop and report state.
 4. Merge — authorization gate: standing authorization for THIS repo in
