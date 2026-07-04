@@ -9,6 +9,7 @@ $checks = @(
     @{ Name = 'PowerShell 7'; Cmd = 'pwsh' }
     @{ Name = 'git';          Cmd = 'git' }
     @{ Name = 'scoop';        Cmd = 'scoop' }
+    @{ Name = 'Node.js';      Cmd = 'node' }
     @{ Name = 'Oh My Posh';   Cmd = 'oh-my-posh' }
     @{ Name = 'zoxide';       Cmd = 'zoxide' }
     @{ Name = 'ripgrep';      Cmd = 'rg' }
