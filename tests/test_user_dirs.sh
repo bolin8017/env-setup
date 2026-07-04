@@ -7,6 +7,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/test_framework.sh"
+
+# Re-point HOME at the test tmp dir BEFORE lib/common.sh binds LOG_DIR, so
+# neither logging nor the module ever touches the real $HOME.
+ORIG_HOME="$HOME"
+export HOME="$TEST_TMPDIR"
+
 source "$PROJECT_ROOT/lib/common.sh"
 source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
@@ -15,10 +21,6 @@ source "$PROJECT_ROOT/lib/config.sh"
 setup_logging
 load_config "$PROJECT_ROOT/config.yaml"
 DRY_RUN="false"   # we want real mkdir into TEST_TMPDIR
-
-# Re-point HOME at the test tmp dir so we never touch the real $HOME
-ORIG_HOME="$HOME"
-export HOME="$TEST_TMPDIR"
 
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/modules/09-user-dirs.sh"

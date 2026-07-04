@@ -14,9 +14,8 @@ suite "shellcheck availability"
 # =============================================================================
 
 if ! command -v shellcheck &>/dev/null; then
-    echo -e "  ${_T_YELLOW}SKIP${_T_NC}  shellcheck not installed"
-    echo ""
-    echo "Install with: sudo apt-get install shellcheck"
+    skip "shellcheck not installed (sudo apt-get install shellcheck) — lint suite not run"
+    print_test_summary
     exit 0
 fi
 

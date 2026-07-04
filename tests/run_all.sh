@@ -3,6 +3,14 @@
 # Usage: bash tests/run_all.sh
 set -uo pipefail
 
+# The unit suites use bash-4 features (associative arrays); stock macOS bash
+# is 3.2 and dies mid-suite with confusing errors. Fail fast with the cure.
+if (( BASH_VERSINFO[0] < 4 )); then
+    echo "env-setup tests need bash >= 4 (this is bash ${BASH_VERSION})." >&2
+    echo "On macOS: brew install bash && /opt/homebrew/bin/bash tests/run_all.sh" >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED=$'\033[0;31m'
