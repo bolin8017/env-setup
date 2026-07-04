@@ -151,6 +151,12 @@ function Install-Languages {
         }
         Remove-LegacyPyenvPath
     }
+
+    if (Test-CfgEnabled 'languages.conda.enabled') {
+        # No Windows module reads this key; say so instead of silently
+        # ignoring it (review ps-mod-13).
+        Write-Info 'conda is not managed by the Windows engine - install Miniconda manually or use WSL'
+    }
 }
 
 function Uninstall-Languages {

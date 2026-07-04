@@ -68,6 +68,35 @@ claude_code:
 }
 
 
+Describe 'Uninstall-ClaudeCode version store (dry-run)' {
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = 'true'
+        $yaml = @'
+claude_code:
+  enabled: true
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Uninstall-ClaudeAssets { }
+        Mock Uninstall-ClaudeSettings { }
+        Mock Uninstall-ClaudeMcp { }
+        Mock Remove-ManagedFile { }
+        Mock Remove-OrDryRun { }
+        Mock Remove-ClaudeBinFromPath { }
+        Mock Remove-ManagedDir { }
+        Mock Test-Command { $false }
+        Mock Write-Info { }
+    }
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'removes the native installer version store like the Bash engine' {
+        Uninstall-ClaudeCode
+        Should -Invoke Remove-ManagedDir -Times 1 -ParameterFilter {
+            $Dir -like '*.local*claude' -and $Label -like '*store*'
+        }
+    }
+}
+
 Describe 'aliases.ps1 claude-as profile wrapper' {
     BeforeAll {
         # Extract just the claude-as function so dot-sourcing the aliases file
