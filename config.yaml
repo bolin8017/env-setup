@@ -82,8 +82,6 @@ python_tools:
   # Poetry — dependency management & packaging
   poetry: true
 
-  # uv — ultra-fast pip replacement from Astral
-  uv: true
 
 # -----------------------------------------------------------------------------
 # Docker

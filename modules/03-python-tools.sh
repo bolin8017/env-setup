@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
-# 03-python-tools.sh — Jupyter, Poetry, uv
+# 03-python-tools.sh — Jupyter, Poetry (isolated uv tools)
 # All lib/ files are sourced by setup.sh before this module runs.
+# uv itself is installed by 02-languages (it is the Python manager). The
+# uv-managed CPython is PEP 668 externally-managed, so tools must NOT be
+# pip-installed into it — each gets its own uv-tool venv with executables
+# exposed in ~/.local/bin.
 
 # =============================================================================
 # Jupyter Lab
 # =============================================================================
 _install_jupyter() {
-    if command_exists jupyter; then
-        log_success "Jupyter already installed"
+    # jupyter-lab is the exposed entry point; bare `jupyter` only exists on
+    # legacy (pip-based) installs — treat either as already-installed.
+    if command_exists jupyter-lab || command_exists jupyter; then
+        log_success "JupyterLab already installed"
         return 0
     fi
 
-    log_info "Installing Jupyter Lab..."
-    dry_run_cmd python3 -m pip install jupyterlab notebook
-    verify_installed jupyter "Jupyter Lab"
+    log_info "Installing JupyterLab (uv tool)..."
+    dry_run_cmd uv tool install jupyterlab
+    verify_installed jupyter-lab "JupyterLab"
 }
 
 # =============================================================================
@@ -25,29 +31,9 @@ _install_poetry() {
         return 0
     fi
 
-    log_info "Installing Poetry..."
-    dry_run_cmd bash -c 'curl -sSL https://install.python-poetry.org | python3 -'
-    export PATH="$HOME/.local/bin:$PATH"
+    log_info "Installing Poetry (uv tool)..."
+    dry_run_cmd uv tool install poetry
     verify_installed poetry "Poetry"
-}
-
-# =============================================================================
-# uv
-# =============================================================================
-_install_uv() {
-    if command_exists uv; then
-        log_success "uv already installed"
-        return 0
-    fi
-
-    log_info "Installing uv..."
-    if is_macos; then
-        pkg_install uv
-    else
-        dry_run_cmd bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
-        export PATH="$HOME/.local/bin:$PATH"
-    fi
-    verify_installed uv "uv"
 }
 
 # =============================================================================
@@ -68,10 +54,6 @@ install_python_tools() {
     if cfg_enabled "python_tools.poetry"; then
         _install_poetry
     fi
-
-    if cfg_enabled "python_tools.uv"; then
-        _install_uv
-    fi
 }
 
 # =============================================================================
@@ -82,13 +64,20 @@ uninstall_python_tools() {
     print_header "Uninstall: Python Tools"
 
     if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
-        # Jupyter
+        # uv-tool venvs (post-migration installs); no-ops when absent. Must
+        # run before uv itself is removed below.
+        if command_exists uv; then
+            dry_run_cmd uv tool uninstall jupyterlab 2>/dev/null || true
+            dry_run_cmd uv tool uninstall poetry 2>/dev/null || true
+        fi
+
+        # Legacy pip-installed Jupyter (pre-uv-migration installs)
         if command_exists jupyter || command_exists pip3 || command_exists python3; then
             dry_run_cmd python3 -m pip uninstall -y jupyterlab notebook 2>/dev/null || true
             log_success "Removed Jupyter (jupyterlab, notebook)"
         fi
 
-        # Poetry — official uninstaller, then sweep leftover paths
+        # Poetry — legacy official-installer path, then sweep leftover paths
         if command_exists poetry; then
             dry_run_cmd bash -c 'curl -sSL https://install.python-poetry.org | python3 - --uninstall' || true
         fi

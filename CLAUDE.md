@@ -65,7 +65,7 @@ env-setup/
 ├── modules/              # Numbered scripts run in dependency order
 │   ├── 01-core.sh        # Homebrew, git config, build tools
 │   ├── 02-languages.sh   # Node (nvm), Python (uv-managed), Conda
-│   ├── 03-python-tools.sh # Jupyter, Poetry, uv
+│   ├── 03-python-tools.sh # Jupyter, Poetry (isolated uv tools)
 │   ├── 04-docker.sh      # Docker Engine / Desktop
 │   ├── 05-cli-tools.sh   # fzf, ripgrep, bat, fd, eza, zoxide, etc.
 │   ├── 06-shell.sh       # Zsh, Oh My Zsh, Powerlevel10k, plugins

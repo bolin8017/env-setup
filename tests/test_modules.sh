@@ -180,6 +180,14 @@ assert_contains "$languages_src" "_envsetup_load_nvm" "nvm: command lazy-load st
 assert_contains "$languages_src" 'versions/node' "nvm: default node bin added to PATH eagerly"
 assert_not_contains "$languages_src" 'node() { _envsetup_load_nvm' "nvm: node is a real binary, not a lazy stub"
 
+python_tools_src="$(cat "$PROJECT_ROOT/modules/03-python-tools.sh")"
+# python tools are isolated uv tools: uv-managed CPython is PEP 668
+# externally-managed, so pip-into-the-global-python installs are refused
+# ("error: externally-managed-environment") and must not come back.
+assert_contains "$python_tools_src" 'uv tool install jupyterlab' "uv tools: jupyterlab installed via uv tool"
+assert_contains "$python_tools_src" 'uv tool install poetry'     "uv tools: poetry installed via uv tool"
+assert_not_contains "$python_tools_src" 'pip install jupyterlab' "uv tools: no pip installs into the global python"
+
 # =============================================================================
 suite "Oh My Zsh install idempotency (06-shell.sh)"
 # =============================================================================
