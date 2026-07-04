@@ -50,7 +50,9 @@ function claude-swap {
         Write-Error 'claude-swap: helper not deployed - run setup module 08-ClaudeCode first'
         return
     }
-    & bash $script @args
+    # Git Bash eats backslashes in Windows paths (C:\Users\... arrives as
+    # C:Users...); it accepts forward slashes for the same path.
+    & bash ($script -replace '\\', '/') @args
 }
 
 # Log out one config root: remove the stored OAuth credential and scrub the
