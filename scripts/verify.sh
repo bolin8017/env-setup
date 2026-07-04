@@ -170,7 +170,7 @@ echo ""
 # Python Tools
 # =============================================================================
 echo -e "${BOLD}Python Tools${NC}"
-check_cmd jupyter   "Jupyter"
+check_cmd jupyter-lab "JupyterLab"
 check_cmd poetry    "Poetry"
 check_cmd uv        "uv"
 echo ""

@@ -134,7 +134,6 @@ languages:
 python_tools:
   jupyter: false
   poetry: false
-  uv: false
 
 docker:
   enabled: false

@@ -91,7 +91,7 @@ check "python3 installed"            command -v python3
 
 echo ""
 echo -e "${CYAN}--- Python Tools ---${NC}"
-check "jupyter installed"            command -v jupyter
+check "jupyter-lab installed"        command -v jupyter-lab
 check "poetry installed"             command -v poetry
 check "uv installed"                 command -v uv
 
