@@ -42,17 +42,17 @@ function claude-as {
 }
 
 # Check a different account's credential into ~/.claude (move semantics; see
-# scripts/claude-swap.sh). The logic lives in that bash script — Git Bash
-# ships with git on Windows, so shell out to it.
+# scripts/claude-swap.sh). The logic lives in that bash script; the deployed
+# claude-swap.ps1 shim locates Git Bash and forwards to it. Never call a bare
+# `bash` here: with WSL installed, PATH resolves it to the WSL launcher,
+# whose /bin/bash cannot see Windows paths.
 function claude-swap {
-    $script = Join-Path $HOME '.local/bin/claude-swap'
-    if (-not (Test-Path -LiteralPath $script)) {
+    $shim = Join-Path $HOME '.local/bin/claude-swap.ps1'
+    if (-not (Test-Path -LiteralPath $shim)) {
         Write-Error 'claude-swap: helper not deployed - run setup module 08-ClaudeCode first'
         return
     }
-    # Git Bash eats backslashes in Windows paths (C:\Users\... arrives as
-    # C:Users...); it accepts forward slashes for the same path.
-    & bash ($script -replace '\\', '/') @args
+    & $shim @args
 }
 
 # Log out one config root: remove the stored OAuth credential and scrub the

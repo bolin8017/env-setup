@@ -169,13 +169,18 @@ function Sync-ClaudeProfiles {
 
 function Install-ClaudeSwap {
     # Put the credential check-out helper on PATH. It is a bash script (runs
-    # under Git Bash on Windows; claude sessions call it via their Bash tool
-    # and the claude-swap wrapper in aliases.ps1 shells out to bash).
+    # under Git Bash on Windows; claude sessions call it via their Bash tool).
+    # claude-swap.ps1 is its PowerShell entry: it locates Git Bash explicitly,
+    # because a bare `bash` resolves to the WSL launcher when WSL is
+    # installed. The claude-swap function in aliases.ps1 delegates to it.
     $src = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.sh') -ErrorAction Ignore
     if (-not $src) { Write-Warn 'claude-swap source not found - skipping'; return }
     $bin = Join-Path $HOME '.local/bin'
     New-DirOrDryRun -Path $bin
     Deploy-Config -Source $src.Path -Destination (Join-Path $bin 'claude-swap') -Label 'claude-swap'
+    $shim = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1') -ErrorAction Ignore
+    if (-not $shim) { Write-Warn 'claude-swap.ps1 source not found - skipping'; return }
+    Deploy-Config -Source $shim.Path -Destination (Join-Path $bin 'claude-swap.ps1') -Label 'claude-swap.ps1'
 }
 
 function Sync-ClaudeSettings {
@@ -396,6 +401,11 @@ function Uninstall-ClaudeCode {
     if ($swapSrc) {
         Remove-ManagedFile -Dest (Join-Path $HOME '.local/bin/claude-swap') `
             -RepoSrc $swapSrc.Path -Label 'claude-swap'
+    }
+    $swapShim = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1') -ErrorAction Ignore
+    if ($swapShim) {
+        Remove-ManagedFile -Dest (Join-Path $HOME '.local/bin/claude-swap.ps1') `
+            -RepoSrc $swapShim.Path -Label 'claude-swap.ps1'
     }
 
     Uninstall-ClaudeSettings
