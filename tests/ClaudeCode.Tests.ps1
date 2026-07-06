@@ -51,9 +51,10 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*.claude-work*' }
     }
-    It 'deploys the claude-swap helper onto PATH' {
+    It 'deploys the claude-swap helper and its PowerShell shim onto PATH' {
         Install-ClaudeCode
-        Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*claude-swap*' }
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'claude-swap' }
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'claude-swap.ps1' }
     }
     It 'skips entirely when claude_code.enabled is false' {
         $yaml = @'
@@ -121,9 +122,17 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
         $aliases | Should -Match '\.credential-stash'
     }
 
-    It 'hands bash a forward-slash helper path (Git Bash eats backslashes)' {
+    It 'delegates claude-swap to the deployed shim, never a bare bash (WSL launcher)' {
         $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
-        $aliases | Should -Match ('-replace ' + [regex]::Escape("'\\', '/'"))
+        $aliases | Should -Match 'claude-swap\.ps1'
+        $aliases | Should -Not -Match '& bash '
+    }
+
+    It 'shim resolves Git Bash explicitly and hands it a forward-slash path' {
+        $shim = Get-Content -Raw (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1')
+        $shim | Should -Match 'bash\.exe'
+        $shim | Should -Match ('-replace ' + [regex]::Escape("'\\', '/'"))
+        $shim | Should -Not -Match '& bash '
     }
 
     It 'passes claude single-dash flags through instead of binding them' {
