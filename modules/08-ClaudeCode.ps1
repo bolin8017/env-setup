@@ -323,17 +323,27 @@ function Repair-EpisodicMemoryDeps {
 
         # Nothing to hoist for this version (structure changed / not the buggy build).
         if (-not (Test-Path -LiteralPath $src -PathType Container)) { continue }
-        # Already satisfied: a real dir OR a junction that resolves. Never clobber.
-        if (Test-Path -LiteralPath $dest -PathType Container) { continue }
-        if (Test-DryRun) { Write-Info "[DRY-RUN] Would junction $dest -> $src"; continue }
 
-        # A dangling reparse point fails the -PathType Container test above.
-        # Clear a stale link before recreating it, but only ever a link.
-        $existing = Get-Item -LiteralPath $dest -Force -ErrorAction Ignore
-        if ($existing) {
-            if (-not ($existing.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { continue }
-            [System.IO.Directory]::Delete($existing.FullName, $false)
+        # Already resolves to a real directory (a real dir, or a link whose
+        # target exists)? Leave it — any resolvable onnxruntime-common is fine.
+        # Test-Path -PathType Container can't be trusted here: it reports $true
+        # for a *dangling* junction (a directory reparse point by type), so
+        # resolve the target explicitly with Directory.Exists.
+        if ([System.IO.Directory]::Exists($dest)) { continue }
+
+        # $dest does not resolve. If something is parked there it's a broken
+        # link (or a stray entry) — clear a reparse-point link so we can
+        # recreate it, but never touch a real file/dir.
+        if (Test-Path -LiteralPath $dest) {
+            $existing = Get-Item -LiteralPath $dest -Force -ErrorAction Ignore
+            if ($existing -and -not ($existing.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { continue }
+            if (Test-DryRun) { Write-Info "[DRY-RUN] Would repair dangling link $dest -> $src"; continue }
+            try { [System.IO.Directory]::Delete($dest, $false) }
+            catch { Remove-Item -LiteralPath $dest -Force -ErrorAction Ignore }
+        } elseif (Test-DryRun) {
+            Write-Info "[DRY-RUN] Would junction $dest -> $src"; continue
         }
+
         try {
             New-Item -ItemType Junction -Path $dest -Target $src | Out-Null
             Write-Success "Patched episodic-memory ($($verdir.Name)): hoisted onnxruntime-common"
