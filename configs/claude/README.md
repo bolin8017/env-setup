@@ -36,6 +36,18 @@ commands, skills) are never touched.
 Then re-run `./setup.sh --modules 08-claude-code` (or `./setup.ps1 -Modules
 08-ClaudeCode`), or just wait for shell-startup self-update to roll it out.
 
+## Plugin dependency patch
+
+After installing `enabledPlugins`, module 08 runs a self-detecting workaround
+for the **episodic-memory** plugin: its lockfile nests `onnxruntime-common`
+under `onnxruntime-node/` instead of hoisting it, so the plugin's SessionStart
+hook fails to resolve the module (`Failed with non-blocking status code:
+node:internal/modules/...`). The step hoists the nested copy to top-level
+`node_modules` via a symlink (Unix) / NTFS junction (Windows). It is a no-op
+when the plugin is absent or already patched, and re-applies after a plugin
+update regenerates the cache. Remove it once the plugin declares
+`onnxruntime-common` as a direct dependency upstream.
+
 ## Guardrails
 
 `tests/test_claude_assets.sh` + `tests/ClaudeAssets.Tests.ps1` run in CI and

@@ -592,6 +592,56 @@ _install_enabled_plugins() {
 }
 
 # =============================================================================
+# _patch_episodic_memory_deps — Work around a broken dependency in the
+# episodic-memory marketplace plugin we install above.
+#
+# The plugin ships a lockfile that nests onnxruntime-common under
+# onnxruntime-node/ (and onnxruntime-web/) instead of hoisting it to top-level
+# node_modules — a version conflict with no top-level requirer. So
+# @huggingface/transformers' bare `import "onnxruntime-common"` can't resolve
+# it (ERR_MODULE_NOT_FOUND) and the plugin's SessionStart hook errors out with
+# "Failed with non-blocking status code: node:internal/modules/...". The error
+# is non-blocking, but noisy on every fresh machine. Upstream fix is to declare
+# onnxruntime-common as a direct dep; until then we hoist the nested copy via a
+# symlink. Version-agnostic and self-detecting: no-op when the plugin is absent,
+# and a plugin update that regenerates the cache is re-patched on the next run.
+# =============================================================================
+_patch_episodic_memory_deps() {
+    local base="${HOME}/.claude/plugins/cache/superpowers-marketplace/episodic-memory"
+    if [[ ! -d "$base" ]]; then
+        log_info "episodic-memory plugin not installed — skipping onnxruntime-common patch"
+        return 0
+    fi
+
+    local verdir src dest
+    shopt -s nullglob
+    for verdir in "$base"/*/; do
+        src="${verdir}node_modules/onnxruntime-node/node_modules/onnxruntime-common"
+        dest="${verdir}node_modules/onnxruntime-common"
+
+        # Nothing to hoist for this version (structure changed / not the buggy build).
+        [[ -d "$src" ]] || continue
+        # Only fill an empty slot — never touch an existing dir or link. Any
+        # resolvable onnxruntime-common satisfies the plugin, and re-pointing an
+        # existing entry risks clobbering a real dir. (Same policy as the
+        # Windows engine's Repair-EpisodicMemoryDeps.)
+        [[ -e "$dest" || -L "$dest" ]] && continue
+
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            log_info "[DRY-RUN] Would link ${dest} -> ${src}"
+            continue
+        fi
+
+        if ln -s "$src" "$dest"; then
+            log_success "Patched episodic-memory (${verdir%/}): hoisted onnxruntime-common"
+        else
+            log_warn "Failed to hoist onnxruntime-common for ${verdir%/}"
+        fi
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
 # _sync_mcp_servers — Future-proof sync of user-scoped MCP servers.
 # Source: configs/claude/mcp-servers.json — typically {"mcpServers": {}} until
 # the user starts adding entries. Merges the mcpServers object into
@@ -723,6 +773,7 @@ install_claude_code() {
     _set_ccstatusline_command
     _register_plugin_marketplaces
     _install_enabled_plugins
+    _patch_episodic_memory_deps
     _sync_mcp_servers
 }
 

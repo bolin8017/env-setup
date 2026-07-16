@@ -296,6 +296,53 @@ function Install-ClaudePlugins {
     }
 }
 
+function Repair-EpisodicMemoryDeps {
+    # Work around a broken dependency in the episodic-memory marketplace plugin
+    # we install above (mirror of the Bash _patch_episodic_memory_deps). Its
+    # lockfile nests onnxruntime-common under onnxruntime-node/ instead of
+    # hoisting it to top-level node_modules, so @huggingface/transformers' bare
+    # `import "onnxruntime-common"` can't resolve it and the plugin's
+    # SessionStart hook errors out with "Failed with non-blocking status code:
+    # node:internal/modules/...". Non-blocking but noisy on every fresh machine.
+    # Upstream fix is to declare onnxruntime-common as a direct dep; until then
+    # we hoist the nested copy with an NTFS junction (needs no privilege, same
+    # trick as nvm activation). Version-agnostic and self-detecting: no-op when
+    # the plugin is absent, and a cache-regenerating plugin update is re-patched
+    # on the next run.
+    param(
+        [string]$Base = (Join-Path $HOME '.claude/plugins/cache/superpowers-marketplace/episodic-memory')
+    )
+    if (-not (Test-Path -LiteralPath $Base)) {
+        Write-Info 'episodic-memory plugin not installed - skipping onnxruntime-common patch'
+        return
+    }
+    foreach ($verdir in Get-ChildItem -LiteralPath $Base -Directory -ErrorAction Ignore) {
+        $nm   = Join-Path $verdir.FullName 'node_modules'
+        $src  = Join-Path $nm 'onnxruntime-node/node_modules/onnxruntime-common'
+        $dest = Join-Path $nm 'onnxruntime-common'
+
+        # Nothing to hoist for this version (structure changed / not the buggy build).
+        if (-not (Test-Path -LiteralPath $src -PathType Container)) { continue }
+
+        # Only fill an empty slot — anything already there (a real dir or a
+        # junction) is left untouched: any resolvable onnxruntime-common
+        # satisfies the plugin, and re-pointing an existing entry risks
+        # clobbering a real dir. (Same policy as the Bash engine.) Test-Path
+        # here is deliberate: -PathType Container and Directory.Exists both
+        # report a dangling junction as absent/present inconsistently across
+        # PS/.NET, so we treat "anything present" as leave-alone.
+        if (Test-Path -LiteralPath $dest) { continue }
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would junction $dest -> $src"; continue }
+
+        try {
+            New-Item -ItemType Junction -Path $dest -Target $src | Out-Null
+            Write-Success "Patched episodic-memory ($($verdir.Name)): hoisted onnxruntime-common"
+        } catch {
+            Write-Warn "Failed to hoist onnxruntime-common for $($verdir.Name): $_"
+        }
+    }
+}
+
 function Install-Ccstatusline {
     if (-not (Test-CfgEnabled 'claude_code.ccstatusline.enabled')) { return }
     $src = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
@@ -317,6 +364,7 @@ function Install-ClaudeCode {
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
     Install-ClaudePlugins
+    Repair-EpisodicMemoryDeps
     Install-Ccstatusline
 }
 
