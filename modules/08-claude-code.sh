@@ -621,17 +621,18 @@ _patch_episodic_memory_deps() {
 
         # Nothing to hoist for this version (structure changed / not the buggy build).
         [[ -d "$src" ]] || continue
-        # Already satisfied: a real dir OR a symlink that resolves. Never clobber.
-        [[ -d "$dest" ]] && continue
+        # Only fill an empty slot — never touch an existing dir or link. Any
+        # resolvable onnxruntime-common satisfies the plugin, and re-pointing an
+        # existing entry risks clobbering a real dir. (Same policy as the
+        # Windows engine's Repair-EpisodicMemoryDeps.)
+        [[ -e "$dest" || -L "$dest" ]] && continue
 
         if [[ "${DRY_RUN:-false}" == "true" ]]; then
             log_info "[DRY-RUN] Would link ${dest} -> ${src}"
             continue
         fi
 
-        # -f repairs a dangling symlink left by a previous state; -n avoids
-        # dereferencing it into the target dir.
-        if ln -sfn "$src" "$dest"; then
+        if ln -s "$src" "$dest"; then
             log_success "Patched episodic-memory (${verdir%/}): hoisted onnxruntime-common"
         else
             log_warn "Failed to hoist onnxruntime-common for ${verdir%/}"

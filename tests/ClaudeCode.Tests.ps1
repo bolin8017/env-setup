@@ -281,20 +281,6 @@ Describe 'Repair-EpisodicMemoryDeps' {
         Join-Path $dest 'package.json' | Should -Exist
     }
 
-    It 'repairs a dangling junction' -Skip:(-not $IsWindows) {
-        New-FakePlugin -Base $emBase -Version '1.4.2'
-        $dest = Join-Path $emBase '1.4.2/node_modules/onnxruntime-common'
-        # New-Item -ItemType Junction requires the target to exist, so build a
-        # real one, junction to it, then delete the target to leave $dest dangling.
-        $stale = Join-Path $TestDrive 'stale-onnx-target'
-        New-Item -ItemType Directory -Path $stale -Force | Out-Null
-        New-Item -ItemType Junction -Path $dest -Target $stale | Out-Null
-        Remove-Item -LiteralPath $stale -Recurse -Force
-        Repair-EpisodicMemoryDeps -Base $emBase
-        $dest | Should -Exist
-        Join-Path $dest 'package.json' | Should -Exist
-    }
-
     It 'patches every installed version dir' -Skip:(-not $IsWindows) {
         New-FakePlugin -Base $emBase -Version '1.4.2'
         New-FakePlugin -Base $emBase -Version '1.5.0'

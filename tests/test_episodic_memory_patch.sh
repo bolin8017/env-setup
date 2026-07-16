@@ -80,14 +80,14 @@ DRY_RUN=false _patch_episodic_memory_deps >/dev/null 2>&1
 [[ -f "$realdest/REAL_MARKER" ]]; assert_true $? "real dir contents preserved"
 
 # =============================================================================
-suite "repairs a dangling top-level symlink"
+suite "leaves an existing top-level link untouched"
 # =============================================================================
 _reset; _make_plugin "1.4.2"
 dest="$EM_BASE/1.4.2/node_modules/onnxruntime-common"
-ln -s "/nonexistent/broken/target" "$dest"
+ln -s "/some/other/target" "$dest"
 DRY_RUN=false _patch_episodic_memory_deps >/dev/null 2>&1
-[[ -d "$dest" ]]; assert_true $? "dangling symlink repaired to a resolving dir"
-[[ -f "$dest/package.json" ]]; assert_true $? "repaired link points at the nested copy"
+[[ "$(readlink "$dest")" == "/some/other/target" ]]
+assert_true $? "existing link left pointing at its original target"
 
 # =============================================================================
 suite "no-op when nested copy absent"
