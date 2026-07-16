@@ -215,3 +215,86 @@ Describe 'plugin/marketplace idempotency pre-checks' {
         Test-ClaudePluginInstalled -Name 'nope@nowhere' -JsonPath $j | Should -BeFalse
     }
 }
+
+Describe 'Repair-EpisodicMemoryDeps' {
+    # The episodic-memory plugin nests onnxruntime-common under onnxruntime-node/
+    # instead of hoisting it, breaking its SessionStart hook. The repair hoists
+    # the nested copy to top-level node_modules with an NTFS junction. Junction
+    # creation is Windows-only, so those cases are skipped off-Windows; the
+    # cross-platform guard/dry-run logic still runs everywhere.
+    BeforeAll {
+        # Defined in BeforeAll (run phase) so It blocks can see it — a function
+        # in the Describe body only exists during Pester 5's discovery phase.
+        function New-FakePlugin {
+            param([string]$Base, [string]$Version, [bool]$WithNested = $true)
+            $nm = Join-Path $Base "$Version/node_modules"
+            New-Item -ItemType Directory -Path $nm -Force | Out-Null
+            if ($WithNested) {
+                $nested = Join-Path $nm 'onnxruntime-node/node_modules/onnxruntime-common'
+                New-Item -ItemType Directory -Path $nested -Force | Out-Null
+                Set-Content -Path (Join-Path $nested 'package.json') -Value '{}'
+            }
+        }
+    }
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = $null
+        $script:emBase = Join-Path $TestDrive 'em'
+        if (Test-Path -LiteralPath $emBase) { Remove-Item -LiteralPath $emBase -Recurse -Force }
+    }
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'no-ops when the plugin is not installed' {
+        { Repair-EpisodicMemoryDeps -Base (Join-Path $TestDrive 'missing-plugin') } | Should -Not -Throw
+    }
+
+    It 'does nothing when the nested copy is absent' {
+        New-FakePlugin -Base $emBase -Version '1.4.2' -WithNested:$false
+        Repair-EpisodicMemoryDeps -Base $emBase
+        Join-Path $emBase '1.4.2/node_modules/onnxruntime-common' | Should -Not -Exist
+    }
+
+    It 'never clobbers a real top-level onnxruntime-common dir' {
+        New-FakePlugin -Base $emBase -Version '1.4.2'
+        $real = Join-Path $emBase '1.4.2/node_modules/onnxruntime-common'
+        New-Item -ItemType Directory -Path $real -Force | Out-Null
+        Set-Content -Path (Join-Path $real 'REAL_MARKER') -Value 'x'
+        Repair-EpisodicMemoryDeps -Base $emBase
+        ((Get-Item $real -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) | Should -Be 0
+        Join-Path $real 'REAL_MARKER' | Should -Exist
+    }
+
+    It 'announces intent under dry-run and creates nothing' {
+        Mock Write-Info { }
+        New-FakePlugin -Base $emBase -Version '1.4.2'
+        $env:ENVSETUP_DRY_RUN = 'true'
+        Repair-EpisodicMemoryDeps -Base $emBase
+        Join-Path $emBase '1.4.2/node_modules/onnxruntime-common' | Should -Not -Exist
+        Should -Invoke Write-Info -ParameterFilter { $Message -match 'DRY-RUN' }
+    }
+
+    It 'hoists onnxruntime-common via a junction' -Skip:(-not $IsWindows) {
+        New-FakePlugin -Base $emBase -Version '1.4.2'
+        Repair-EpisodicMemoryDeps -Base $emBase
+        $dest = Join-Path $emBase '1.4.2/node_modules/onnxruntime-common'
+        $dest | Should -Exist
+        ((Get-Item $dest -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) | Should -Not -Be 0
+        Join-Path $dest 'package.json' | Should -Exist
+    }
+
+    It 'repairs a dangling junction' -Skip:(-not $IsWindows) {
+        New-FakePlugin -Base $emBase -Version '1.4.2'
+        $dest = Join-Path $emBase '1.4.2/node_modules/onnxruntime-common'
+        New-Item -ItemType Junction -Path $dest -Target (Join-Path $TestDrive 'gone') | Out-Null
+        Repair-EpisodicMemoryDeps -Base $emBase
+        $dest | Should -Exist
+        Join-Path $dest 'package.json' | Should -Exist
+    }
+
+    It 'patches every installed version dir' -Skip:(-not $IsWindows) {
+        New-FakePlugin -Base $emBase -Version '1.4.2'
+        New-FakePlugin -Base $emBase -Version '1.5.0'
+        Repair-EpisodicMemoryDeps -Base $emBase
+        Join-Path $emBase '1.4.2/node_modules/onnxruntime-common' | Should -Exist
+        Join-Path $emBase '1.5.0/node_modules/onnxruntime-common' | Should -Exist
+    }
+}
