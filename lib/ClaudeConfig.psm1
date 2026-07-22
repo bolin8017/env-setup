@@ -48,6 +48,24 @@ function Merge-McpServers {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
+function Set-ClaudeTeammateMode {
+    # Native Windows has neither tmux nor iTerm2, so the only usable teammateMode
+    # is the default "in-process" -- the split-pane values (tmux/auto/iterm2) make
+    # Claude Code flag an unusable configuration. The shared repo settings.json
+    # ships "tmux" for the Bash engine (macOS/Linux/WSL all install tmux), so the
+    # Windows engine rewrites an existing teammateMode to $Mode after the merge.
+    # Only rewrites when the key is already present -- an absent value already
+    # defaults to in-process, so we never inject the key into a clean file. Pure
+    # -> unit-testable.
+    param(
+        [Parameter(Mandatory)][string]$CurrentJson,
+        [string]$Mode = 'in-process'
+    )
+    $cur = $CurrentJson | ConvertFrom-Json
+    if ($cur.PSObject.Properties['teammateMode']) { $cur.teammateMode = $Mode }
+    return ($cur | ConvertTo-Json -Depth 32)
+}
+
 function Remove-ManagedSettingsKeys {
     # Inverse of Merge-ClaudeSettings: given the user's settings JSON, the repo's
     # settings JSON, and the whitelist keys, return JSON with each whitelisted key
@@ -73,4 +91,4 @@ function Remove-ManagedSettingsKeys {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Remove-ManagedSettingsKeys
+Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Remove-ManagedSettingsKeys

@@ -33,6 +33,26 @@ Describe 'Merge-McpServers' {
 }
 
 
+Describe 'Set-ClaudeTeammateMode' {
+    It 'rewrites an existing teammateMode to in-process' {
+        $o = (Set-ClaudeTeammateMode -CurrentJson '{"teammateMode":"tmux","keep":"me"}') | ConvertFrom-Json
+        $o.teammateMode | Should -Be 'in-process'
+        $o.keep | Should -Be 'me'   # other keys untouched
+    }
+    It 'never injects the key into a file that lacks it' {
+        $o = (Set-ClaudeTeammateMode -CurrentJson '{"env":{"A":"1"}}') | ConvertFrom-Json
+        $o.PSObject.Properties['teammateMode'] | Should -BeNullOrEmpty
+    }
+    It 'is idempotent on an already-pinned file' {
+        $o = (Set-ClaudeTeammateMode -CurrentJson '{"teammateMode":"in-process"}') | ConvertFrom-Json
+        $o.teammateMode | Should -Be 'in-process'
+    }
+    It 'honours an explicit -Mode override' {
+        $o = (Set-ClaudeTeammateMode -CurrentJson '{"teammateMode":"tmux"}' -Mode 'auto') | ConvertFrom-Json
+        $o.teammateMode | Should -Be 'auto'
+    }
+}
+
 Describe 'Remove-ManagedSettingsKeys array-vs-scalar safety' {
     BeforeAll { Import-Module "$PSScriptRoot/../lib/ClaudeConfig.psm1" -Force }
     It 'does not treat a one-element array as equal to its bare element' {

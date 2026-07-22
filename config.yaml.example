@@ -255,6 +255,9 @@ claude_code:
   # ~/.claude/settings.json. Keys not listed here are preserved verbatim on the
   # machine (useful for experimental or auth-related fields). The merge is
   # idempotent and creates a timestamped backup before any mutation.
+  # Note: the repo ships teammateMode "tmux" (valid on macOS/Linux/WSL, which
+  # install tmux); native Windows has no tmux/iTerm2, so the Windows engine
+  # pins teammateMode to "in-process" (the default) after merging.
   settings_merge_keys:
     - env
     - statusLine

@@ -193,13 +193,23 @@ function Sync-ClaudeSettings {
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $($keys.Count) whitelisted key(s) into $dest"; return }
     if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing settings.json (KeepExisting)'; return }
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
-    if (-not (Test-Path $dest)) { Copy-Item -LiteralPath $src -Destination $dest; Write-Success "Created $dest from repo template"; return }
+    if (-not (Test-Path $dest)) {
+        # Seed the template but pin teammateMode to in-process: native Windows
+        # can't run the shared repo value "tmux" (no tmux/iTerm2), so a verbatim
+        # copy would seed an unusable config that Claude Code flags.
+        Write-Utf8NoBom -Path $dest -Content (Set-ClaudeTeammateMode -CurrentJson (Get-Content -Raw $src))
+        Write-Success "Created $dest from repo template"; return
+    }
     # A corrupted user file must degrade to a warning (the Bash twin jq-empty
     # checks first) - under EAP=Stop a parse throw would abort the module and
     # skip every later step (marketplaces, plugins, ccstatusline).
     try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
     catch { Write-Warn "$dest is not valid JSON - skipping merge. Fix manually."; return }
     $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
+    # Native Windows can't use the shared "tmux" teammateMode (no tmux/iTerm2);
+    # pin it to in-process before the idempotency compare. Also heals files
+    # merged with "tmux" before this fix.
+    $merged = Set-ClaudeTeammateMode -CurrentJson $merged
     $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync - skipping'; return }
