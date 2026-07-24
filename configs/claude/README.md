@@ -29,12 +29,21 @@ commands, skills) are never touched.
   (`description:` required — it is the `/help` text; `argument-hint:` if it
   takes arguments).
 - **Skill** — create `skills/<name>/SKILL.md` with `name:` + `description:`
-  frontmatter; support files live in the same folder. Skills load on demand,
-  so they cost no session context until invoked.
+  frontmatter; support files live in the same folder (subdirectories such as
+  `references/` are synced recursively). Skills load on demand, so they cost
+  no session context until invoked.
 - **Agent** — drop `agents/<name>.md` (subagent definition).
 
 Then re-run `./setup.sh --modules 08-claude-code` (or `./setup.ps1 -Modules
 08-ClaudeCode`), or just wait for shell-startup self-update to roll it out.
+
+## Vendored skills
+
+`skills/speak-human-tw/` is vendored from
+[Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw)
+(v1.4.0, upstream commit `2c27cca`) — SKILL.md, `references/`, and LICENSE
+only; upstream's evals/install/assets are not needed at runtime. To update,
+re-copy those paths from upstream and bump this note.
 
 ## Plugin dependency patch
 

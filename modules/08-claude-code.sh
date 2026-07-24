@@ -214,14 +214,16 @@ _sync_claude_skills() {
         return 0
     fi
 
-    local dir f name
+    local dir f name rel
     shopt -s nullglob
     for dir in "$src_root"/*/; do
         name="$(basename "$dir")"
         dry_run_mkdir "${dest_root}/${name}"
-        for f in "$dir"*; do
-            [[ -f "$f" ]] && deploy_config "$f" "${dest_root}/${name}/$(basename "$f")" "skill ${name}/$(basename "$f")"
-        done
+        while IFS= read -r -d '' f; do
+            rel="${f#"$dir"}"
+            dry_run_mkdir "$(dirname "${dest_root}/${name}/${rel}")"
+            deploy_config "$f" "${dest_root}/${name}/${rel}" "skill ${name}/${rel}"
+        done < <(find "$dir" -type f -print0)
     done
     shopt -u nullglob
 }
@@ -904,14 +906,16 @@ _uninstall_claude_assets() {
     for f in "${cdir}/rules"/*.md;    do remove_managed_file "${root}/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
     for f in "${cdir}/commands"/*.md; do remove_managed_file "${root}/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
     for f in "${cdir}/agents"/*.md;   do remove_managed_file "${root}/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
-    local skill_dir skill_name
+    local skill_dir skill_name rel
     for skill_dir in "${cdir}/skills"/*/; do
         skill_name="$(basename "$skill_dir")"
-        for f in "$skill_dir"*; do
-            [[ -f "$f" ]] && remove_managed_file "${root}/skills/${skill_name}/$(basename "$f")" "$f" "skill ${skill_name}/$(basename "$f")"
-        done
-        if [[ "${DRY_RUN:-false}" != "true" ]]; then
-            rmdir "${root}/skills/${skill_name}" 2>/dev/null || true
+        while IFS= read -r -d '' f; do
+            rel="${f#"$skill_dir"}"
+            remove_managed_file "${root}/skills/${skill_name}/${rel}" "$f" "skill ${skill_name}/${rel}"
+        done < <(find "$skill_dir" -type f -print0)
+        if [[ "${DRY_RUN:-false}" != "true" && -d "${root}/skills/${skill_name}" ]]; then
+            # Prune now-empty dirs bottom-up; dirs holding user files stay.
+            find "${root}/skills/${skill_name}" -depth -type d -empty -delete 2>/dev/null || true
         fi
     done
     shopt -u nullglob

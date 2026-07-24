@@ -121,8 +121,13 @@ function Sync-ClaudeSkills {
     foreach ($skill in @(Get-ChildItem $srcRoot -Directory -ErrorAction Ignore)) {
         $destDir = Join-Path $Root "skills/$($skill.Name)"
         New-DirOrDryRun -Path $destDir
-        foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
-            Deploy-Config -Source $f.FullName -Destination (Join-Path $destDir $f.Name) -Label "skills/$($skill.Name)/$($f.Name)"
+        foreach ($f in @(Get-ChildItem $skill.FullName -Recurse -File)) {
+            # Substring, not [IO.Path]::GetRelativePath - the latter is .NET Core
+            # only and the engine must run under Windows PowerShell 5.1.
+            $rel = $f.FullName.Substring($skill.FullName.Length + 1) -replace '\\', '/'
+            $dest = Join-Path $destDir $rel
+            New-DirOrDryRun -Path (Split-Path $dest -Parent)
+            Deploy-Config -Source $f.FullName -Destination $dest -Label "skills/$($skill.Name)/$rel"
         }
     }
 }
@@ -427,12 +432,17 @@ function Uninstall-ClaudeAssets {
     $skillsRoot = Join-Path $script:ClaudeCfg 'skills'
     if (Test-Path $skillsRoot) {
         foreach ($skill in @(Get-ChildItem $skillsRoot -Directory -ErrorAction Ignore)) {
-            foreach ($f in @(Get-ChildItem $skill.FullName -File)) {
-                Remove-ManagedFile -Dest (Join-Path $Root "skills/$($skill.Name)/$($f.Name)") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$($f.Name)"
+            foreach ($f in @(Get-ChildItem $skill.FullName -Recurse -File)) {
+                $rel = $f.FullName.Substring($skill.FullName.Length + 1) -replace '\\', '/'
+                Remove-ManagedFile -Dest (Join-Path $Root "skills/$($skill.Name)/$rel") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$rel"
             }
+            # Prune now-empty dirs bottom-up; dirs holding user files stay.
             $destDir = Join-Path $Root "skills/$($skill.Name)"
-            if (-not (Test-DryRun) -and (Test-Path $destDir) -and -not @(Get-ChildItem $destDir -Force)) {
-                Remove-Item -LiteralPath $destDir
+            if (-not (Test-DryRun) -and (Test-Path $destDir)) {
+                $dirs = @(Get-ChildItem $destDir -Recurse -Directory | Sort-Object { $_.FullName.Length } -Descending) + (Get-Item $destDir)
+                foreach ($d in $dirs) {
+                    if (-not @(Get-ChildItem $d.FullName -Force)) { Remove-Item -LiteralPath $d.FullName }
+                }
             }
         }
     }

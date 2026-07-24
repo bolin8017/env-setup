@@ -224,8 +224,10 @@ suite "claude skills sync + uninstall roundtrip"
 source "$PROJECT_ROOT/modules/08-claude-code.sh"
 
 _skill_dest="$HOME/.claude/skills/weekly-review"
+_nested_dest="$HOME/.claude/skills/speak-human-tw"
 _sync_claude_skills >/dev/null 2>&1
 assert_file_exists "$_skill_dest/SKILL.md" "skill deployed to ~/.claude/skills"
+assert_file_exists "$_nested_dest/references/patterns.md" "skill subdirectory files deployed"
 
 # User-modified skill survives uninstall (KEEP_TOOLS avoids the plugin/CLI branch)
 printf '# customized
@@ -233,11 +235,13 @@ printf '# customized
 KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
 assert_file_exists "$_skill_dest/SKILL.md" "modified skill preserved on uninstall"
 
-# Pristine skill is removed and its dir pruned
+# Pristine skill is removed and its dir pruned (including subdirectories)
 cp "$PROJECT_ROOT/configs/claude/skills/weekly-review/SKILL.md" "$_skill_dest/SKILL.md"
 KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
 assert_file_not_exists "$_skill_dest/SKILL.md" "pristine skill removed on uninstall"
 assert_file_not_exists "$_skill_dest" "empty skill dir pruned on uninstall"
+assert_file_not_exists "$_nested_dest/references/patterns.md" "pristine nested skill file removed"
+assert_file_not_exists "$_nested_dest" "skill dir with subdirectory pruned on uninstall"
 
 suite "backup.sh: list past first entry + retention + name-sorted _latest_bak"
 
