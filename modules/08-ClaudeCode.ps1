@@ -122,7 +122,9 @@ function Sync-ClaudeSkills {
         $destDir = Join-Path $Root "skills/$($skill.Name)"
         New-DirOrDryRun -Path $destDir
         foreach ($f in @(Get-ChildItem $skill.FullName -Recurse -File)) {
-            $rel = [System.IO.Path]::GetRelativePath($skill.FullName, $f.FullName) -replace '\\', '/'
+            # Substring, not [IO.Path]::GetRelativePath - the latter is .NET Core
+            # only and the engine must run under Windows PowerShell 5.1.
+            $rel = $f.FullName.Substring($skill.FullName.Length + 1) -replace '\\', '/'
             $dest = Join-Path $destDir $rel
             New-DirOrDryRun -Path (Split-Path $dest -Parent)
             Deploy-Config -Source $f.FullName -Destination $dest -Label "skills/$($skill.Name)/$rel"
@@ -431,7 +433,7 @@ function Uninstall-ClaudeAssets {
     if (Test-Path $skillsRoot) {
         foreach ($skill in @(Get-ChildItem $skillsRoot -Directory -ErrorAction Ignore)) {
             foreach ($f in @(Get-ChildItem $skill.FullName -Recurse -File)) {
-                $rel = [System.IO.Path]::GetRelativePath($skill.FullName, $f.FullName) -replace '\\', '/'
+                $rel = $f.FullName.Substring($skill.FullName.Length + 1) -replace '\\', '/'
                 Remove-ManagedFile -Dest (Join-Path $Root "skills/$($skill.Name)/$rel") -RepoSrc $f.FullName -Label "skills/$($skill.Name)/$rel"
             }
             # Prune now-empty dirs bottom-up; dirs holding user files stay.
