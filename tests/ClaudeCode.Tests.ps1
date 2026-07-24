@@ -47,6 +47,10 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Label -like 'skills/weekly-review/*' }
     }
+    It 'deploys skill subdirectory files (references/) recursively' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -like 'skills/speak-human-tw/references/*' }
+    }
     It 'syncs harness assets into each declared profile dir' {
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*.claude-work*' }
