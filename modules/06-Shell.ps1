@@ -1,6 +1,7 @@
 #!/usr/bin/env pwsh
 # 06-Shell.ps1 - PowerShell 7, Oh My Posh, PSGallery modules, $PROFILE assembly
-# (from configs/pwsh fragments), and a gated Windows Terminal font merge.
+# (from configs/pwsh fragments), and a gated Windows Terminal merge (font face
+# + default profile).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -107,7 +108,7 @@ function Get-ProfileTargetPaths {
     return $paths
 }
 
-function Set-WindowsTerminalFont {
+function Set-WindowsTerminalSettings {
     if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA - skipping Windows Terminal config'; return }
     $wt = Join-Path $env:LOCALAPPDATA 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
     if (-not (Test-Path $wt)) { Write-Info 'Windows Terminal settings not found - skipping font config'; return }
@@ -122,16 +123,25 @@ function Set-WindowsTerminalFont {
     if ($raw -match '(?m)^\s*//|/\*') {
         Write-Warn 'Windows Terminal settings.json contains comments; the rewrite cannot preserve them (a backup is kept)'
     }
+    # env-setup deploys the $PROFILE to pwsh 7 only, so leaving defaultProfile on
+    # Windows PowerShell 5.1 hands a fresh box a bare 5.1 with no prompt and no
+    # modules. Repoint it, but treat failure as non-fatal: the font merge above
+    # still lands, and Set-WtDefaultProfile refuses to guess rather than pick the
+    # wrong pwsh.
+    if (Test-CfgEnabled 'windows.windows_terminal_default_profile') {
+        try { $merged = Set-WtDefaultProfile -CurrentJson $merged }
+        catch { Write-Warn "Leaving the Windows Terminal default profile alone: $_" }
+    }
     # Idempotency: without this every setup run backed up + rewrote the file,
     # so backups piled up and the "newest backup" the uninstall restores had
     # already converged to the merged content (restore became a no-op).
     $curNorm = $null
     try { $curNorm = ($raw | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress) } catch { $curNorm = $null }
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
-    if ($curNorm -eq $newNorm) { Write-Info 'Windows Terminal font already configured - skipping'; return }
+    if ($curNorm -eq $newNorm) { Write-Info 'Windows Terminal already configured - skipping'; return }
     Backup-File -Path $wt -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Write-Utf8NoBom -Path $wt -Content $merged
-    Write-Success 'Configured Windows Terminal font'
+    Write-Success 'Configured Windows Terminal'
 }
 
 function Enable-SessionFonts {
@@ -164,7 +174,7 @@ function Install-NerdFont {
     # MesloLGS NF, but nothing here installed it - so a fresh box shows
     # "couldn't find MesloLGS NF" and renders prompt glyphs as tofu. Install the
     # exact "MesloLGS NF" family (Powerlevel10k's fonts, whose face name matches
-    # what Set-WindowsTerminalFont writes) per-user: no admin, no name guessing.
+    # what Set-WindowsTerminalSettings writes) per-user: no admin, no name guessing.
     if (Test-DryRun) { Write-Info '[DRY-RUN] Would install the MesloLGS NF Nerd Font'; return }
     if (-not $env:LOCALAPPDATA) { Write-Info 'No LOCALAPPDATA - skipping Nerd Font install'; return }
     $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
@@ -237,7 +247,7 @@ function Install-Shell {
     Write-UpdateState
 
     Install-NerdFont
-    if (Test-CfgEnabled 'windows.windows_terminal') { Set-WindowsTerminalFont }
+    if (Test-CfgEnabled 'windows.windows_terminal') { Set-WindowsTerminalSettings }
 }
 
 function Remove-NerdFont {

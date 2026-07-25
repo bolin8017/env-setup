@@ -142,7 +142,7 @@ Describe 'shell master switch' {
     }
 }
 
-Describe 'Set-WindowsTerminalFont idempotency' {
+Describe 'Set-WindowsTerminalSettings idempotency' {
     BeforeAll {
         $script:OldLocal = $env:LOCALAPPDATA
         $env:LOCALAPPDATA = Join-Path $TestDrive 'localappdata'
@@ -155,9 +155,58 @@ Describe 'Set-WindowsTerminalFont idempotency' {
 
     It 'writes once, then skips (no backup churn) when already merged' {
         Mock Backup-File { }
-        Set-WindowsTerminalFont
+        Set-WindowsTerminalSettings
         Should -Invoke Backup-File -Times 1 -Exactly
-        Set-WindowsTerminalFont
+        Set-WindowsTerminalSettings
         Should -Invoke Backup-File -Times 1 -Exactly   # unchanged: second run skipped
+    }
+}
+
+Describe 'Set-WindowsTerminalSettings default profile' {
+    BeforeAll { $script:OldLocal = $env:LOCALAPPDATA }
+    AfterAll  { $env:LOCALAPPDATA = $script:OldLocal; $env:ENVSETUP_DRY_RUN = 'true' }
+
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = $null
+        $env:LOCALAPPDATA = Join-Path $TestDrive ([guid]::NewGuid().ToString())
+        $script:WtFile = Join-Path $env:LOCALAPPDATA `
+            'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
+        New-Item -ItemType Directory -Path (Split-Path $script:WtFile) -Force | Out-Null
+        Mock Backup-File { }
+    }
+
+    It 'repoints defaultProfile at pwsh 7 when enabled' {
+        Set-Content $script:WtFile ('{"defaultProfile":"{61c54bbd}","profiles":{"list":[' +
+            '{"guid":"{574e775e}","name":"PowerShell","source":"Windows.Terminal.PowershellCore"}]}}')
+        $f = Join-Path $TestDrive 'wt-on.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: true`n"
+        Import-Config -Path $f
+        Set-WindowsTerminalSettings
+        ((Get-Content -Raw $script:WtFile) | ConvertFrom-Json).defaultProfile | Should -Be '{574e775e}'
+    }
+
+    It 'leaves defaultProfile alone when the key is false' {
+        Set-Content $script:WtFile ('{"defaultProfile":"{61c54bbd}","profiles":{"list":[' +
+            '{"guid":"{574e775e}","name":"PowerShell","source":"Windows.Terminal.PowershellCore"}]}}')
+        $f = Join-Path $TestDrive 'wt-off.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: false`n"
+        Import-Config -Path $f
+        Set-WindowsTerminalSettings
+        $o = (Get-Content -Raw $script:WtFile) | ConvertFrom-Json
+        $o.defaultProfile              | Should -Be '{61c54bbd}'
+        $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'   # font merge still ran
+    }
+
+    It 'keeps the font merge when the pwsh 7 profile cannot be identified' {
+        # No PowershellCore entry to match: Set-WtDefaultProfile refuses to guess,
+        # and that must not cost the user the font merge or fail the module.
+        Set-Content $script:WtFile '{"defaultProfile":"{61c54bbd}","profiles":{"defaults":{}}}'
+        $f = Join-Path $TestDrive 'wt-amb.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: true`n"
+        Import-Config -Path $f
+        { Set-WindowsTerminalSettings } | Should -Not -Throw
+        $o = (Get-Content -Raw $script:WtFile) | ConvertFrom-Json
+        $o.defaultProfile              | Should -Be '{61c54bbd}'
+        $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'
     }
 }
