@@ -41,6 +41,7 @@ tests=(
     "test_ccstatusline.sh"
     "test_claude_assets.sh"
     "test_claude_swap.sh"
+    "test_claude_profile_statusline.sh"
     "test_episodic_memory_patch.sh"
     "test_shellcheck.sh"
     "test_parser_parity.sh"

@@ -243,7 +243,10 @@ claude_code:
   # (CLAUDE.md, rules, commands, agents, skills) synced into it. Switch with
   # `claude-as <name>` (see configs/aliases.zsh / aliases.ps1); first use of a
   # profile needs /login. settings.json merge and plugin installs are not
-  # mirrored - manage those per profile. Default: no extra profiles.
+  # mirrored - manage those per profile. One exception: `claude-as` seeds the
+  # default account's statusLine block into a profile that has none, so the
+  # ccstatusline readout follows you across accounts. Default: no extra
+  # profiles.
   # To declare profiles use the sequence form (the parser does not read
   # flow-style [a, b] lists):
   #   profiles:

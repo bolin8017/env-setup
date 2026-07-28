@@ -162,6 +162,42 @@ fi
 # own config dir (~/.claude-<name>): credentials (Linux/Windows), settings,
 # history, and plugins are fully isolated per the official CLAUDE_CONFIG_DIR
 # contract. First use of a profile: `claude-as <name>` then /login.
+#
+# Isolation also means a profile starts with no statusLine, so `claude-as`
+# sessions lose the ccstatusline readout (model, context, cost, usage) that
+# plain `claude` shows. Copy the default account's block into the profile once,
+# reading ~/.claude/settings.json rather than the repo template so the value is
+# the deployed, platform-corrected one (Unix points at the launcher wrapper,
+# Windows at `npx`). Gap-filling only: a profile that defines its own
+# statusLine is left alone, and every failure path is a silent no-op — this
+# runs in front of an interactive claude, so it must never be what breaks it.
+_claude_seed_profile_statusline() {
+    local root="$1"
+    local src="$HOME/.claude/settings.json"
+    local dest="$root/settings.json"
+    local block
+
+    command -v jq >/dev/null 2>&1 || return 0
+    [[ -f "$src" ]] || return 0
+    block="$(jq -c '.statusLine // empty' "$src" 2>/dev/null)" || return 0
+    [[ -n "$block" ]] || return 0
+
+    if [[ -f "$dest" ]]; then
+        jq -e . "$dest" >/dev/null 2>&1 || return 0
+        jq -e 'has("statusLine")' "$dest" >/dev/null 2>&1 && return 0
+    else
+        mkdir -p "$root" 2>/dev/null || return 0
+        printf '%s\n' '{}' > "$dest" || return 0
+    fi
+
+    local tmp="${dest}.tmp.$$"
+    if jq --argjson sl "$block" '.statusLine = $sl' "$dest" > "$tmp" 2>/dev/null; then
+        mv "$tmp" "$dest"
+    else
+        rm -f "$tmp"
+    fi
+}
+
 claude-as() {
     if [[ -z "${1:-}" ]]; then
         echo "usage: claude-as <profile> [claude args...]" >&2
@@ -178,6 +214,7 @@ claude-as() {
         echo "run 'claude' directly, or swap it home first: claude-swap default" >&2
         return 1
     fi
+    _claude_seed_profile_statusline "$HOME/.claude-$profile"
     CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" command claude "$@"
 }
 

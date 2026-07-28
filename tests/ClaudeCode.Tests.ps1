@@ -111,6 +111,10 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
         $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
         $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'claude-as' }, $true)
         if ($fn) { Invoke-Expression $fn.Extent.Text }
+        # Stub the statusLine seed: the real one would write into the running
+        # user's ~/.claude-work while these tests exercise claude-as itself.
+        # Its own behaviour is covered by the Copy-ClaudeStatusLine describe.
+        function Copy-ClaudeStatusLine { param([string]$Root, [string]$Source) }
     }
 
     It 'defines claude-as routing through CLAUDE_CONFIG_DIR' {
@@ -158,6 +162,78 @@ Describe 'aliases.ps1 claude-as profile wrapper' {
             claude-as work
             $env:CLAUDE_CONFIG_DIR | Should -Be $before
         } finally { Remove-Item Function:\claude -ErrorAction Ignore }
+    }
+}
+
+Describe 'aliases.ps1 Copy-ClaudeStatusLine (claude-as profile seed)' {
+    BeforeAll {
+        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
+        $tokens = $null; $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
+        $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Copy-ClaudeStatusLine' }, $true)
+        if ($fn) { Invoke-Expression $fn.Extent.Text }
+        $script:SrcJson = '{"theme":"dark","statusLine":{"type":"command","command":"npx -y ccstatusline@latest","padding":0,"refreshInterval":10}}'
+    }
+    BeforeEach {
+        $script:Src = Join-Path $TestDrive "default-$([guid]::NewGuid()).json"
+        Set-Content -LiteralPath $script:Src -Value $script:SrcJson
+        $script:Root = Join-Path $TestDrive "profile-$([guid]::NewGuid())"
+        $script:Dest = Join-Path $script:Root 'settings.json'
+    }
+
+    It 'creates the profile settings.json with the default account statusLine' {
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        Test-Path -LiteralPath $script:Dest | Should -BeTrue
+        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
+        $j.statusLine.command | Should -Be 'npx -y ccstatusline@latest'
+        $j.statusLine.refreshInterval | Should -Be 10
+    }
+
+    It 'copies only statusLine, not the rest of the default settings' {
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
+        $j.PSObject.Properties.Match('theme').Count | Should -Be 0
+    }
+
+    It 'keeps existing profile settings when filling the gap' {
+        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
+        Set-Content -LiteralPath $script:Dest -Value '{"theme":"light","effortLevel":"high"}'
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
+        $j.theme | Should -Be 'light'
+        $j.effortLevel | Should -Be 'high'
+        $j.statusLine.type | Should -Be 'command'
+    }
+
+    It "never overwrites a profile's own statusLine" {
+        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
+        Set-Content -LiteralPath $script:Dest -Value '{"statusLine":{"type":"command","command":"mine"}}'
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        (Get-Content -Raw $script:Dest | ConvertFrom-Json).statusLine.command | Should -Be 'mine'
+    }
+
+    It 'does nothing when the default config has no statusLine' {
+        Set-Content -LiteralPath $script:Src -Value '{"theme":"dark"}'
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        Test-Path -LiteralPath $script:Dest | Should -BeFalse
+    }
+
+    It 'does nothing when the default config is missing' {
+        Copy-ClaudeStatusLine -Root $script:Root -Source (Join-Path $TestDrive 'no-such.json')
+        Test-Path -LiteralPath $script:Dest | Should -BeFalse
+    }
+
+    It 'leaves a malformed profile settings.json untouched' {
+        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
+        Set-Content -LiteralPath $script:Dest -Value '{not json'
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        (Get-Content -Raw $script:Dest).Trim() | Should -Be '{not json'
+    }
+
+    It 'does not write a UTF-8 BOM' {
+        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
+        $bytes = [System.IO.File]::ReadAllBytes($script:Dest)
+        @($bytes[0], $bytes[1], $bytes[2]) | Should -Not -Be @(0xEF, 0xBB, 0xBF)
     }
 }
 
