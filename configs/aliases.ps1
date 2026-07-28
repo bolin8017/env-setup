@@ -15,6 +15,38 @@ function .. { Set-Location .. }
 function ... { Set-Location ../.. }
 function g { git @args }
 
+# Isolation means a fresh profile has no statusLine, so `claude-as` sessions
+# lose the ccstatusline readout (model, context, cost, usage) that plain
+# `claude` shows. Copy the default account's block into the profile once,
+# reading ~/.claude/settings.json rather than the repo template so the value is
+# the deployed, platform-corrected one. Gap-filling only: a profile that
+# defines its own statusLine is left alone. Writes BOM-less UTF-8 (Set-Content
+# under Windows PowerShell 5.1 would add a BOM, which breaks Claude Code's
+# JSON parsing).
+function Copy-ClaudeStatusLine {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [string]$Source = (Join-Path $HOME '.claude/settings.json')
+    )
+    if (-not (Test-Path -LiteralPath $Source)) { return }
+    try { $src = Get-Content -Raw -LiteralPath $Source | ConvertFrom-Json } catch { return }
+    if (-not $src.PSObject.Properties['statusLine']) { return }
+
+    $dest = Join-Path $Root 'settings.json'
+    if (Test-Path -LiteralPath $dest) {
+        try { $cur = Get-Content -Raw -LiteralPath $dest | ConvertFrom-Json } catch { return }
+        if ($cur.PSObject.Properties['statusLine']) { return }
+    } else {
+        if (-not (Test-Path -LiteralPath $Root)) {
+            New-Item -ItemType Directory -Path $Root -Force | Out-Null
+        }
+        $cur = [pscustomobject]@{}
+    }
+    $cur | Add-Member -NotePropertyName statusLine -NotePropertyValue $src.statusLine -Force
+    $full = [System.IO.Path]::Combine((Convert-Path -LiteralPath $Root), 'settings.json')
+    [System.IO.File]::WriteAllText($full, ($cur | ConvertTo-Json -Depth 32))
+}
+
 # Claude Code account profiles: run claude under an alternate account, with
 # config/credentials/history isolated in ~/.claude-<name> per the official
 # CLAUDE_CONFIG_DIR contract. First use of a profile: `claude-as <name>` then
@@ -36,6 +68,9 @@ function claude-as {
     }
     $prev = $env:CLAUDE_CONFIG_DIR
     $env:CLAUDE_CONFIG_DIR = Join-Path $HOME ".claude-$($args[0])"
+    # Never let the convenience seed be what stops a session from starting.
+    try { Copy-ClaudeStatusLine -Root $env:CLAUDE_CONFIG_DIR }
+    catch { Write-Debug "claude-as: statusLine seed skipped ($_)" }
     $rest = @($args | Select-Object -Skip 1)
     try { & claude @rest }
     finally { $env:CLAUDE_CONFIG_DIR = $prev }
