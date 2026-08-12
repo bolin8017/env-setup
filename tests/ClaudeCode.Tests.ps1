@@ -55,11 +55,6 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Destination -like '*.claude-work*' }
     }
-    It 'deploys the claude-swap helper and its PowerShell shim onto PATH' {
-        Install-ClaudeCode
-        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'claude-swap' }
-        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'claude-swap.ps1' }
-    }
     It 'skips entirely when claude_code.enabled is false' {
         $yaml = @'
 claude_code:
@@ -102,181 +97,59 @@ claude_code:
     }
 }
 
-Describe 'aliases.ps1 claude-as profile wrapper' {
-    BeforeAll {
-        # Extract just the claude-as function so dot-sourcing the aliases file
-        # cannot shadow ls/cat/etc. for the rest of the test run.
-        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
-        $tokens = $null; $errors = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
-        $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'claude-as' }, $true)
-        if ($fn) { Invoke-Expression $fn.Extent.Text }
-        # Stub the statusLine seed: the real one would write into the running
-        # user's ~/.claude-work while these tests exercise claude-as itself.
-        # Its own behaviour is covered by the Copy-ClaudeStatusLine describe.
-        function Copy-ClaudeStatusLine { param([string]$Root, [string]$Source) }
-    }
+# claude-as / claude-swap / claude-logout / Copy-ClaudeStatusLine moved out of
+# configs/aliases.ps1 into bolin8017/claude-account-swap; their coverage moved
+# with them (that repo's own Pester/bash suites).
 
-    It 'defines claude-as routing through CLAUDE_CONFIG_DIR' {
-        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
-        $aliases | Should -Match 'function claude-as'
-        $aliases | Should -Match 'CLAUDE_CONFIG_DIR'
-    }
-
-    It 'guards claude-as against checked-out credentials and wraps claude-swap' {
-        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
-        $aliases | Should -Match '\.credential-owner'
-        $aliases | Should -Match 'function claude-swap'
-        $aliases | Should -Match '\.credential-stash'
-    }
-
-    It 'delegates claude-swap to the deployed shim, never a bare bash (WSL launcher)' {
-        $aliases = Get-Content -Raw (Join-Path $PSScriptRoot '../configs/aliases.ps1')
-        $aliases | Should -Match 'claude-swap\.ps1'
-        $aliases | Should -Not -Match '& bash '
-    }
-
-    It 'shim resolves Git Bash explicitly and hands it a forward-slash path' {
-        $shim = Get-Content -Raw (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1')
-        $shim | Should -Match 'bash\.exe'
-        $shim | Should -Match ('-replace ' + [regex]::Escape("'\\', '/'"))
-        $shim | Should -Not -Match '& bash '
-    }
-
-    It 'passes claude single-dash flags through instead of binding them' {
-        function global:claude { $global:CapturedArgs = $args; $global:CapturedDir = $env:CLAUDE_CONFIG_DIR }
-        try {
-            claude-as work -p 'do the thing'
-            @($global:CapturedArgs) | Should -Be @('-p', 'do the thing')
-            $global:CapturedDir | Should -Be (Join-Path $HOME '.claude-work')
-        } finally {
-            Remove-Item Function:\claude -ErrorAction Ignore
-            Remove-Variable -Name CapturedArgs, CapturedDir -Scope Global -ErrorAction Ignore
-        }
-    }
-
-    It 'restores CLAUDE_CONFIG_DIR after the call' {
-        function global:claude { }
-        try {
-            $before = $env:CLAUDE_CONFIG_DIR
-            claude-as work
-            $env:CLAUDE_CONFIG_DIR | Should -Be $before
-        } finally { Remove-Item Function:\claude -ErrorAction Ignore }
-    }
-}
-
-Describe 'aliases.ps1 Copy-ClaudeStatusLine (claude-as profile seed)' {
-    BeforeAll {
-        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
-        $tokens = $null; $errors = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
-        $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Copy-ClaudeStatusLine' }, $true)
-        if ($fn) { Invoke-Expression $fn.Extent.Text }
-        $script:SrcJson = '{"theme":"dark","statusLine":{"type":"command","command":"npx -y ccstatusline@latest","padding":0,"refreshInterval":10}}'
-    }
+Describe 'Install-AccountSwap (dry-run)' {
     BeforeEach {
-        $script:Src = Join-Path $TestDrive "default-$([guid]::NewGuid()).json"
-        Set-Content -LiteralPath $script:Src -Value $script:SrcJson
-        $script:Root = Join-Path $TestDrive "profile-$([guid]::NewGuid())"
-        $script:Dest = Join-Path $script:Root 'settings.json'
+        $env:ENVSETUP_DRY_RUN = 'true'
+        Mock Invoke-Native { }
+    }
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'is a no-op when claude_code.account_swap.enabled is false (default)' {
+        $yaml = @'
+claude_code:
+  account_swap:
+    enabled: false
+    repo: "https://github.com/bolin8017/claude-account-swap.git"
+    ref: "main"
+'@
+        $f = Join-Path $TestDrive 'c.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        { Install-AccountSwap } | Should -Not -Throw
+        Should -Invoke Invoke-Native -Times 0
     }
 
-    It 'creates the profile settings.json with the default account statusLine' {
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        Test-Path -LiteralPath $script:Dest | Should -BeTrue
-        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
-        $j.statusLine.command | Should -Be 'npx -y ccstatusline@latest'
-        $j.statusLine.refreshInterval | Should -Be 10
+    It 'warns instead of cloning when enabled but no repo is configured' {
+        $yaml = @'
+claude_code:
+  account_swap:
+    enabled: true
+'@
+        $f = Join-Path $TestDrive 'c2.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Write-Warn { }
+        Install-AccountSwap
+        Should -Invoke Write-Warn -ParameterFilter { $Message -match 'no repo is configured' }
+        Should -Invoke Invoke-Native -Times 0
     }
 
-    It 'copies only statusLine, not the rest of the default settings' {
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
-        $j.PSObject.Properties.Match('theme').Count | Should -Be 0
-    }
-
-    It 'keeps existing profile settings when filling the gap' {
-        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
-        Set-Content -LiteralPath $script:Dest -Value '{"theme":"light","effortLevel":"high"}'
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        $j = Get-Content -Raw $script:Dest | ConvertFrom-Json
-        $j.theme | Should -Be 'light'
-        $j.effortLevel | Should -Be 'high'
-        $j.statusLine.type | Should -Be 'command'
-    }
-
-    It "never overwrites a profile's own statusLine" {
-        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
-        Set-Content -LiteralPath $script:Dest -Value '{"statusLine":{"type":"command","command":"mine"}}'
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        (Get-Content -Raw $script:Dest | ConvertFrom-Json).statusLine.command | Should -Be 'mine'
-    }
-
-    It 'does nothing when the default config has no statusLine' {
-        Set-Content -LiteralPath $script:Src -Value '{"theme":"dark"}'
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        Test-Path -LiteralPath $script:Dest | Should -BeFalse
-    }
-
-    It 'does nothing when the default config is missing' {
-        Copy-ClaudeStatusLine -Root $script:Root -Source (Join-Path $TestDrive 'no-such.json')
-        Test-Path -LiteralPath $script:Dest | Should -BeFalse
-    }
-
-    It 'leaves a malformed profile settings.json untouched' {
-        New-Item -ItemType Directory -Path $script:Root -Force | Out-Null
-        Set-Content -LiteralPath $script:Dest -Value '{not json'
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        (Get-Content -Raw $script:Dest).Trim() | Should -Be '{not json'
-    }
-
-    It 'does not write a UTF-8 BOM' {
-        Copy-ClaudeStatusLine -Root $script:Root -Source $script:Src
-        $bytes = [System.IO.File]::ReadAllBytes($script:Dest)
-        @($bytes[0], $bytes[1], $bytes[2]) | Should -Not -Be @(0xEF, 0xBB, 0xBF)
-    }
-}
-
-Describe 'aliases.ps1 claude-logout' {
-    BeforeAll {
-        $aliasesPath = Join-Path $PSScriptRoot '../configs/aliases.ps1'
-        $tokens = $null; $errors = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $aliasesPath).Path, [ref]$tokens, [ref]$errors)
-        foreach ($name in @('claude-logout', 'Remove-ClaudeCredential')) {
-            $fn = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true)
-            if ($fn) { Invoke-Expression $fn.Extent.Text }
-        }
-    }
-
-    It 'removes the credential file and scrubs identity keys, keeping the rest' {
-        $root = Join-Path $TestDrive 'croot'
-        New-Item -ItemType Directory -Path $root -Force | Out-Null
-        Set-Content (Join-Path $root '.credentials.json') '{"claudeAiOauth":{"accessToken":"x"}}'
-        $state = Join-Path $TestDrive 'state.json'
-        Set-Content $state '{"oauthAccount":{"emailAddress":"a@b.c"},"userID":"u1","theme":"dark"}'
-
-        Remove-ClaudeCredential -Root $root -StateJson $state | Should -BeTrue
-        Test-Path (Join-Path $root '.credentials.json') | Should -BeFalse
-        $j = Get-Content -Raw $state | ConvertFrom-Json
-        $j.PSObject.Properties.Match('oauthAccount').Count | Should -Be 0
-        $j.PSObject.Properties.Match('userID').Count | Should -Be 0
-        $j.theme | Should -Be 'dark'
-    }
-
-    It 'returns false when there is no stored credential' {
-        $root = Join-Path $TestDrive 'empty-root'
-        New-Item -ItemType Directory -Path $root -Force | Out-Null
-        Remove-ClaudeCredential -Root $root -StateJson (Join-Path $TestDrive 'nope.json') | Should -BeFalse
-    }
-
-    It 'does not write a UTF-8 BOM when scrubbing state json' {
-        $root = Join-Path $TestDrive 'bom-root'
-        New-Item -ItemType Directory -Path $root -Force | Out-Null
-        $state = Join-Path $TestDrive 'bom-state.json'
-        Set-Content $state '{"oauthAccount":{"e":"x"},"k":1}'
-        Remove-ClaudeCredential -Root $root -StateJson $state | Out-Null
-        $bytes = [System.IO.File]::ReadAllBytes($state)
-        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+    It 'announces the clone/update under dry-run without touching git' {
+        $yaml = @'
+claude_code:
+  account_swap:
+    enabled: true
+    repo: "https://github.com/bolin8017/claude-account-swap.git"
+    ref: "main"
+'@
+        $f = Join-Path $TestDrive 'c3.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Write-Info { }
+        Install-AccountSwap
+        Should -Invoke Write-Info -ParameterFilter { $Message -match 'DRY-RUN' -and $Message -match 'claude-account-swap' }
+        Should -Invoke Invoke-Native -Times 0
     }
 }
 

@@ -172,6 +172,11 @@ claude_code:
 
 完整設定說明請參考 [`config.yaml.example`](config.yaml.example)。
 
+> **多帳號切換**：`claude-as` / `claude-swap` / `claude-logout` 已搬到獨立的
+> [`bolin8017/claude-account-swap`](https://github.com/bolin8017/claude-account-swap)（private repo），
+> 透過 `claude_code.account_swap.enabled` 選用安裝，預設關閉（該 repo 是
+> private，開著會讓沒有權限的人在一個抓不到的網址卡住）。
+
 ## 架構
 
 本專案是兩個平行引擎：macOS／Linux／WSL 用 Bash 引擎，原生 Windows 用 PowerShell 引擎。兩者互不呼叫，共用同一份 `config.yaml` 與 `configs/` 資產。

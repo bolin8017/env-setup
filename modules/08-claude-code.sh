@@ -283,24 +283,53 @@ _sync_claude_profiles() {
 }
 
 # =============================================================================
-# _deploy_claude_swap — Put the credential check-out helper on PATH.
-# claude-swap moves account credentials between ~/.claude and the
-# ~/.claude-<profile> dirs (see scripts/claude-swap.sh for the rotation-safety
-# rationale); the /account-swap skill and the aliases call it by name.
+# _install_account_swap — Clone (or update) claude-account-swap and run its
+# installer. Opt-in and off by default: the repo is private, so a default-on
+# step would leave anyone without access stuck on an unfetchable URL.
+#
+# Runs AFTER both _merge_claude_settings AND _set_ccstatusline_command on
+# purpose: the latter has the last word on statusLine.command on Unix (see
+# its own docstring), and the account-swap installer must have the final say
+# instead, pointing it back at its own wrapper. That ordering is the entire
+# mechanism that keeps auto-swap working across an env-setup run.
 # =============================================================================
-_deploy_claude_swap() {
-    local src="${ENV_SETUP_DIR}/scripts/claude-swap.sh"
-    local dest="${HOME}/.local/bin/claude-swap"
+_install_account_swap() {
+    cfg_enabled "claude_code.account_swap.enabled" || return 0
 
-    if [[ ! -f "$src" ]]; then
-        log_warn "claude-swap source not found: ${src}"
+    local repo ref dir
+    repo="$(cfg_get "claude_code.account_swap.repo")"
+    ref="$(cfg_get "claude_code.account_swap.ref")"
+    [[ -n "$ref" ]] || ref="main"
+    dir="${HOME}/.local/share/claude-account-swap"
+
+    if [[ -z "$repo" ]]; then
+        log_warn "claude_code.account_swap.enabled is true but no repo is configured - skipping"
         return 0
     fi
 
-    dry_run_mkdir "${HOME}/.local/bin"
-    deploy_config "$src" "$dest" "claude-swap"
-    if [[ "${DRY_RUN:-false}" != "true" ]] && [[ -f "$dest" ]]; then
-        chmod +x "$dest"
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "[DRY-RUN] Would clone/update ${repo} (${ref}) into ${dir} and run its setup.sh"
+        return 0
+    fi
+
+    if [[ -d "${dir}/.git" ]]; then
+        log_info "updating claude-account-swap"
+        git -C "$dir" fetch --quiet origin "$ref" && git -C "$dir" checkout --quiet "$ref" \
+            && git -C "$dir" merge --ff-only --quiet "origin/${ref}" || {
+            log_warn "could not update claude-account-swap - using the checkout as-is"
+        }
+    else
+        log_info "cloning claude-account-swap"
+        if ! git clone --quiet --branch "$ref" "$repo" "$dir"; then
+            log_warn "could not clone ${repo} - skipping account swap (private repo: check your GitHub access)"
+            return 0
+        fi
+    fi
+
+    if [[ -x "${dir}/setup.sh" ]]; then
+        bash "${dir}/setup.sh" || log_warn "claude-account-swap setup.sh failed - see its output above"
+    else
+        log_warn "claude-account-swap setup.sh not found in ${dir}"
     fi
 }
 
@@ -770,9 +799,9 @@ install_claude_code() {
     print_header "Claude Code config sync"
     _sync_claude_assets "${HOME}/.claude"
     _sync_claude_profiles
-    _deploy_claude_swap
     _merge_claude_settings
     _set_ccstatusline_command
+    _install_account_swap
     _register_plugin_marketplaces
     _install_enabled_plugins
     _patch_episodic_memory_deps
@@ -945,8 +974,9 @@ uninstall_claude_code() {
         _uninstall_claude_assets "$proot"
     done < <(cfg_list "claude_code.profiles")
 
-    remove_managed_file "${HOME}/.local/bin/claude-swap" \
-        "${ENV_SETUP_DIR}/scripts/claude-swap.sh" "claude-swap"
+    # claude-swap and friends are installed by claude-account-swap and removed
+    # by its own uninstall.sh. Removing them here would delete files this repo
+    # no longer owns.
 
     _uninstall_claude_settings
     _uninstall_claude_mcp

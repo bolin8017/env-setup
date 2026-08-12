@@ -146,6 +146,16 @@ env-setup/
   PSScriptAnalyzer (`PSScriptAnalyzerSettings.psd1`); tests are Pester. The
   Windows engine is built up stage by stage; the foundation (lib + entrypoints
   + CI) lands first, then modules.
+- **Claude account switching lives in its own repo**: `claude-as` /
+  `claude-swap` / `claude-logout` and the `/account-swap` skill were extracted
+  to `bolin8017/claude-account-swap` (private) so installing that one tool
+  doesn't require all of env-setup. `claude_code.account_swap.enabled` (off by
+  default — the repo is private) clones it and runs its installer, from
+  `_install_account_swap` / `Install-AccountSwap` in
+  `08-claude-code.sh`/`08-ClaudeCode.ps1`. That step runs deliberately after
+  the Claude settings sync: the sync rewrites `statusLine.command` from this
+  repo's template, and the account-swap installer must have the last word,
+  pointing it back at its own wrapper.
 - **Shell-startup self-update**: an oh-my-zsh-style cadence gate
   (`configs/zshrc/55-self-update.zsh`) checks for env-setup updates at most once
   per `update.frequency_days`. When behind upstream it `git pull --ff-only`s and
