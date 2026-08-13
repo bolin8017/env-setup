@@ -314,10 +314,14 @@ _install_account_swap() {
 
     if [[ -d "${dir}/.git" ]]; then
         log_info "updating claude-account-swap"
-        git -C "$dir" fetch --quiet origin "$ref" && git -C "$dir" checkout --quiet "$ref" \
-            && git -C "$dir" merge --ff-only --quiet "origin/${ref}" || {
+        # Any one of the three failing means the checkout is not at the
+        # requested ref; carry on with whatever is already there rather than
+        # holding up the rest of setup for it.
+        if ! { git -C "$dir" fetch --quiet origin "$ref" \
+                && git -C "$dir" checkout --quiet "$ref" \
+                && git -C "$dir" merge --ff-only --quiet "origin/${ref}"; }; then
             log_warn "could not update claude-account-swap - using the checkout as-is"
-        }
+        fi
     else
         log_info "cloning claude-account-swap"
         if ! git clone --quiet --branch "$ref" "$repo" "$dir"; then
