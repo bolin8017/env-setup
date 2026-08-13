@@ -212,6 +212,18 @@ claude_code:
   ccstatusline:
     enabled: true
 
+  # Claude Code multi-account switching (claude-as / claude-swap /
+  # claude-logout / opt-in auto-swap). The implementation lives in its own
+  # repo; this only clones it and runs its installer.
+  #
+  # Off by default: the repo is private, so leaving this on would stop
+  # anyone else's setup run on a URL they cannot fetch. Turn it on in
+  # config.local.yaml if you have access.
+  account_swap:
+    enabled: false
+    repo: "https://github.com/bolin8017/claude-account-swap.git"
+    ref: "main"
+
   # ---------------------------------------------------------------------------
   # Personal config sync — all flags are independent so individual pieces can
   # be disabled per machine if needed.
@@ -240,13 +252,12 @@ claude_code:
   # Alternate Claude Code account profiles. Each name gets its own config dir
   # ~/.claude-<name> (credentials, settings, history, plugins all isolated via
   # the official CLAUDE_CONFIG_DIR mechanism) with the same file-based harness
-  # (CLAUDE.md, rules, commands, agents, skills) synced into it. Switch with
-  # `claude-as <name>` (see configs/aliases.zsh / aliases.ps1); first use of a
-  # profile needs /login. settings.json merge and plugin installs are not
-  # mirrored - manage those per profile. One exception: `claude-as` seeds the
-  # default account's statusLine block into a profile that has none, so the
-  # ccstatusline readout follows you across accounts. Default: no extra
-  # profiles.
+  # (CLAUDE.md, rules, commands, agents, skills) synced into it; first use of
+  # a profile needs /login. settings.json merge and plugin installs are not
+  # mirrored - manage those per profile. Switching between profiles
+  # (`claude-as`), seeding a new profile's statusLine, and logging one out
+  # (`claude-logout`) live in bolin8017/claude-account-swap - see
+  # account_swap above. Default: no extra profiles.
   # To declare profiles use the sequence form (the parser does not read
   # flow-style [a, b] lists):
   #   profiles:

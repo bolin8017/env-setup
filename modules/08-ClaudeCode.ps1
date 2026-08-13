@@ -172,20 +172,55 @@ function Sync-ClaudeProfiles {
     }
 }
 
-function Install-ClaudeSwap {
-    # Put the credential check-out helper on PATH. It is a bash script (runs
-    # under Git Bash on Windows; claude sessions call it via their Bash tool).
-    # claude-swap.ps1 is its PowerShell entry: it locates Git Bash explicitly,
-    # because a bare `bash` resolves to the WSL launcher when WSL is
-    # installed. The claude-swap function in aliases.ps1 delegates to it.
-    $src = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.sh') -ErrorAction Ignore
-    if (-not $src) { Write-Warn 'claude-swap source not found - skipping'; return }
-    $bin = Join-Path $HOME '.local/bin'
-    New-DirOrDryRun -Path $bin
-    Deploy-Config -Source $src.Path -Destination (Join-Path $bin 'claude-swap') -Label 'claude-swap'
-    $shim = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1') -ErrorAction Ignore
-    if (-not $shim) { Write-Warn 'claude-swap.ps1 source not found - skipping'; return }
-    Deploy-Config -Source $shim.Path -Destination (Join-Path $bin 'claude-swap.ps1') -Label 'claude-swap.ps1'
+function Install-AccountSwap {
+    # Clone (or update) claude-account-swap and run its installer. Opt-in and
+    # off by default: the repo is private, so a default-on step would leave
+    # anyone without access stuck on an unfetchable URL.
+    #
+    # Runs AFTER Sync-ClaudeSettings on purpose. That sync rewrites
+    # statusLine.command from this repo's template; the account-swap
+    # installer points it back at its own wrapper, so ordering is what keeps
+    # auto-swap working across an env-setup run.
+    if (-not (Test-CfgEnabled 'claude_code.account_swap.enabled')) { return }
+
+    $repo = Get-CfgValue 'claude_code.account_swap.repo'
+    $ref = Get-CfgValue 'claude_code.account_swap.ref'
+    if (-not $ref) { $ref = 'main' }
+    $dir = Join-Path $HOME '.local/share/claude-account-swap'
+
+    if (-not $repo) {
+        Write-Warn 'claude_code.account_swap.enabled is true but no repo is configured - skipping'
+        return
+    }
+
+    if (Test-DryRun) {
+        Write-Info "[DRY-RUN] Would clone/update $repo ($ref) into $dir and run its setup.ps1"
+        return
+    }
+
+    if (Test-Path -LiteralPath (Join-Path $dir '.git')) {
+        Write-Info 'updating claude-account-swap'
+        Invoke-Native git -C $dir fetch --quiet origin $ref | Out-Null
+        $ok = ($LASTEXITCODE -eq 0)
+        if ($ok) { Invoke-Native git -C $dir checkout --quiet $ref | Out-Null; $ok = ($LASTEXITCODE -eq 0) }
+        if ($ok) { Invoke-Native git -C $dir merge --ff-only --quiet "origin/$ref" | Out-Null; $ok = ($LASTEXITCODE -eq 0) }
+        if (-not $ok) { Write-Warn 'could not update claude-account-swap - using the checkout as-is' }
+    } else {
+        Write-Info 'cloning claude-account-swap'
+        Invoke-Native git clone --quiet --branch $ref $repo $dir | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "could not clone $repo - skipping account swap (private repo: check your GitHub access)"
+            return
+        }
+    }
+
+    $setupPs1 = Join-Path $dir 'setup.ps1'
+    if (Test-Path -LiteralPath $setupPs1) {
+        Invoke-Native pwsh -NoProfile -File $setupPs1
+        if ($LASTEXITCODE -ne 0) { Write-Warn 'claude-account-swap setup.ps1 failed - see its output above' }
+    } else {
+        Write-Warn "claude-account-swap setup.ps1 not found in $dir"
+    }
 }
 
 function Sync-ClaudeSettings {
@@ -374,8 +409,8 @@ function Install-ClaudeCode {
     Add-ClaudeBinToPath
     Sync-ClaudeAssets -Root (Join-Path $HOME '.claude')
     Sync-ClaudeProfiles
-    Install-ClaudeSwap
     Sync-ClaudeSettings
+    Install-AccountSwap
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
     Install-ClaudePlugins
@@ -465,16 +500,9 @@ function Uninstall-ClaudeCode {
         Uninstall-ClaudeAssets -Root $proot
     }
 
-    $swapSrc = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.sh') -ErrorAction Ignore
-    if ($swapSrc) {
-        Remove-ManagedFile -Dest (Join-Path $HOME '.local/bin/claude-swap') `
-            -RepoSrc $swapSrc.Path -Label 'claude-swap'
-    }
-    $swapShim = Resolve-Path (Join-Path $PSScriptRoot '../scripts/claude-swap.ps1') -ErrorAction Ignore
-    if ($swapShim) {
-        Remove-ManagedFile -Dest (Join-Path $HOME '.local/bin/claude-swap.ps1') `
-            -RepoSrc $swapShim.Path -Label 'claude-swap.ps1'
-    }
+    # claude-swap and friends are installed by claude-account-swap and removed
+    # by its own uninstall.ps1. Removing them here would delete files this
+    # repo no longer owns.
 
     Uninstall-ClaudeSettings
     Uninstall-ClaudeMcp

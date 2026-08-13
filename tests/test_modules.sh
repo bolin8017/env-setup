@@ -276,9 +276,23 @@ assert_contains "$_out" "invalid profile name" "profiles: path-like names are re
 assert_not_contains "$_out" "Would copy" "profiles: nothing is deployed for invalid names"
 CFG_CLAUDE_CODE_PROFILES_COUNT=0
 
-# claude-swap script is deployed onto PATH
-_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _deploy_claude_swap 2>&1)"
-assert_contains "$_out" ".local/bin/claude-swap" "claude-swap deploys to ~/.local/bin"
+# account-swap step: off by default in config.yaml — quiet no-op
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _install_account_swap 2>&1)"
+assert_eq "" "$_out" "account-swap: disabled by default is a silent no-op"
+
+# account-swap step: enabled but no repo configured — warns, does not clone
+CFG_CLAUDE_CODE_ACCOUNT_SWAP_ENABLED="true"
+CFG_CLAUDE_CODE_ACCOUNT_SWAP_REPO=""
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _install_account_swap 2>&1)"
+assert_contains "$_out" "no repo is configured" "account-swap: enabled without a repo warns instead of failing"
+
+# account-swap step: enabled + repo configured — dry-run announces intent
+# instead of touching the network
+CFG_CLAUDE_CODE_ACCOUNT_SWAP_REPO="https://github.com/bolin8017/claude-account-swap.git"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _install_account_swap 2>&1)"
+assert_contains "$_out" "DRY-RUN" "account-swap: dry-run announces the clone/update instead of running it"
+assert_contains "$_out" "claude-account-swap" "account-swap: dry-run names the target repo"
+CFG_CLAUDE_CODE_ACCOUNT_SWAP_ENABLED="false"
 
 # Uninstall touches only DECLARED profile dirs — a user's ~/.claude-backup
 # (or any third-party ~/.claude-* dir) must never be swept.
