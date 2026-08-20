@@ -210,3 +210,46 @@ Describe 'Set-WindowsTerminalSettings default profile' {
         $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'
     }
 }
+
+Describe 'Set-WindowsTerminalSettings font size' {
+    BeforeAll { $script:OldLocal = $env:LOCALAPPDATA }
+    AfterAll  { $env:LOCALAPPDATA = $script:OldLocal; $env:ENVSETUP_DRY_RUN = 'true' }
+
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = $null
+        $env:LOCALAPPDATA = Join-Path $TestDrive ([guid]::NewGuid().ToString())
+        $script:WtFile = Join-Path $env:LOCALAPPDATA `
+            'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
+        New-Item -ItemType Directory -Path (Split-Path $script:WtFile) -Force | Out-Null
+        Set-Content $script:WtFile '{"profiles":{"defaults":{"font":{"size":11}}}}'
+        Mock Backup-File { }
+    }
+
+    It 'sets font.size from windows.windows_terminal_font_size' {
+        $f = Join-Path $TestDrive 'wt-size.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: false`n  windows_terminal_font_size: 14`n"
+        Import-Config -Path $f
+        Set-WindowsTerminalSettings
+        $o = (Get-Content -Raw $script:WtFile) | ConvertFrom-Json
+        $o.profiles.defaults.font.size | Should -Be 14
+        $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'
+    }
+
+    It 'leaves font.size alone when the key is absent' {
+        $f = Join-Path $TestDrive 'wt-nosize.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: false`n"
+        Import-Config -Path $f
+        Set-WindowsTerminalSettings
+        ((Get-Content -Raw $script:WtFile) | ConvertFrom-Json).profiles.defaults.font.size | Should -Be 11
+    }
+
+    It 'warns and leaves font.size alone when the value is not a whole number' {
+        $f = Join-Path $TestDrive 'wt-badsize.yaml'
+        Set-Content -Path $f -Value "windows:`n  windows_terminal: true`n  windows_terminal_default_profile: false`n  windows_terminal_font_size: large`n"
+        Import-Config -Path $f
+        Mock Write-Warn { }
+        Set-WindowsTerminalSettings
+        Should -Invoke Write-Warn -ParameterFilter { $Message -like '*windows_terminal_font_size*' }
+        ((Get-Content -Raw $script:WtFile) | ConvertFrom-Json).profiles.defaults.font.size | Should -Be 11
+    }
+}

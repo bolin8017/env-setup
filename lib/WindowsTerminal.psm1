@@ -1,7 +1,7 @@
 # WindowsTerminal.psm1 - whitelisted merge into Windows Terminal settings.json.
 # Pure (string in / string out) so it is fully unit-testable; the caller reads,
 # backs up, and writes the file. Mirrors the claude settings merge: it sets the
-# default font face and preserves every other key.
+# default font face (and size when asked) and preserves every other key.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -9,7 +9,9 @@ $ErrorActionPreference = 'Stop'
 function Merge-WtSettings {
     param(
         [Parameter(Mandatory)][string]$CurrentJson,
-        [string]$FontFace = 'MesloLGS NF'
+        [string]$FontFace = 'MesloLGS NF',
+        # 0 (the default) leaves profiles.defaults.font.size exactly as it is.
+        [int]$FontSize = 0
     )
     $s = $CurrentJson | ConvertFrom-Json
 
@@ -24,6 +26,11 @@ function Merge-WtSettings {
 
     if ($s.profiles.defaults.font.PSObject.Properties['face']) { $s.profiles.defaults.font.face = $FontFace }
     else { $s.profiles.defaults.font | Add-Member -NotePropertyName face -NotePropertyValue $FontFace }
+
+    if ($FontSize -gt 0) {
+        if ($s.profiles.defaults.font.PSObject.Properties['size']) { $s.profiles.defaults.font.size = $FontSize }
+        else { $s.profiles.defaults.font | Add-Member -NotePropertyName size -NotePropertyValue $FontSize }
+    }
 
     return ($s | ConvertTo-Json -Depth 32)
 }
