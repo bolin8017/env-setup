@@ -121,3 +121,29 @@ Describe 'module Uninstall-* functions are defined' {
         Get-Command $Fn -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
     }
 }
+
+Describe 'Remove-ManagedBlock' {
+    BeforeAll { Import-Module "$PSScriptRoot/../lib/Uninstall.psm1" -Force }
+    BeforeEach { $env:ENVSETUP_DRY_RUN = $null; $script:f = Join-Path $TestDrive 'ignore' }
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'strips the block and keeps the surrounding lines' {
+        Set-Content -Path $script:f -Value "keep-1`n# >>> x >>>`ninside`n# <<< x <<<`nkeep-2"
+        Remove-ManagedBlock -Path $script:f -Begin '# >>> x >>>' -End '# <<< x <<<'
+        @(Get-Content $script:f) | Should -Be @('keep-1', 'keep-2')
+    }
+    It 'is a no-op when the file has no block' {
+        Set-Content -Path $script:f -Value 'keep-1'
+        Remove-ManagedBlock -Path $script:f -Begin '# >>> x >>>' -End '# <<< x <<<'
+        @(Get-Content $script:f) | Should -Be @('keep-1')
+    }
+    It 'is a no-op when the file is absent' {
+        { Remove-ManagedBlock -Path (Join-Path $TestDrive 'nope') -Begin 'a' -End 'b' } | Should -Not -Throw
+    }
+    It 'does not write under dry-run' {
+        Set-Content -Path $script:f -Value "# >>> x >>>`ninside`n# <<< x <<<"
+        $env:ENVSETUP_DRY_RUN = 'true'
+        Remove-ManagedBlock -Path $script:f -Begin '# >>> x >>>' -End '# <<< x <<<'
+        @(Get-Content $script:f).Count | Should -Be 3
+    }
+}
