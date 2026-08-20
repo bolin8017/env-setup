@@ -194,6 +194,8 @@ tmux:
 #   configs/claude/rules/*.md           -> ~/.claude/rules/
 #   configs/claude/commands/*.md        -> ~/.claude/commands/
 #   configs/claude/agents/*.md          -> ~/.claude/agents/
+#   configs/claude/skills/<name>/       -> ~/.claude/skills/<name>/
+#   configs/claude/output-styles/*.md   -> ~/.claude/output-styles/
 #   configs/claude/settings.json        -> ~/.claude/settings.json  (whitelisted merge)
 #   configs/claude/mcp-servers.json     -> ~/.claude.json mcpServers field (jq merge)
 #
@@ -249,10 +251,17 @@ claude_code:
   # (personal skills — load on demand, the successor format to commands)
   sync_skills: true
 
+  # Deploy ~/.claude/output-styles/*.md from configs/claude/output-styles/
+  # (tone/format rules that replace the system prompt's default section; the
+  # active one is picked by the `outputStyle` key merged from settings.json
+  # below). Profiles get the files too but not the settings merge, so select
+  # the style once per profile with `/output-style <name>`.
+  sync_output_styles: true
+
   # Alternate Claude Code account profiles. Each name gets its own config dir
   # ~/.claude-<name> (credentials, settings, history, plugins all isolated via
   # the official CLAUDE_CONFIG_DIR mechanism) with the same file-based harness
-  # (CLAUDE.md, rules, commands, agents, skills) synced into it; first use of
+  # (CLAUDE.md, rules, commands, agents, skills, output styles) synced into it; first use of
   # a profile needs /login. settings.json merge and plugin installs are not
   # mirrored - manage those per profile. Switching between profiles
   # (`claude-as`), seeding a new profile's statusLine, and logging one out
@@ -278,6 +287,7 @@ claude_code:
     - enabledPlugins
     - skipDangerousModePermissionPrompt
     - teammateMode
+    - outputStyle
 
   # Register plugin marketplaces via `claude plugin marketplace add`.
   # Without these, enabledPlugins entries cannot resolve to real plugins.

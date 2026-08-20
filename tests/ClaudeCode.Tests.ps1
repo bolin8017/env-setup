@@ -20,6 +20,7 @@ claude_code:
   sync_commands: true
   sync_agents: true
   sync_skills: true
+  sync_output_styles: true
   settings_merge_keys:
     - env
   register_marketplaces: true
@@ -42,6 +43,25 @@ claude_code:
     It 'deploys the global CLAUDE.md when sync_global_md is true' {
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'CLAUDE.md' }
+    }
+    It 'deploys output styles when sync_output_styles is true' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'output-styles/tw-native.md' }
+    }
+    It 'deploys output styles into each declared profile dir too' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'output-styles/tw-native.md' -and $Destination -like '*.claude-work*' }
+    }
+    It 'skips output styles when sync_output_styles is false' {
+        $yaml = @'
+claude_code:
+  enabled: true
+  sync_output_styles: false
+'@
+        $f = Join-Path $TestDrive 'c3.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'output-styles/*' }
     }
     It 'deploys skills when sync_skills is true' {
         Install-ClaudeCode

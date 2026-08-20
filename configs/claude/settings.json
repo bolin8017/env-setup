@@ -21,5 +21,6 @@
     "elements-of-style@superpowers-marketplace": true
   },
   "skipDangerousModePermissionPrompt": true,
-  "teammateMode": "tmux"
+  "teammateMode": "tmux",
+  "outputStyle": "tw-native"
 }

@@ -15,6 +15,7 @@ deployed.
 | `commands/*.md` | `~/.claude/commands/` | `claude_code.sync_commands` | additive per-file copy |
 | `agents/*.md` | `~/.claude/agents/` | `claude_code.sync_agents` | additive per-file copy |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | `claude_code.sync_skills` | additive per-dir copy |
+| `output-styles/*.md` | `~/.claude/output-styles/` | `claude_code.sync_output_styles` | additive per-file copy |
 | `settings.json` | `~/.claude/settings.json` | (whitelist) | jq/PS merge of `settings_merge_keys` only; other keys preserved |
 | `mcp-servers.json` | `~/.claude.json` `mcpServers` | `claude_code.sync_mcp_servers` | merge; no-op while the source declares no servers |
 
@@ -33,6 +34,15 @@ commands, skills) are never touched.
   `references/` are synced recursively). Skills load on demand, so they cost
   no session context until invoked.
 - **Agent** — drop `agents/<name>.md` (subagent definition).
+- **Output style** — drop `output-styles/<name>.md` with `name:` +
+  `description:` frontmatter (`keep-coding-instructions: true` keeps Claude
+  Code's coding guidance alongside your tone rules). It replaces the system
+  prompt's default tone section for the main session only — subagents never
+  load output styles, so anything they must follow belongs in `CLAUDE.md`.
+  To make it the active style everywhere, set `"outputStyle": "<name>"` in
+  `settings.json` (already whitelisted); profiles pick it once with
+  `/output-style <name>`. Keep the repo copy free of project-specific examples:
+  this repo is public.
 
 Then re-run `./setup.sh --modules 08-claude-code` (or `./setup.ps1 -Modules
 08-ClaudeCode`), or just wait for shell-startup self-update to roll it out.
