@@ -75,4 +75,30 @@ function Remove-ManagedDir {
     Write-Success "Removed $Label"
 }
 
-Export-ModuleMember -Function Get-AbsPath, Test-ProtectedPath, Remove-ManagedFile, Remove-ManagedDir
+function Remove-ManagedBlock {
+    # Strip a begin/end-marker-delimited block from a text file (mirrors
+    # strip_block_from_file in lib/uninstall.sh). Lines outside the block are
+    # kept verbatim; a missing file or a file without the block is a no-op.
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Begin,
+        [Parameter(Mandatory)][string]$End,
+        [string]$Label
+    )
+    if (-not $Label) { $Label = Split-Path $Path -Leaf }
+    if (-not (Test-Path -LiteralPath $Path)) { Write-Info "[SKIP] $Label not present"; return }
+    $lines = @(Get-Content -LiteralPath $Path)
+    if (-not @($lines | Where-Object { $_.Contains($Begin) })) { Write-Info "[SKIP] no managed block in $Label"; return }
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would strip the managed block from $Path"; return }
+    $skip = $false
+    $kept = @(foreach ($l in $lines) {
+        if ($l.Contains($Begin)) { $skip = $true }
+        if (-not $skip) { $l }
+        if ($l.Contains($End)) { $skip = $false }
+    })
+    $content = if ($kept.Count) { ($kept -join "`n") + "`n" } else { '' }
+    Write-Utf8NoBom -Path $Path -Content $content
+    Write-Success "Stripped the managed block from $Label"
+}
+
+Export-ModuleMember -Function Get-AbsPath, Test-ProtectedPath, Remove-ManagedFile, Remove-ManagedDir, Remove-ManagedBlock

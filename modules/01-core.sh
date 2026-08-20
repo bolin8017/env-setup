@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 01-core.sh — Homebrew, Git, GitHub CLI, build tools
+# 01-core.sh — Homebrew, Git (+ two global defaults), GitHub CLI, build tools
 # All lib/ files are sourced by setup.sh before this module runs.
 
 # =============================================================================
@@ -67,6 +67,91 @@ _install_git() {
     log_info "Installing Git..."
     pkg_install git
     log_success "Git installed"
+}
+
+# =============================================================================
+# Git defaults — exactly two global settings, both reverted by uninstall:
+#   1. a managed block in the global ignore file listing Claude Code's
+#      per-machine settings.local.json (otherwise untracked noise in every repo)
+#   2. rerere.enabled=true, only when the user has not set it either way
+# No identity (user.name/email), aliases or pager are configured.
+# =============================================================================
+_GIT_IGNORE_BEGIN="# >>> env-setup managed >>>"
+_GIT_IGNORE_END="# <<< env-setup managed <<<"
+_GIT_IGNORE_ENTRY='**/.claude/settings.local.json'
+
+# The file git consults for global excludes, in git's own lookup order
+# (gitignore(5)): core.excludesFile when set, else $XDG_CONFIG_HOME/git/ignore,
+# else ~/.config/git/ignore.
+_git_global_ignore_path() {
+    local configured=""
+    configured="$(git config --global --get core.excludesFile 2>/dev/null || true)"
+    if [[ -n "$configured" ]]; then
+        # shellcheck disable=SC2088  # literal "~/" test: git hands back the unexpanded tilde
+        [[ "$configured" == "~/"* ]] && configured="${HOME}/${configured#\~/}"
+        printf '%s\n' "$configured"
+        return 0
+    fi
+    printf '%s\n' "${XDG_CONFIG_HOME:-${HOME}/.config}/git/ignore"
+}
+
+_git_rerere_marker() { printf '%s\n' "${HOME}/.env-setup/.git-rerere-set"; }
+
+_configure_git_defaults() {
+    if ! command_exists git; then
+        log_info "git not available yet — skipping git defaults"
+        return 0
+    fi
+
+    # 1. global ignore block (idempotent: the begin marker is the receipt)
+    local ignore_file
+    ignore_file="$(_git_global_ignore_path)"
+    if [[ -f "$ignore_file" ]] && grep -qF "$_GIT_IGNORE_BEGIN" "$ignore_file"; then
+        log_info "git global ignore already carries the env-setup block"
+    elif [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo "[DRY-RUN] Would append the env-setup block to ${ignore_file}"
+    else
+        mkdir -p "$(dirname "$ignore_file")"
+        # Start on a fresh line when the file lacks a trailing newline.
+        if [[ -s "$ignore_file" && -n "$(tail -c1 "$ignore_file")" ]]; then
+            printf '\n' >> "$ignore_file"
+        fi
+        printf '%s\n%s\n%s\n' "$_GIT_IGNORE_BEGIN" "$_GIT_IGNORE_ENTRY" "$_GIT_IGNORE_END" >> "$ignore_file"
+        log_success "Added ${_GIT_IGNORE_ENTRY} to the git global ignore (${ignore_file})"
+    fi
+
+    # 2. rerere — leave any explicit user value (true or false) alone
+    local marker
+    marker="$(_git_rerere_marker)"
+    if git config --global --get rerere.enabled >/dev/null 2>&1; then
+        log_info "rerere.enabled already set — leaving it"
+    else
+        dry_run_cmd git config --global rerere.enabled true
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            mkdir -p "$(dirname "$marker")"
+            : > "$marker"
+            log_success "Enabled git rerere (recorded in ${marker} for uninstall)"
+        fi
+    fi
+}
+
+# Reverse _configure_git_defaults: strip the managed block; unset rerere only
+# when the marker proves env-setup set it.
+_unconfigure_git_defaults() {
+    local ignore_file marker
+    ignore_file="$(_git_global_ignore_path)"
+    strip_block_from_file "$ignore_file" "$_GIT_IGNORE_BEGIN" "$_GIT_IGNORE_END"
+
+    marker="$(_git_rerere_marker)"
+    if [[ -f "$marker" ]]; then
+        dry_run_cmd git config --global --unset rerere.enabled
+        if [[ "${DRY_RUN:-false}" != "true" ]]; then
+            rm -f "$marker"
+            log_success "Disabled git rerere (env-setup had enabled it)"
+        fi
+    else
+        log_info "rerere.enabled was not set by env-setup — leaving it"
+    fi
 }
 
 # =============================================================================
@@ -179,6 +264,7 @@ install_core() {
 
     if cfg_enabled "core.git"; then
         _install_git
+        _configure_git_defaults
     fi
 
     if cfg_enabled "core.github_cli"; then
@@ -191,14 +277,16 @@ install_core() {
 }
 
 # =============================================================================
-# uninstall_core — Reverse install_core (Homebrew fragment; --purge: git/gh/
-# build tools). The platform package manager itself is never auto-removed.
+# uninstall_core — Reverse install_core (Homebrew fragment, git defaults;
+# --purge: git/gh/build tools). The platform package manager itself is never
+# auto-removed.
 # =============================================================================
 uninstall_core() {
     print_header "Uninstall: Core"
 
     # C — config layer
     remove_fragment "41-homebrew.zsh" "brew shellenv"
+    _unconfigure_git_defaults
 
     # P — system packages
     if [[ "${PURGE:-false}" == "true" ]]; then

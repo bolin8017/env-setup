@@ -38,6 +38,7 @@ tests=(
     "test_fragments.sh"
     "test_self_update.sh"
     "test_user_dirs.sh"
+    "test_git_defaults.sh"
     "test_ccstatusline.sh"
     "test_claude_assets.sh"
     "test_episodic_memory_patch.sh"

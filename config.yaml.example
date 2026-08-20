@@ -43,7 +43,10 @@ core:
   # macOS: install Homebrew; Linux: ensure apt is up to date
   homebrew: true
 
-  # Configure git defaults (user, aliases, delta pager)
+  # Install git and set two global defaults, each only when not already set
+  # and each reverted by uninstall: a managed block in the global ignore file
+  # for Claude Code's per-machine settings.local.json, and rerere.enabled
+  # (reuse recorded conflict resolutions). No identity, aliases or pager.
   git: true
 
   # Install the GitHub CLI (gh)

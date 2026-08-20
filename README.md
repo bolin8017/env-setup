@@ -95,7 +95,7 @@ cd env-setup
 
 | 類別 | 工具 |
 |------|------|
-| **核心** | Homebrew (macOS)、Git、GitHub CLI、build tools |
+| **核心** | Homebrew (macOS)、Git（含 rerere 與全域 ignore 兩個預設值）、GitHub CLI、build tools |
 | **語言** | Node.js (nvm)、Python (uv 管理)、Conda (選用) |
 | **Python 工具** | JupyterLab、Poetry、uv |
 | **容器** | Docker Engine / Desktop |
