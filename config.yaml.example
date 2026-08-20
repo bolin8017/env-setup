@@ -336,9 +336,9 @@ user_dirs:
 # setup.ps1). Has no effect on macOS/Linux/WSL runs.
 # -----------------------------------------------------------------------------
 windows:
-  # Merge env-setup's Windows Terminal settings (font face, plus the default
-  # profile below) into settings.json. Color schemes and every other key are
-  # preserved as-is. Set false to leave Windows Terminal alone.
+  # Merge env-setup's Windows Terminal settings (font face, plus the font size
+  # and default profile below) into settings.json. Color schemes and every
+  # other key are preserved as-is. Set false to leave Windows Terminal alone.
   windows_terminal: true
 
   # Point Windows Terminal's defaultProfile at PowerShell 7. env-setup deploys
@@ -347,6 +347,12 @@ windows:
   # when the pwsh 7 profile cannot be identified unambiguously (several installs,
   # or none). Requires windows_terminal: true.
   windows_terminal_default_profile: true
+
+  # Default font size for every Windows Terminal profile
+  # (profiles.defaults.font.size, in points; Windows Terminal's own default is
+  # 12). Remove or comment out the key to leave the size alone. Requires
+  # windows_terminal: true.
+  windows_terminal_font_size: 14
 
   # Also assemble a Windows PowerShell 5.1 profile (default: only pwsh 7).
   powershell5_profile: false

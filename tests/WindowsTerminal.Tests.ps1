@@ -19,6 +19,25 @@ Describe 'Merge-WtSettings' {
         $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'
         $o.x | Should -Be 1
     }
+    It 'sets font.size when -FontSize is given' {
+        $cur = '{"profiles":{"defaults":{"font":{"face":"Old","size":11}}}}'
+        $o = (Merge-WtSettings -CurrentJson $cur -FontFace 'MesloLGS NF' -FontSize 14) | ConvertFrom-Json
+        $o.profiles.defaults.font.size | Should -Be 14
+        $o.profiles.defaults.font.face | Should -Be 'MesloLGS NF'
+    }
+    It 'adds font.size to a file that had none when -FontSize is given' {
+        $o = (Merge-WtSettings -CurrentJson '{"x":1}' -FontFace 'MesloLGS NF' -FontSize 14) | ConvertFrom-Json
+        $o.profiles.defaults.font.size | Should -Be 14
+    }
+    It 'leaves an existing font.size alone when -FontSize is omitted' {
+        $cur = '{"profiles":{"defaults":{"font":{"size":11}}}}'
+        $o = (Merge-WtSettings -CurrentJson $cur -FontFace 'MesloLGS NF') | ConvertFrom-Json
+        $o.profiles.defaults.font.size | Should -Be 11
+    }
+    It 'does not invent font.size when -FontSize is omitted' {
+        $o = (Merge-WtSettings -CurrentJson '{"x":1}' -FontFace 'MesloLGS NF') | ConvertFrom-Json
+        $o.profiles.defaults.font.PSObject.Properties['size'] | Should -BeNullOrEmpty
+    }
 }
 
 

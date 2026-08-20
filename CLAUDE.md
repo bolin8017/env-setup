@@ -133,7 +133,7 @@ env-setup/
 - **Prompt font is engine-installed**: all three platforms install
   Powerlevel10k's MesloLGS NF (per-user, no admin) and the shared .p10k.zsh
   uses `nerdfont-complete` — its designed icon set. Windows Terminal's font
-  face is set automatically; macOS terminal profiles need the face selected
+  face and size are set automatically; macOS terminal profiles need the face selected
   once by hand.
 - **Windows Terminal opens pwsh 7**: `$PROFILE` is deployed to pwsh 7 only, so
   setup also repoints `defaultProfile` at the PowerShell 7 profile — otherwise a

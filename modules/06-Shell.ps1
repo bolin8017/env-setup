@@ -117,8 +117,13 @@ function Set-WindowsTerminalSettings {
     # rewrite below cannot preserve them); Windows PowerShell 5.1 cannot parse
     # them at all — skip with guidance instead of failing the module.
     $raw = Get-Content -Raw -LiteralPath $wt
+    # Font size is opt-in: no key (or an empty value) keeps whatever the file has.
+    $fontSize = 0
+    $sizeRaw = Get-CfgValue 'windows.windows_terminal_font_size'
+    if ($sizeRaw -match '^\d+$') { $fontSize = [int]$sizeRaw }
+    elseif ($sizeRaw) { Write-Warn "windows.windows_terminal_font_size '$sizeRaw' is not a whole number - leaving font.size alone" }
     $merged = $null
-    try { $merged = Merge-WtSettings -CurrentJson $raw -FontFace 'MesloLGS NF' }
+    try { $merged = Merge-WtSettings -CurrentJson $raw -FontFace 'MesloLGS NF' -FontSize $fontSize }
     catch { Write-Warn "Could not parse $wt (comments are unsupported on PowerShell 5.1) - set the font face manually"; return }
     if ($raw -match '(?m)^\s*//|/\*') {
         Write-Warn 'Windows Terminal settings.json contains comments; the rewrite cannot preserve them (a backup is kept)'
