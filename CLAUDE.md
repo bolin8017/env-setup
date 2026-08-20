@@ -134,6 +134,12 @@ env-setup/
   uses `nerdfont-complete` — its designed icon set. Windows Terminal's font
   face is set automatically; macOS terminal profiles need the face selected
   once by hand.
+- **Windows Terminal opens pwsh 7**: `$PROFILE` is deployed to pwsh 7 only, so
+  setup also repoints `defaultProfile` at the PowerShell 7 profile — otherwise a
+  fresh box lands in a bare 5.1. WT derives each PowershellCore guid from the
+  install path, so `Set-WtDefaultProfile` matches on `source` + `name` and
+  refuses to guess (warns, leaves the key alone) when the match is not unique.
+  Opt out with `windows.windows_terminal_default_profile: false`.
 - **Two sibling engines (Bash + PowerShell)**: macOS/Linux/WSL run the Bash
   engine (`setup.sh`); native Windows runs the PowerShell engine
   (`setup.ps1`). They never call each other and share one `config.yaml` plus

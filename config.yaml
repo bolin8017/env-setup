@@ -323,10 +323,17 @@ user_dirs:
 # setup.ps1). Has no effect on macOS/Linux/WSL runs.
 # -----------------------------------------------------------------------------
 windows:
-  # Set the Windows Terminal font face (MesloLGS NF) via a whitelisted
-  # settings.json merge. Every other key is preserved as-is - defaultProfile
-  # and color schemes are NOT managed. Set false to leave Windows Terminal alone.
+  # Merge env-setup's Windows Terminal settings (font face, plus the default
+  # profile below) into settings.json. Color schemes and every other key are
+  # preserved as-is. Set false to leave Windows Terminal alone.
   windows_terminal: true
+
+  # Point Windows Terminal's defaultProfile at PowerShell 7. env-setup deploys
+  # the $PROFILE to pwsh 7 only, so with this off Windows Terminal keeps opening
+  # a bare Windows PowerShell 5.1 - no prompt, no modules. Skipped with a warning
+  # when the pwsh 7 profile cannot be identified unambiguously (several installs,
+  # or none). Requires windows_terminal: true.
+  windows_terminal_default_profile: true
 
   # Also assemble a Windows PowerShell 5.1 profile (default: only pwsh 7).
   powershell5_profile: false

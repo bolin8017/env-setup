@@ -112,7 +112,13 @@ cd env-setup
 > 的字型由安裝程式自動設定；macOS 的 iTerm2／Terminal 需要手動在偏好設定
 > 選一次 MesloLGS NF，圖示才會正確顯示。
 
-**原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／uv，並設定 PSReadLine 預測與 Windows Terminal 字型。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
+**原生 Windows** 安裝對應的同類工具：套件來源用 scoop／winget，prompt 用 Oh My Posh（取代 Powerlevel10k），多工器用 zellij（取代 tmux），Node／Python 用 nvm-windows／uv，並設定 PSReadLine 預測與 Windows Terminal（字型 + 預設開 PowerShell 7）。詳見上方 [原生 Windows（PowerShell）](#原生-windowspowershell)。
+
+> **Windows Terminal 預設 shell**：`$PROFILE` 只部署到 pwsh 7，所以安裝程式會把
+> Windows Terminal 的 `defaultProfile` 指向 PowerShell 7；否則開起來會是一個沒有
+> prompt、沒有模組的 Windows PowerShell 5.1。同時裝了多份 pwsh（例如 scoop 一份、
+> winget 一份）而無法唯一判定時，會印警告並保持原設定不動。不想要這個行為就把
+> `windows.windows_terminal_default_profile` 設成 `false`。
 
 ## 設定
 

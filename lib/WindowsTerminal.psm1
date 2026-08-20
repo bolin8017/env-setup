@@ -28,4 +28,38 @@ function Merge-WtSettings {
     return ($s | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-WtSettings
+function Set-WtDefaultProfile {
+    # Point defaultProfile at the PowerShell 7 profile Windows Terminal generated
+    # for the winget/MSIX install. WT's PowershellCore generator derives each guid
+    # from the install path, so there is no constant to match on - only the
+    # source + name it emits. Refuse to guess when the match is not unique:
+    # silently repointing the user's default shell at the wrong pwsh (a scoop
+    # copy, a Preview build) is worse than leaving the setting alone.
+    param([Parameter(Mandatory)][string]$CurrentJson)
+    $s = $CurrentJson | ConvertFrom-Json
+
+    if ($s.PSObject.Properties['profiles'] -and $s.profiles -is [System.Collections.IList]) {
+        throw 'settings.json uses the legacy array form of "profiles" - set defaultProfile manually'
+    }
+    if (-not $s.PSObject.Properties['profiles'] -or -not $s.profiles.PSObject.Properties['list']) {
+        throw 'settings.json has no "profiles.list" - set defaultProfile manually'
+    }
+
+    $candidates = @($s.profiles.list | Where-Object {
+        $_.PSObject.Properties['guid'] -and
+        $_.PSObject.Properties['source'] -and $_.source -eq 'Windows.Terminal.PowershellCore' -and
+        $_.PSObject.Properties['name']  -and $_.name -notmatch '\(scoop\)|Preview' -and
+        -not ($_.PSObject.Properties['hidden'] -and $_.hidden)
+    })
+    if ($candidates.Count -ne 1) {
+        throw "expected exactly 1 PowerShell 7 profile in settings.json, found $($candidates.Count) - set defaultProfile manually"
+    }
+
+    $guid = $candidates[0].guid
+    if ($s.PSObject.Properties['defaultProfile']) { $s.defaultProfile = $guid }
+    else { $s | Add-Member -NotePropertyName defaultProfile -NotePropertyValue $guid }
+
+    return ($s | ConvertTo-Json -Depth 32)
+}
+
+Export-ModuleMember -Function Merge-WtSettings, Set-WtDefaultProfile
