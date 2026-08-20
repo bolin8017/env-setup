@@ -243,6 +243,22 @@ assert_file_not_exists "$_skill_dest" "empty skill dir pruned on uninstall"
 assert_file_not_exists "$_nested_dest/references/patterns.md" "pristine nested skill file removed"
 assert_file_not_exists "$_nested_dest" "skill dir with subdirectory pruned on uninstall"
 
+suite "claude output styles sync + uninstall roundtrip"
+
+_style_dest="$HOME/.claude/output-styles/tw-native.md"
+_sync_claude_output_styles >/dev/null 2>&1
+assert_file_exists "$_style_dest" "output style deployed to ~/.claude/output-styles"
+
+# User-modified style survives uninstall
+printf '# customized\n' >> "$_style_dest"
+KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
+assert_file_exists "$_style_dest" "modified output style preserved on uninstall"
+
+# Pristine style is removed
+cp "$PROJECT_ROOT/configs/claude/output-styles/tw-native.md" "$_style_dest"
+KEEP_TOOLS=true uninstall_claude_code >/dev/null 2>&1
+assert_file_not_exists "$_style_dest" "pristine output style removed on uninstall"
+
 suite "backup.sh: list past first entry + retention + name-sorted _latest_bak"
 
 # shellcheck source=lib/backup.sh

@@ -86,6 +86,9 @@ done
 for f in "$CLAUDE_DIR/skills"/*/SKILL.md; do
     _check_frontmatter "$f" "skill $(basename "$(dirname "$f")")"
 done
+for f in "$CLAUDE_DIR/output-styles"/*.md; do
+    _check_frontmatter "$f" "output style $(basename "$f")"
+done
 shopt -u nullglob
 
 # =============================================================================
@@ -116,7 +119,29 @@ done
 for f in "$CLAUDE_DIR/skills"/*/SKILL.md; do
     _check_desc_strict_yaml "$f" "skill $(basename "$(dirname "$f")")"
 done
+for f in "$CLAUDE_DIR/output-styles"/*.md; do
+    _check_desc_strict_yaml "$f" "output style $(basename "$f")"
+done
 shopt -u nullglob
+
+# =============================================================================
+suite "output styles tree shape"
+# =============================================================================
+
+# Claude Code selects a style by its frontmatter `name:` (settings.json
+# outputStyle), so a style without one can be deployed but never chosen.
+[[ -d "$CLAUDE_DIR/output-styles" ]]
+assert_true $? "output-styles directory exists"
+_style_count=0
+shopt -s nullglob
+for f in "$CLAUDE_DIR/output-styles"/*.md; do
+    _style_count=$((_style_count + 1))
+    awk '/^---$/{n++} n==1 && /^name:/{found=1} n>=2{exit} END{exit !found}' "$f"
+    assert_true $? "output style $(basename "$f") frontmatter has a name"
+done
+shopt -u nullglob
+[[ $_style_count -ge 1 ]]
+assert_true $? "at least one output style is shipped"
 
 # =============================================================================
 suite "skills tree shape"

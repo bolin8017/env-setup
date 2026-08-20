@@ -58,6 +58,26 @@ Describe 'markdown assets carry frontmatter' {
     }
 }
 
+Describe 'output styles carry frontmatter' {
+    It 'ships at least one output style whose frontmatter has a name and a description' {
+        # Claude Code selects a style by its frontmatter `name:` (settings.json
+        # outputStyle), so a style without one can be deployed but never chosen.
+        $stylesRoot = Join-Path $script:ClaudeDir 'output-styles'
+        Test-Path $stylesRoot | Should -BeTrue -Because 'output-styles/ must exist'
+        $files = @(Get-ChildItem $stylesRoot -Filter *.md -ErrorAction Ignore)
+        $files | Should -Not -BeNullOrEmpty
+        foreach ($f in $files) {
+            $lines = Get-Content $f.FullName
+            $lines[0] | Should -Be '---' -Because "$($f.Name) must start with YAML frontmatter"
+            $end = ($lines | Select-Object -Skip 1 | Select-String -Pattern '^---$' | Select-Object -First 1).LineNumber
+            $end | Should -Not -BeNullOrEmpty
+            $fm = ($lines[1..$end] -join "`n")
+            $fm | Should -Match '(?m)^name:' -Because "$($f.Name) frontmatter needs a name"
+            $fm | Should -Match '(?m)^description:' -Because "$($f.Name) frontmatter needs a description"
+        }
+    }
+}
+
 Describe 'skills tree shape' {
     It 'every skill directory contains SKILL.md' {
         $skillsRoot = Join-Path $script:ClaudeDir 'skills'

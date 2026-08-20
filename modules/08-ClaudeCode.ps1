@@ -142,15 +142,19 @@ function Test-ClaudeProfileName {
 
 function Sync-ClaudeAssets {
     # Deploy the file-based harness (CLAUDE.md, rules, commands, agents,
-    # skills) into one config root. The single authoritative asset list: both
-    # the default ~/.claude sync and every profile sync go through here, so a
-    # new asset type cannot reach one and miss the other.
+    # skills, output styles) into one config root. The single authoritative
+    # asset list: both the default ~/.claude sync and every profile sync go
+    # through here, so a new asset type cannot reach one and miss the other.
     param([Parameter(Mandatory)][string]$Root)
     if (Test-CfgEnabled 'claude_code.sync_global_md') { Sync-ClaudeFile -RelSource 'CLAUDE.md' -RelDest 'CLAUDE.md' -Root $Root }
     if (Test-CfgEnabled 'claude_code.sync_rules')    { Sync-ClaudeDir -SubDir 'rules' -Root $Root }
     if (Test-CfgEnabled 'claude_code.sync_commands') { Sync-ClaudeDir -SubDir 'commands' -Root $Root }
     if (Test-CfgEnabled 'claude_code.sync_agents')   { Sync-ClaudeDir -SubDir 'agents' -Root $Root }
     if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills -Root $Root }
+    # Output styles replace the system prompt's tone section (selected by
+    # settings.json outputStyle); subagents never load them, which is why
+    # CLAUDE.md keeps a baseline subset.
+    if (Test-CfgEnabled 'claude_code.sync_output_styles') { Sync-ClaudeDir -SubDir 'output-styles' -Root $Root }
 }
 
 function Sync-ClaudeProfiles {
@@ -457,7 +461,7 @@ function Uninstall-ClaudeAssets {
     param([Parameter(Mandatory)][string]$Root)
     Remove-ManagedFile -Dest (Join-Path $Root 'CLAUDE.md') `
         -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
-    foreach ($sub in @('rules', 'commands', 'agents')) {
+    foreach ($sub in @('rules', 'commands', 'agents', 'output-styles')) {
         $srcDir = Join-Path $script:ClaudeCfg $sub
         if (-not (Test-Path $srcDir)) { continue }
         Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {

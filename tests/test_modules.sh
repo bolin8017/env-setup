@@ -267,6 +267,21 @@ CFG_CLAUDE_CODE_PROFILES_COUNT=0
 _out="$(DRY_RUN="true" _sync_claude_profiles 2>&1)"
 assert_contains "$_out" "no claude profiles" "profiles: empty list is a quiet no-op"
 
+# Output styles are part of the harness: they reach ~/.claude and every
+# declared profile through the same asset list as rules/commands/skills.
+CFG_CLAUDE_CODE_SYNC_OUTPUT_STYLES="true"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_output_styles 2>&1)"
+assert_contains "$_out" "profile_home/.claude/output-styles/tw-native.md" "output styles: deploy under ~/.claude/output-styles"
+CFG_CLAUDE_CODE_PROFILES_COUNT=1
+CFG_CLAUDE_CODE_PROFILES_0="work"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_profiles 2>&1)"
+assert_contains "$_out" ".claude-work/output-styles/tw-native.md" "output styles: deploy into declared profiles"
+CFG_CLAUDE_CODE_PROFILES_COUNT=0
+CFG_CLAUDE_CODE_SYNC_OUTPUT_STYLES="false"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_output_styles 2>&1)"
+assert_contains "$_out" "sync_output_styles disabled" "output styles: flag off skips the step"
+CFG_CLAUDE_CODE_SYNC_OUTPUT_STYLES="true"
+
 # Invalid names (path separators, dot-dot, empty) are rejected, not deployed
 CFG_CLAUDE_CODE_PROFILES_COUNT=2
 CFG_CLAUDE_CODE_PROFILES_0="team/alpha"
