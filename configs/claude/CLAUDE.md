@@ -15,6 +15,16 @@
   document — read the output style file and follow it in full. Explore and Plan
   load neither, so state the language requirement in the delegation prompt when
   their text will be quoted rather than rewritten.
+- **Language-policy review of Chinese prose goes to the `tw-docs-reviewer`
+  subagent** (`~/.claude/agents/tw-docs-reviewer.md`, deployed by env-setup;
+  frontmatter pins `model: sonnet`, `effort: low`). Dispatch it with
+  `subagent_type: tw-docs-reviewer` for every Markdown file, report, README or
+  issue-comment draft after writing it, and do not pass a `model` override on
+  that call (the Agent tool's `model` parameter beats the frontmatter). It is a
+  wording fixer only: fact checking, if needed, is a separate agent at normal
+  effort. Every other subagent keeps the session's default model and effort
+  (user ruling 2026-08-26). There is no per-subagent switch for extended
+  thinking; `effort: low` is the only lever, so do not promise "thinking off".
 - Baseline, in force everywhere:
   - Taiwan terms, never mainland-China terms: 影片 not 視頻, 品質 not 質量,
     資訊 not 信息, 軟體 not 軟件, 網路 not 網絡, 水準 not 水平, 預設 not 默認,
