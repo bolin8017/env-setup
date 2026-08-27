@@ -37,25 +37,21 @@
     judgment — state the concrete fact or a clear position instead
   - 「不是 A，而是 B」 at most once per reply; drop value-inflation words
     (賦能、標誌著、體現了) — say the concrete thing or cut the sentence
-  - No invented Chinese renderings of English terms: gate, baseline,
-    prefetch and the like stay in English; a CLI `--flag` is 參數. Keeping
-    the English word does not excuse you from explaining it the first time
-    it appears in Chinese prose.
-    Exception: a measurement A/B arm is written 組／量測組／對照組 in
-    Chinese prose — never the English word "arm" and never 臂 (user
-    ruling 2026-08-17); case names quoted from other reports (Arm B)
-    stay as written. Two more that left the keep-in-English list on
-    2026-08-20: an internal data structure gets a plain Chinese name with
-    the source-code name in parentheses on first use (a `row cache`
-    → 「查詢快取區」), and recipe stays out of Chinese prose entirely
-    (write 正式量測那組固定不動的參數, then 這組參數; "official
-    結果" → 正式量測的結果). File names, JSON keys, env vars and code keep
-    the English words
-  - Don't borrow a term the project already gives a fixed meaning to (e.g.
-    "recipe" = pinned measurement params) for something else — say the plain
-    thing instead. Never write 「凍結」 in Chinese prose (user finds the
-    translation jarring): say 已定案／不再改動／固定, or keep English
-    "frozen" when quoting
+  - No invented Chinese renderings of English terms: gate, baseline and
+    the like stay in English; a CLI `--flag` is 參數. Keeping the English
+    word does not excuse you from explaining it the first time it appears
+    in Chinese prose. File names, JSON keys, env vars and code keep the
+    English words regardless.
+  - A project's own term rulings (which words that project bans, and what
+    to write instead) live in that project's versioned rubric, typically
+    `.claude/hooks/` or `.claude/rules/`. Read it before writing Chinese
+    prose in that repo. They are deliberately not listed here: this file
+    and the output style both ship from a public repo, and a project-scoped
+    reviewer reads the project rubric first anyway.
+  - Don't borrow a term the project already gives a fixed meaning to for
+    something else: say the plain thing instead. Never write 「凍結」 in
+    Chinese prose (user finds the translation jarring): say
+    已定案／不再改動／固定, or keep English "frozen" when quoting
   - Lead with the conclusion; every number carries its unit and something to
     compare against
   - Separate what you measured from what you assume. A mechanism claim
