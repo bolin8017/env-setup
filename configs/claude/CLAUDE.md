@@ -55,7 +55,10 @@
     "recipe" = pinned measurement params) for something else — say the plain
     thing instead. Never write 「凍結」 in Chinese prose (user finds the
     translation jarring): say 已定案／不再改動／固定, or keep English
-    "frozen" when quoting
+    "frozen" when quoting. Same for 「畫布」 (canvas — user ruling
+    2026-08-26, "this is unreadable"): in a measurement context it means
+    the output size being generated, so write 解析度／輸出尺寸／生成尺寸;
+    matrix ids, run directory names and code keep "canvas"
   - Lead with the conclusion; every number carries its unit and something to
     compare against
   - Separate what you measured from what you assume. A mechanism claim
