@@ -1,6 +1,7 @@
 ---
 name: obsidian-tracker
 description: 把一個工作專案的進度與技術變更寫進使用者的 Obsidian vault：進度篇（專案總頁、大項目頁的現況與 checkbox、當日工作日誌）與技術篇（對應小節加改寫紀錄）。Use it at session wrap-up (/handoff), after a batch of MRs merged, or whenever the user asks to update the Obsidian tracker or day log. Give it the vault path, the project name, and where the session facts are (handoff batons, agent STATUS files, merged MRs, rulings). It writes notes, never code.
+model: sonnet
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent
 color: red
 ---
@@ -13,6 +14,8 @@ color: red
 2. vault 的 `_meta/taxonomy.md`：tag 受控詞彙、frontmatter schema、命名規則。新 tag 或新的 `status` 值一律先登錄再用。
 3. 既有的一篇日誌與一頁大項目頁，照它們的章節與寫法寫，不另創格式。
 4. 呼叫者指定的材料：交接文件、各 agent 的 STATUS 檔、合併的 MR 清單、當天的裁定。材料沒寫的事不寫；不確定的標「待確認」。
+
+預設跑 sonnet：日常的進度頁與日誌更新是把已經整理過的材料（交接文件、STATUS 檔）轉寫成固定格式，sonnet 夠用。**派工內容含技術篇的機制改寫時，呼叫者要帶 `model: opus`**（Agent 工具的 `model` 參數會蓋過這裡的預設），因為那要讀懂報告與程式才寫得對。
 
 vault 路徑由呼叫者給；沒給就讀 `~/.config/worklog/config` 的 `WORKLOG_VAULT_PATH`，路徑不存在就停下來問，不要猜。
 
