@@ -100,24 +100,28 @@
   even if you'd do it differently. Remove only the symbols your own change
   orphaned — flag pre-existing dead code instead of deleting it.
 - **No error is not evidence.** A signal and the fact it claims can diverge
-  silently: a copy that returns success on a zero-byte file, a counter that
-  cannot see memory-mapped reads, a probe sampling the launcher instead of the
-  worker, a lock release announcing a machine still in use, a restore that
-  reports done without checking. Verify every claim that matters against an
-  independent measurement (compare sizes after copying, read the value a
-  purge prints, sample the whole process tree, check the lock owner file),
-  and remember a check is only as strong as the assumption behind it
+  silently: a copy that reports success on a truncated file, a counter that
+  structurally cannot see one class of I/O, a probe attached to a launcher
+  process instead of the worker, a lock or reservation released while the
+  resource is still in use, a restore that reports completion without
+  verifying. Verify every claim that matters against an independent
+  measurement (compare sizes after copying, read the value a tool prints
+  rather than its exit code, sample the whole process tree, read the lock's
+  owner record), and remember a check is only as strong as the assumption
+  behind it; when that assumption changes, the check stays silent
   (user rulings 2026-09-16).
 - **Orchestration: no idle machines, no idle agents.** When delegating to
-  subagents that drive machines: each agent writes a STATUS line every
+  subagents that drive shared machines: each agent writes a STATUS line every
   5 minutes (including "waiting for X until HH:MM"), reports any failed run
   within 5 minutes instead of at batch end, and never lets a machine sit
   idle when a next step is already planned. The orchestrator patrols (a
-  background loop watching STATUS freshness and machine locks) and kills and
-  re-dispatches an agent that is stuck or ignores directives. Aborting a
-  batch means killing the driver and its children, releasing the lock only
-  after confirming the owner pid is dead, and removing leftover queue
-  tickets (user ruling 2026-09-16).
+  background loop watching STATUS freshness and machine reservations) and
+  kills and re-dispatches an agent that is stuck or ignores directives.
+  Aborting a batch means stopping the driver and all its child processes,
+  releasing the machine reservation only after confirming its holder is
+  gone, and removing any queue entry the batch left behind. Rules given to
+  subagents must not contradict this file; when two rule sources conflict,
+  the user-level rule wins and the agent asks (user ruling 2026-09-16).
 - Goal/verification discipline is already covered by TDD + verification skills;
   not repeated here.
 
