@@ -4,40 +4,39 @@
 injects this file, so these lines cost no context.
 - Every session and every subagent except the built-in Explore and Plan loads
   this file; keep it under 200 lines (tests/test_claude_assets.sh checks).
+- Goal/verification discipline is covered by the TDD and verification skills;
+  it is deliberately not repeated here.
 - Git Conventions below carries every normative commit rule. The full spec in
   rules/conventional-commits.md is path-scoped, so it no longer loads into
   every session. Never @import it here: imports expand at launch. -->
-
 
 ## Communication
 - Always respond in Traditional Chinese (繁體中文), written as natural Taiwan
   Mandarin — like a person from Taiwan wrote it, not a translation.
 - **Full rules live in `~/.claude/output-styles/tw-native.md`** (the `tw-native`
-  output style, selected globally). That file is authoritative for word choice,
-  banned metaphors, invented abbreviations, AI boilerplate, punctuation and
-  reply structure. Edit tone rules there, not here.
-- **Subagents load this file but never an output style.** A subagent runs its
-  own system prompt, so `tw-native` does not reach it; every subagent except the
-  built-in Explore and Plan does load the CLAUDE.md hierarchy. The baseline
-  below is therefore what travels with delegated work. Before producing more
-  than a couple of paragraphs of Chinese — a report, an issue comment, a
-  document — read the output style file and follow it in full. Explore and Plan
-  load neither, so state the language requirement in the delegation prompt when
-  their text will be quoted rather than rewritten.
+  output style, selected globally), authoritative for word choice, banned
+  metaphors, invented abbreviations, AI boilerplate, punctuation and reply
+  structure. Edit tone rules there, not here.
+- **Subagents load this file but never an output style**, so the baseline
+  below is what travels with delegated work. Before producing more than a
+  couple of paragraphs of Chinese — a report, an issue comment, a document —
+  read the output style file and follow it in full. The built-in Explore and
+  Plan load neither, so state the language requirement in the delegation
+  prompt when their text will be quoted rather than rewritten.
 - **Language-policy review of Chinese prose goes to the `tw-docs-reviewer`
-  subagent** (`~/.claude/agents/tw-docs-reviewer.md`, deployed by env-setup;
-  frontmatter pins `model: sonnet`, `effort: low`). Dispatch it with
+  subagent** (`~/.claude/agents/tw-docs-reviewer.md`; its frontmatter pins
+  `model: sonnet`, `effort: low`, so never pass the Agent tool's `model`
+  parameter on that call: it beats the frontmatter). Dispatch it with
   `subagent_type: tw-docs-reviewer` for every Chinese text that will be
   published: Markdown files, reports, READMEs, MR/PR descriptions, issue
-  bodies and issue comments (write the text to a file first, review, then
-  push or post; re-review after edits). English text is out of scope. An
+  bodies and issue comments. Write the text to a file first, review, then
+  push or post; re-review after edits. English text is out of scope. An
   orchestrator passes this rule on to every subagent it spawns (user ruling
-  2026-09-16), and do not pass a `model` override on
-  that call (the Agent tool's `model` parameter beats the frontmatter). It is a
-  wording fixer only: fact checking, if needed, is a separate agent at normal
-  effort. Every other subagent keeps the session's default model and effort
-  (user ruling 2026-08-26). There is no per-subagent switch for extended
-  thinking; `effort: low` is the only lever, so do not promise "thinking off".
+  2026-09-16). It is a wording fixer only: fact checking, if needed, is a
+  separate agent at normal effort. Every other subagent keeps the session's
+  default model and effort (user ruling 2026-08-26). There is no per-subagent
+  switch for extended thinking; `effort: low` is the only lever, so do not
+  promise "thinking off".
 - Baseline, in force everywhere:
   - Taiwan terms, never mainland-China terms: 影片 not 視頻, 品質 not 質量,
     資訊 not 信息, 軟體 not 軟件, 網路 not 網絡, 水準 not 水平, 預設 not 默認,
@@ -87,19 +86,18 @@ injects this file, so these lines cost no context.
   concise summary of what was done and how it was verified.
 - **Ask vs. decide — split by level.** Requirement-level ambiguity (what to
   build, scope, security-relevant behavior, anything destructive or hard to
-  reverse) → ask before proceeding. Implementation-level choices (which library, pattern, code
-  structure) → decide autonomously following mainstream conventions, and
-  surface the assumption by stating it where the reader will look (commit
-  body, PR description, final summary) — state it after deciding rather than
-  asking first.
+  reverse) → ask before proceeding. Implementation-level choices (which
+  library, pattern, code structure) → decide autonomously following
+  mainstream conventions, then state the assumption where the reader will
+  look (commit body, PR description, final summary) instead of asking first.
 - **Search before building.** Before adding a dependency, designing a
   non-trivial component, or when stuck on a problem that smells already
   solved: check how mainstream open-source projects and Google's engineering
   guides handle it. Prefer a well-maintained package (actively maintained,
   widely adopted, license-compatible) over hand-rolling anything non-trivial;
   hand-roll only utilities so small and edge-case-free that a dependency
-  costs more than it saves. When outside practice shaped a decision, cite the source in one
-  line of the commit/PR body.
+  costs more than it saves. When outside practice shaped a decision, cite the
+  source in one line of the commit/PR body.
 - **YAGNI governs scale.** Mainstream practice informs the approach;
   simplicity decides how much of it to adopt — the minimal subset that
   solves the stated problem. No speculative features, no abstractions for
@@ -131,8 +129,6 @@ injects this file, so these lines cost no context.
   gone, and removing any queue entry the batch left behind. Rules given to
   subagents must not contradict this file; when two rule sources conflict,
   the user-level rule wins and the agent asks (user ruling 2026-09-16).
-- Goal/verification discipline is already covered by TDD + verification skills;
-  not repeated here.
 
 ## Hard rules — never do these without an explicit user request
 - Do NOT use `--no-verify` to bypass pre-commit / commit-msg hooks
@@ -145,8 +141,8 @@ injects this file, so these lines cost no context.
   settings (protected branches, squash defaults, merge gates, runners), tag a
   release, or promote develop into main without the user's explicit go for
   that specific action. Daily feature branches and MRs targeting develop are
-  autonomous; merging them is not (user ruling 2026-09-16; three tiers: autonomous / needs
-  explicit go / never)
+  autonomous; merging them is not (user ruling 2026-09-16; three tiers:
+  autonomous / needs explicit go / never)
 
 ## New repositories
 - When creating a repo, read and follow "Project layout for a new repo" in
