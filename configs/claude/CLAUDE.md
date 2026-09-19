@@ -150,7 +150,7 @@ injects this file, so these lines cost no context.
 
 ## Git Conventions
 
-[Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
+Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
 the list below is the whole rule set. `~/.claude/rules/conventional-commits.md`
 adds the type table, examples and sources but loads by itself only for commit
 tooling files (commitlint, commit and PR/MR templates): read it by path when a
