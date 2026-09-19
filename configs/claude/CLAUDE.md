@@ -139,27 +139,9 @@
   autonomous; merging them is not (user ruling 2026-09-16; three tiers: autonomous / needs
   explicit go / never)
 
-## Project layout for a new repo (user ruling 2026-09-16)
-- Entry point is `CLAUDE.md` at the repo root (not `AGENTS.md`): the facts
-  every session needs on day one plus an index of where the detailed rules
-  live. Keep it under ~200 lines; detail goes to the files below.
-- `intent.md`: what the project pursues, the trade-off order, non-negotiable
-  constraints, what is out of scope. Only the user changes the order or the
-  constraints. No procedure here.
-- `docs/development/measurement-rules.md` (or the equivalent process-rules
-  file): what makes a number or a result formal, request shapes, metric
-  definitions, how quality is judged, where reports go.
-- `docs/development/decisions.md`: one ruling per line with date and source;
-  reversed rows are annotated, not deleted; sources are links.
-- `docs/reports/TEMPLATE.md` for every report: machine description (never an
-  IP), driver/toolchain versions, commit, date, issue, matrix/case, repeats,
-  and a column legend under every table.
-- Versioned files never carry absolute paths, user accounts or intranet
-  addresses. Machine facts (ssh aliases, drive letters, paths, quirks) live
-  in `CLAUDE.local.md` plus `.claude/local/<machine>.md`, both gitignored
-  (`.claude/*` except `settings.json`). Guard the rule with a test that scans
-  tracked docs for absolute paths, and one that checks submodule push URLs
-  are disabled when the code must not leave the intranet.
+## New repositories
+- When creating a repo, read and follow "Project layout for a new repo" in
+  `~/.claude/commands/init-rules.md` (user ruling 2026-09-16).
 
 ## Git Conventions
 
