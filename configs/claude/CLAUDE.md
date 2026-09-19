@@ -145,15 +145,14 @@ injects this file, so these lines cost no context.
   autonomous / needs explicit go / never)
 
 ## Repository documents (user ruling 2026-09-16)
-- When creating a repo, read and follow "Project layout for a new repo" in
-  `~/.claude/commands/init-rules.md` for the scaffolding.
-- In every repo: versioned files never carry absolute paths, user accounts or
-  intranet addresses (machine facts live in `CLAUDE.local.md` and
-  `.claude/local/<machine>.md`); only the user changes `intent.md`'s trade-off
-  order or constraints; `decisions.md` rows that get reversed are annotated,
-  not deleted; every report states the machine by description (never an IP)
-  and carries a column legend under every table; keep the root instruction
-  file under ~200 lines.
+- New repo: scaffold per "Project layout for a new repo" in
+  `~/.claude/commands/init-rules.md`.
+- Every repo: versioned files carry no absolute paths, user accounts or
+  intranet addresses (machine facts go to `CLAUDE.local.md` and
+  `.claude/local/<machine>.md`); only the user changes `intent.md`'s order or
+  constraints; reversed `decisions.md` rows are annotated, not deleted;
+  reports name the machine by description (never an IP) and put a column
+  legend under every table; root instruction file stays under ~200 lines.
 
 ## Git Conventions
 
@@ -165,11 +164,10 @@ does: read it by path when a case is unclear.
 
 - `<type>(<scope>): <description>`, optional `!` before the colon; a blank
   line before the body and before the footers
-- Types: `feat` new user-facing feature (minor bump), `fix` bug fix (patch),
-  `docs` docs only, `style` formatting with no logic change, `refactor`
-  neither fix nor feature, `perf`, `test`, `build` build system or
-  dependencies, `ci`, `chore` routine maintenance, `revert` (body:
-  `Reverts: <sha>`); a breaking change bumps major
+- Types: `feat` user-facing feature (minor), `fix` bug fix (patch), `docs`,
+  `style` formatting only, `refactor` neither fix nor feature, `perf`, `test`,
+  `build` build system or deps, `ci`, `chore` routine maintenance, `revert`
+  (body: `Reverts: <sha>`); a breaking change bumps major
 - Scope: optional lowercase noun for the affected area, from a small stable
   per-project set; omit it when cross-cutting or already clear
 - Subject: lowercase, imperative, no trailing period; target ≤ 50 chars, hard
