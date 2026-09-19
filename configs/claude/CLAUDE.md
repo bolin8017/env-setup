@@ -144,22 +144,32 @@ injects this file, so these lines cost no context.
   autonomous; merging them is not (user ruling 2026-09-16; three tiers:
   autonomous / needs explicit go / never)
 
-## New repositories
+## Repository documents (user ruling 2026-09-16)
 - When creating a repo, read and follow "Project layout for a new repo" in
-  `~/.claude/commands/init-rules.md` (user ruling 2026-09-16).
+  `~/.claude/commands/init-rules.md` for the scaffolding.
+- In every repo: versioned files never carry absolute paths, user accounts or
+  intranet addresses (machine facts live in `CLAUDE.local.md` and
+  `.claude/local/<machine>.md`); only the user changes `intent.md`'s trade-off
+  order or constraints; `decisions.md` rows that get reversed are annotated,
+  not deleted; every report states the machine by description (never an IP)
+  and carries a column legend under every table; keep the root instruction
+  file under ~200 lines.
 
 ## Git Conventions
 
 Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
 the list below is the whole rule set. `~/.claude/rules/conventional-commits.md`
-adds the type table, examples and sources but loads by itself only for commit
-tooling files (commitlint, commit and PR/MR templates): read it by path when a
-case is unclear.
+adds examples and sources but loads by itself only when commit tooling files
+are read (commitlint, commit and PR/MR templates), which a normal commit never
+does: read it by path when a case is unclear.
 
 - `<type>(<scope>): <description>`, optional `!` before the colon; a blank
   line before the body and before the footers
-- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`,
-  `ci`, `chore`, `revert` (body: `Reverts: <sha>`)
+- Types: `feat` new user-facing feature (minor bump), `fix` bug fix (patch),
+  `docs` docs only, `style` formatting with no logic change, `refactor`
+  neither fix nor feature, `perf`, `test`, `build` build system or
+  dependencies, `ci`, `chore` routine maintenance, `revert` (body:
+  `Reverts: <sha>`); a breaking change bumps major
 - Scope: optional lowercase noun for the affected area, from a small stable
   per-project set; omit it when cross-cutting or already clear
 - Subject: lowercase, imperative, no trailing period; target ≤ 50 chars, hard
