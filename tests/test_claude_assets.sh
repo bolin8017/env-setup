@@ -144,6 +144,33 @@ shopt -u nullglob
 assert_true $? "at least one output style is shipped"
 
 # =============================================================================
+suite "context budget"
+# =============================================================================
+
+# CLAUDE.md loads into every session and every subagent except the built-in
+# Explore and Plan; the official guidance keeps a memory file under 200 lines.
+_claude_md_lines=$(wc -l < "$CLAUDE_DIR/CLAUDE.md")
+[[ $_claude_md_lines -lt 200 ]]
+assert_true $? "CLAUDE.md stays under 200 lines (has ${_claude_md_lines})"
+
+# A rule without paths: frontmatter also loads into every session and
+# subagent. Always-needed text belongs in CLAUDE.md, where its cost shows.
+shopt -s nullglob
+for f in "$CLAUDE_DIR/rules"/*.md; do
+    [[ "$(head -n 1 "$f" | tr -d '\r')" == "---" ]] &&
+        tr -d '\r' < "$f" | awk '/^---$/{n++; next} n==1 && /^paths:/{found=1} n>=2{exit} END{exit !found}'
+    assert_true $? "rule $(basename "$f") declares paths: frontmatter"
+done
+shopt -u nullglob
+
+# CLAUDE.md sends Claude to other deployed files by path; each must ship.
+# shellcheck disable=SC2088  # the ~ is a literal in the grep pattern, not a path
+while IFS= read -r ref; do
+    [[ -f "$CLAUDE_DIR/${ref#*/.claude/}" ]]
+    assert_true $? "CLAUDE.md pointer $ref is shipped in configs/claude/"
+done < <(grep -oE '~/\.claude/[A-Za-z0-9._/-]+\.md' "$CLAUDE_DIR/CLAUDE.md" | sort -u)
+
+# =============================================================================
 suite "skills tree shape"
 # =============================================================================
 

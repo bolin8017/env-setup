@@ -1,5 +1,14 @@
 # Global Claude Code Guidelines
 
+<!-- Maintainer notes. Claude Code strips block-level HTML comments before it
+injects this file, so these lines cost no context.
+- Every session and every subagent except the built-in Explore and Plan loads
+  this file; keep it under 200 lines (tests/test_claude_assets.sh checks).
+- Git Conventions below carries every normative commit rule. The full spec in
+  rules/conventional-commits.md is path-scoped, so it no longer loads into
+  every session. Never @import it here: imports expand at launch. -->
+
+
 ## Communication
 - Always respond in Traditional Chinese (繁體中文), written as natural Taiwan
   Mandarin — like a person from Taiwan wrote it, not a translation.
@@ -145,18 +154,31 @@
 
 ## Git Conventions
 
-Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Full
-spec, examples, industry references, and PR sizing rules live in
-`~/.claude/rules/conventional-commits.md` — already auto-loaded as a rule, so
-no `@import` here (that would put the same content into context twice).
+[Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
+the list below is the whole rule set. `~/.claude/rules/conventional-commits.md`
+adds the type table, examples and sources but loads by itself only for commit
+tooling files (commitlint, commit and PR/MR templates): read it by path when a
+case is unclear.
 
-**TL;DR:**
-- Format: `<type>(<scope>): <description>` — lowercase, imperative, no period
-- Subject: target ≤ 50 chars, hard cap 72 chars (Tim Pope 50/72 rule)
-- Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
-- Body explains **why**, not what — the diff already shows what
-- Breaking changes: `feat!:` prefix or `BREAKING CHANGE:` footer
+- `<type>(<scope>): <description>`, optional `!` before the colon; a blank
+  line before the body and before the footers
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`,
+  `ci`, `chore`, `revert` (body: `Reverts: <sha>`)
+- Scope: optional lowercase noun for the affected area, from a small stable
+  per-project set; omit it when cross-cutting or already clear
+- Subject: lowercase, imperative, no trailing period; target ≤ 50 chars, hard
+  cap 72 chars (Tim Pope 50/72 rule)
+- Body explains **why**, not what (the diff shows what): the problem, why
+  this approach, the trade-offs. Wrap at ~72; skip it only for truly obvious
+  changes
+- Footers: `Closes #123`, `Refs #456`, `Fixes #789`; hyphenated tokens
+  (`Reviewed-by:`). Breaking changes: `feat!:` prefix or an uppercase
+  `BREAKING CHANGE:` footer
 - One logical change per commit; each commit should leave the tree green if at all possible (atomic commits)
+- PR size: ~100 lines comfortable, ~400 needs extensive review, ~1000 usually
+  too large; err small. One concern per PR. Keep together: code and its
+  tests, small incidental cleanups. Keep separate: refactors vs. features or
+  fixes, large test-framework additions, code vs. the config that uses it
 - For non-trivial commits, prefer the `/commit-commands:commit` slash command
 
 ## GitHub workflow

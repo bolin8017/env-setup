@@ -78,6 +78,35 @@ Describe 'output styles carry frontmatter' {
     }
 }
 
+Describe 'context budget' {
+    # CLAUDE.md loads into every session and every subagent except the built-in
+    # Explore and Plan; the official guidance keeps a memory file under 200 lines.
+    It 'CLAUDE.md stays under 200 lines' {
+        @(Get-Content (Join-Path $script:ClaudeDir 'CLAUDE.md')).Count | Should -BeLessThan 200
+    }
+    It 'every rule declares paths: frontmatter' {
+        # A rule without paths: also loads into every session and subagent.
+        # Always-needed text belongs in CLAUDE.md, where its cost shows.
+        $files = @(Get-ChildItem (Join-Path $script:ClaudeDir 'rules') -Filter *.md -ErrorAction Ignore)
+        $files | Should -Not -BeNullOrEmpty
+        foreach ($f in $files) {
+            $lines = Get-Content $f.FullName
+            $lines[0] | Should -Be '---' -Because "$($f.Name) must start with YAML frontmatter"
+            $end = ($lines | Select-Object -Skip 1 | Select-String -Pattern '^---$' | Select-Object -First 1).LineNumber
+            $end | Should -Not -BeNullOrEmpty
+            ($lines[1..$end] -join "`n") | Should -Match '(?m)^paths:' -Because "$($f.Name) would otherwise load into every session"
+        }
+    }
+    It 'every ~/.claude file CLAUDE.md points to is shipped' {
+        $refs = @(Select-String -Path (Join-Path $script:ClaudeDir 'CLAUDE.md') -Pattern '~/\.claude/[A-Za-z0-9._/-]+\.md' -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { $_.Value } | Sort-Object -Unique)
+        $refs | Should -Not -BeNullOrEmpty
+        foreach ($r in $refs) {
+            Join-Path $script:ClaudeDir ($r -replace '^~/\.claude/', '') | Should -Exist -Because "CLAUDE.md sends Claude to $r"
+        }
+    }
+}
+
 Describe 'skills tree shape' {
     It 'every skill directory contains SKILL.md' {
         $skillsRoot = Join-Path $script:ClaudeDir 'skills'

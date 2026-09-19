@@ -239,7 +239,7 @@ claude_code:
   sync_global_md: true
 
   # Deploy ~/.claude/rules/*.md from configs/claude/rules/
-  # (full Conventional Commits spec, etc.)
+  # (path-scoped rules such as the full Conventional Commits spec)
   sync_rules: true
 
   # Deploy ~/.claude/commands/*.md from configs/claude/commands/
