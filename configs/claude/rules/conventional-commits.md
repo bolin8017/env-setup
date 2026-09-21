@@ -1,3 +1,13 @@
+---
+paths:
+  - "**/.commitlintrc*"
+  - "**/commitlint.config.*"
+  - "**/.gitmessage"
+  - "**/.github/pull_request_template.md"
+  - "**/.github/PULL_REQUEST_TEMPLATE/**"
+  - "**/.gitlab/merge_request_templates/**"
+---
+
 # Conventional Commits — Full Specification
 
 Authoritative references — verify against these if uncertain:

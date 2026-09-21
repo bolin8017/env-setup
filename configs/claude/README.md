@@ -24,8 +24,10 @@ commands, skills) are never touched.
 
 ## Adding an asset
 
-- **Rule** — drop `rules/<topic>.md`. No `paths:` frontmatter = loaded into
-  every session at start; keep those rare and short. Prefer `paths:` scoping.
+- **Rule** — drop `rules/<topic>.md` with `paths:` frontmatter (the asset
+  tests require it). A rule without `paths:` loads into every session and
+  every subagent; text that must always load belongs in `CLAUDE.md`, where
+  its cost stays visible.
 - **Command** — drop `commands/<name>.md` with frontmatter
   (`description:` required — it is the `/help` text; `argument-hint:` if it
   takes arguments).
@@ -73,12 +75,28 @@ update regenerates the cache. Remove it once the plugin declares
 check: JSON assets parse; every `settings_merge_keys` entry exists in
 `settings.json`; every `enabledPlugins` entry's `@marketplace` suffix appears
 in `claude_code.marketplaces` (fresh-install resolvability); commands and
-skills carry frontmatter with a description; every skill dir has a `SKILL.md`.
+skills carry frontmatter with a description; every skill dir has a `SKILL.md`;
+`CLAUDE.md` stays under 200 lines; every rule declares `paths:`; every
+`~/.claude/...` file `CLAUDE.md` points to is shipped here.
 
 ## Context-budget conventions
 
-- `~/.claude/rules/*.md` without `paths:` frontmatter loads in EVERY session —
-  the full conventional-commits spec already costs ~90 lines per session;
-  think twice before adding more unconditional rules.
-- Don't `@import` a rule file from `CLAUDE.md`: rules auto-load, so an import
-  duplicates the content in context.
+- Always loaded: `CLAUDE.md` (main session and every subagent except the
+  built-in Explore and Plan) and the output style (main session only). Rules
+  without `paths:` would load everywhere too, so none ship.
+- `rules/conventional-commits.md` is path-scoped: it loads by itself only when
+  Claude reads commit tooling (commitlint config, commit template, PR/MR
+  templates). `CLAUDE.md`'s Git Conventions section carries every normative
+  commit rule and points to the file by path for the type table, examples and
+  sources. It stays a rule rather than becoming a skill because sync is
+  additive: a skill would leave the old unscoped copy loading on every
+  machine and profile until someone deleted it, while a changed rule file
+  replaces it through the normal sync (same prompt and backup as any
+  updated asset).
+- Sections needed only for one kind of task live with that task, behind a
+  one-line pointer in `CLAUDE.md`: the new-repo layout is in
+  `commands/init-rules.md`.
+- Maintainer notes in `CLAUDE.md` go in block-level HTML comments, which
+  Claude Code strips before injecting the file.
+- Don't `@import` from `CLAUDE.md`: imports expand at launch, so they save
+  nothing.
