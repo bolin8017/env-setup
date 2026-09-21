@@ -18,8 +18,12 @@
 - **Language-policy review of Chinese prose goes to the `tw-docs-reviewer`
   subagent** (`~/.claude/agents/tw-docs-reviewer.md`, deployed by env-setup;
   frontmatter pins `model: sonnet`, `effort: low`). Dispatch it with
-  `subagent_type: tw-docs-reviewer` for every Markdown file, report, README or
-  issue-comment draft after writing it, and do not pass a `model` override on
+  `subagent_type: tw-docs-reviewer` for every Chinese text that will be
+  published: Markdown files, reports, READMEs, MR/PR descriptions, issue
+  bodies and issue comments (write the text to a file first, review, then
+  push or post; re-review after edits). English text is out of scope. An
+  orchestrator passes this rule on to every subagent it spawns (user ruling
+  2026-09-16), and do not pass a `model` override on
   that call (the Agent tool's `model` parameter beats the frontmatter). It is a
   wording fixer only: fact checking, if needed, is a separate agent at normal
   effort. Every other subagent keeps the session's default model and effort
@@ -95,6 +99,29 @@
   refactor or reformat adjacent code that isn't broken; match existing style
   even if you'd do it differently. Remove only the symbols your own change
   orphaned — flag pre-existing dead code instead of deleting it.
+- **No error is not evidence.** A signal and the fact it claims can diverge
+  silently: a copy that reports success on a truncated file, a counter that
+  structurally cannot see one class of I/O, a probe attached to a launcher
+  process instead of the worker, a lock or reservation released while the
+  resource is still in use, a restore that reports completion without
+  verifying. Verify every claim that matters against an independent
+  measurement (compare sizes after copying, read the value a tool prints
+  rather than its exit code, sample the whole process tree, read the lock's
+  owner record), and remember a check is only as strong as the assumption
+  behind it; when that assumption changes, the check stays silent
+  (user rulings 2026-09-16).
+- **Orchestration: no idle machines, no idle agents.** When delegating to
+  subagents that drive shared machines: each agent writes a STATUS line every
+  5 minutes (including "waiting for X until HH:MM"), reports any failed run
+  within 5 minutes instead of at batch end, and never lets a machine sit
+  idle when a next step is already planned. The orchestrator patrols (a
+  background loop watching STATUS freshness and machine reservations) and
+  kills and re-dispatches an agent that is stuck or ignores directives.
+  Aborting a batch means stopping the driver and all its child processes,
+  releasing the machine reservation only after confirming its holder is
+  gone, and removing any queue entry the batch left behind. Rules given to
+  subagents must not contradict this file; when two rule sources conflict,
+  the user-level rule wins and the agent asks (user ruling 2026-09-16).
 - Goal/verification discipline is already covered by TDD + verification skills;
   not repeated here.
 
@@ -105,6 +132,34 @@
 - Do NOT stage or commit files containing secrets: `.env`, `*.pem`, `credentials.json`, anything matching `*_token*` / `*_secret*` / `*_key*`
 - Do NOT add a `Co-Authored-By: Claude` trailer to commits
 - Do NOT push directly to `main` / `master` — always open a PR
+- Do NOT merge an MR/PR into a protected branch, change GitLab/GitHub project
+  settings (protected branches, squash defaults, merge gates, runners), tag a
+  release, or promote develop into main without the user's explicit go for
+  that specific action. Daily feature branches and MRs targeting develop are
+  autonomous; merging them is not (user ruling 2026-09-16; three tiers: autonomous / needs
+  explicit go / never)
+
+## Project layout for a new repo (user ruling 2026-09-16)
+- Entry point is `CLAUDE.md` at the repo root (not `AGENTS.md`): the facts
+  every session needs on day one plus an index of where the detailed rules
+  live. Keep it under ~200 lines; detail goes to the files below.
+- `intent.md`: what the project pursues, the trade-off order, non-negotiable
+  constraints, what is out of scope. Only the user changes the order or the
+  constraints. No procedure here.
+- `docs/development/measurement-rules.md` (or the equivalent process-rules
+  file): what makes a number or a result formal, request shapes, metric
+  definitions, how quality is judged, where reports go.
+- `docs/development/decisions.md`: one ruling per line with date and source;
+  reversed rows are annotated, not deleted; sources are links.
+- `docs/reports/TEMPLATE.md` for every report: machine description (never an
+  IP), driver/toolchain versions, commit, date, issue, matrix/case, repeats,
+  and a column legend under every table.
+- Versioned files never carry absolute paths, user accounts or intranet
+  addresses. Machine facts (ssh aliases, drive letters, paths, quirks) live
+  in `CLAUDE.local.md` plus `.claude/local/<machine>.md`, both gitignored
+  (`.claude/*` except `settings.json`). Guard the rule with a test that scans
+  tracked docs for absolute paths, and one that checks submodule push URLs
+  are disabled when the code must not leave the intranet.
 
 ## Git Conventions
 
