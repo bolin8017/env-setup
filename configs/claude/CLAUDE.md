@@ -33,10 +33,10 @@ injects this file, so these lines cost no context.
   push or post; re-review after edits. English text is out of scope. An
   orchestrator passes this rule on to every subagent it spawns (user ruling
   2026-09-16). It is a wording fixer only: fact checking, if needed, is a
-  separate agent at normal effort. Every other subagent keeps the session's
-  default model and effort (user ruling 2026-08-26). There is no per-subagent
-  switch for extended thinking; `effort: low` is the only lever, so do not
-  promise "thinking off".
+  separate agent at normal effort. Other subagents get a model by difficulty
+  (user ruling 2026-09-23): `haiku` mechanical search/edits, `sonnet` docs and
+  well-specified code, session model for design, debugging, verification and
+  whenever unsure. `effort: low` is the only thinking lever (no "thinking off").
 - Baseline, in force everywhere:
   - Taiwan terms, never mainland-China terms: 影片 not 視頻, 品質 not 質量,
     資訊 not 信息, 軟體 not 軟件, 網路 not 網絡, 水準 not 水平, 預設 not 默認,
