@@ -261,6 +261,11 @@ claude_code:
   # the style once per profile with `/output-style <name>`.
   sync_output_styles: true
 
+  # Deploy ~/.claude/guides/*.md from configs/claude/guides/ (detail split out
+  # of CLAUDE.md to keep it under 200 lines; loaded only when CLAUDE.md's index
+  # table points a session at one).
+  sync_guides: true
+
   # Alternate Claude Code account profiles. Each name gets its own config dir
   # ~/.claude-<name> (credentials, settings, history, plugins all isolated via
   # the official CLAUDE_CONFIG_DIR mechanism) with the same file-based harness

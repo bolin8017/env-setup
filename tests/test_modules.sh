@@ -282,6 +282,15 @@ _out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_output_styl
 assert_contains "$_out" "sync_output_styles disabled" "output styles: flag off skips the step"
 CFG_CLAUDE_CODE_SYNC_OUTPUT_STYLES="true"
 
+# Guides follow the same asset list, flag included.
+CFG_CLAUDE_CODE_SYNC_GUIDES="true"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_guides 2>&1)"
+assert_contains "$_out" "profile_home/.claude/guides/delegation.md" "guides: deploy under ~/.claude/guides"
+CFG_CLAUDE_CODE_SYNC_GUIDES="false"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_guides 2>&1)"
+assert_contains "$_out" "sync_guides disabled" "guides: flag off skips the step"
+CFG_CLAUDE_CODE_SYNC_GUIDES="true"
+
 # Invalid names (path separators, dot-dot, empty) are rejected, not deployed
 CFG_CLAUDE_CODE_PROFILES_COUNT=2
 CFG_CLAUDE_CODE_PROFILES_0="team/alpha"

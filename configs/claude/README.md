@@ -16,6 +16,7 @@ deployed.
 | `agents/*.md` | `~/.claude/agents/` | `claude_code.sync_agents` | additive per-file copy |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | `claude_code.sync_skills` | additive per-dir copy |
 | `output-styles/*.md` | `~/.claude/output-styles/` | `claude_code.sync_output_styles` | additive per-file copy |
+| `guides/*.md` | `~/.claude/guides/` | `claude_code.sync_guides` | additive per-file copy |
 | `settings.json` | `~/.claude/settings.json` | (whitelist) | jq/PS merge of `settings_merge_keys` only; other keys preserved |
 | `mcp-servers.json` | `~/.claude.json` `mcpServers` | `claude_code.sync_mcp_servers` | merge; no-op while the source declares no servers |
 
@@ -45,6 +46,10 @@ commands, skills) are never touched.
   `settings.json` (already whitelisted); profiles pick it once with
   `/output-style <name>`. Keep the repo copy free of project-specific examples:
   this repo is public.
+- **Guide** — drop `guides/<topic>.md` for detail `CLAUDE.md` needs only in
+  some situations, and add a row to `CLAUDE.md`'s index table naming the
+  situation and the `~/.claude/guides/<topic>.md` path in backticks (not an
+  `@` import: imports expand at launch). Guides cost no context until read.
 
 Then re-run `./setup.sh --modules 08-claude-code` (or `./setup.ps1 -Modules
 08-ClaudeCode`), or just wait for shell-startup self-update to roll it out.

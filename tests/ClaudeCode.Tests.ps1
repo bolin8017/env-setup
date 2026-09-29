@@ -21,6 +21,7 @@ claude_code:
   sync_agents: true
   sync_skills: true
   sync_output_styles: true
+  sync_guides: true
   settings_merge_keys:
     - env
   register_marketplaces: true
@@ -62,6 +63,21 @@ claude_code:
         Import-Config -Path $f
         Install-ClaudeCode
         Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'output-styles/*' }
+    }
+    It 'deploys guides when sync_guides is true' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'guides/delegation.md' }
+    }
+    It 'skips guides when sync_guides is false' {
+        $yaml = @'
+claude_code:
+  enabled: true
+  sync_guides: false
+'@
+        $f = Join-Path $TestDrive 'c4.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'guides/*' }
     }
     It 'deploys skills when sync_skills is true' {
         Install-ClaudeCode

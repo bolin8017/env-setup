@@ -155,6 +155,8 @@ function Sync-ClaudeAssets {
     # settings.json outputStyle); subagents never load them, which is why
     # CLAUDE.md keeps a baseline subset.
     if (Test-CfgEnabled 'claude_code.sync_output_styles') { Sync-ClaudeDir -SubDir 'output-styles' -Root $Root }
+    # Guides load on demand: CLAUDE.md's index table names each one by path.
+    if (Test-CfgEnabled 'claude_code.sync_guides') { Sync-ClaudeDir -SubDir 'guides' -Root $Root }
 }
 
 function Sync-ClaudeProfiles {
@@ -461,7 +463,7 @@ function Uninstall-ClaudeAssets {
     param([Parameter(Mandatory)][string]$Root)
     Remove-ManagedFile -Dest (Join-Path $Root 'CLAUDE.md') `
         -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
-    foreach ($sub in @('rules', 'commands', 'agents', 'output-styles')) {
+    foreach ($sub in @('rules', 'commands', 'agents', 'output-styles', 'guides')) {
         $srcDir = Join-Path $script:ClaudeCfg $sub
         if (-not (Test-Path $srcDir)) { continue }
         Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {

@@ -144,6 +144,26 @@ shopt -u nullglob
 assert_true $? "at least one output style is shipped"
 
 # =============================================================================
+suite "guides reachable from CLAUDE.md"
+# =============================================================================
+
+# A guide loads only when CLAUDE.md's index names it, so an unlisted guide is
+# dead weight and a listed path with no file sends a session nowhere.
+shopt -s nullglob
+for f in "$CLAUDE_DIR/guides"/*.md; do
+    grep -qF "\`~/.claude/guides/$(basename "$f")\`" "$CLAUDE_DIR/CLAUDE.md"
+    assert_true $? "guide $(basename "$f") is listed in CLAUDE.md"
+done
+shopt -u nullglob
+while IFS= read -r _g; do
+    [[ -f "$CLAUDE_DIR/guides/$_g" ]]
+    assert_true $? "CLAUDE.md guide path $_g exists"
+done < <(grep -oE '~/\.claude/guides/[A-Za-z0-9_.-]+\.md' "$CLAUDE_DIR/CLAUDE.md" | sed 's#.*/##' | sort -u)
+# An @ import would expand the guide at launch and defeat the split.
+! grep -qE '@~/\.claude/guides/' "$CLAUDE_DIR/CLAUDE.md"
+assert_true $? "CLAUDE.md does not @import guides"
+
+# =============================================================================
 suite "context budget"
 # =============================================================================
 
