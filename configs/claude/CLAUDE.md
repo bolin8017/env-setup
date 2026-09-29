@@ -33,10 +33,7 @@ injects this file, so these lines cost no context.
   push or post; re-review after edits. English text is out of scope. An
   orchestrator passes this rule on to every subagent it spawns (user ruling
   2026-09-16). It is a wording fixer only: fact checking, if needed, is a
-  separate agent at normal effort. Other subagents get a model by difficulty
-  (user ruling 2026-09-23): `haiku` mechanical search/edits, `sonnet` docs and
-  well-specified code, session model for design, debugging, verification and
-  whenever unsure. `effort: low` is the only thinking lever (no "thinking off").
+  separate agent at normal effort.
 - Baseline, in force everywhere:
   - Taiwan terms, never mainland-China terms: 影片 not 視頻, 品質 not 質量,
     資訊 not 信息, 軟體 not 軟件, 網路 not 網絡, 水準 not 水平, 預設 not 默認,
@@ -84,6 +81,14 @@ injects this file, so these lines cost no context.
 - **Autonomous until done.** Once the requirement is clear, carry the task to
   completion without pausing for intermediate confirmation, then return a
   concise summary of what was done and how it was verified.
+  A message with no tool call ends the turn, so never end one with: a
+  summary that announces the next step instead of taking it; an offer to
+  go on "unless you'd prefer otherwise"; a list of decisions none of which
+  blocks the rest; a report just because a milestone is done. Status notes
+  and recommendations go in the same message as the next tool call. Stop
+  only when nothing can move without the user, before a risky step, or when
+  everything is done and checked. A running background command or subagent
+  means not done: wait for its output.
 - **Ask vs. decide — split by level.** Requirement-level ambiguity (what to
   build, scope, security-relevant behavior, anything destructive or hard to
   reverse) → ask before proceeding. Implementation-level choices (which
@@ -117,18 +122,17 @@ injects this file, so these lines cost no context.
   owner record), and remember a check is only as strong as the assumption
   behind it; when that assumption changes, the check stays silent
   (user rulings 2026-09-16).
-- **Orchestration: no idle machines, no idle agents.** When delegating to
-  subagents that drive shared machines: each agent writes a STATUS line every
-  5 minutes (including "waiting for X until HH:MM"), reports any failed run
-  within 5 minutes instead of at batch end, and never lets a machine sit
-  idle when a next step is already planned. The orchestrator patrols (a
-  background loop watching STATUS freshness and machine reservations) and
-  kills and re-dispatches an agent that is stuck or ignores directives.
-  Aborting a batch means stopping the driver and all its child processes,
-  releasing the machine reservation only after confirming its holder is
-  gone, and removing any queue entry the batch left behind. Rules given to
-  subagents must not contradict this file; when two rule sources conflict,
-  the user-level rule wins and the agent asks (user ruling 2026-09-16).
+- **Delegating.** Rules given to subagents must not contradict this file;
+  when two rule sources conflict, the user-level rule wins and the agent
+  asks (user ruling 2026-09-16).
+
+| 要做什麼 | 先讀哪一份 |
+| --- | --- |
+| 派 subagent、選它的 model／effort、寫派工 prompt、主持多 agent 批次、寫 agent 定義檔 | `~/.claude/guides/delegation.md` |
+| 開新 repo，或寫任何會進版控的文件（指令檔、intent.md、decisions.md、報告） | `~/.claude/guides/repo-docs.md` |
+
+New on-demand detail goes into the matching `~/.claude/guides/` file with a
+row here, not back into this file.
 
 ## Hard rules — never do these without an explicit user request
 - Do NOT use `--no-verify` to bypass pre-commit / commit-msg hooks
@@ -143,16 +147,6 @@ injects this file, so these lines cost no context.
   that specific action. Daily feature branches and MRs targeting develop are
   autonomous; merging them is not (user ruling 2026-09-16; three tiers:
   autonomous / needs explicit go / never)
-
-## Repository documents (user ruling 2026-09-16)
-- New repo: scaffold per "Project layout for a new repo" in
-  `~/.claude/commands/init-rules.md`.
-- Every repo: versioned files carry no absolute paths, user accounts or
-  intranet addresses (machine facts go to `CLAUDE.local.md` and
-  `.claude/local/<machine>.md`); only the user changes `intent.md`'s order or
-  constraints; reversed `decisions.md` rows are annotated, not deleted;
-  reports name the machine by description (never an IP) and put a column
-  legend under every table; root instruction file stays under ~200 lines.
 
 ## Git Conventions
 

@@ -260,6 +260,36 @@ _sync_claude_output_styles() {
 }
 
 # =============================================================================
+# _sync_claude_guides — Sync ~/.claude/guides/ from configs/claude/guides/.
+# Guides hold detail split out of CLAUDE.md; they load only when CLAUDE.md's
+# index table sends a session to read one, so they cost no launch context.
+# Additive: existing user-only guides are preserved.
+# =============================================================================
+_sync_claude_guides() {
+    if ! cfg_enabled "claude_code.sync_guides"; then
+        log_info "sync_guides disabled — skipping"
+        return 0
+    fi
+
+    local src_dir="${ENV_SETUP_DIR}/configs/claude/guides"
+    local dest_dir="${1:-${HOME}/.claude}/guides"
+
+    if [[ ! -d "$src_dir" ]]; then
+        log_warn "guides source dir not found: ${src_dir}"
+        return 0
+    fi
+
+    dry_run_mkdir "$dest_dir"
+
+    local f
+    shopt -s nullglob
+    for f in "$src_dir"/*.md; do
+        deploy_config "$f" "${dest_dir}/$(basename "$f")" "guide $(basename "$f")"
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
 # _valid_claude_profile — Profile names become path components (~/.claude-<name>
 # on install, uninstall, and the claude-as alias), so anything path-like would
 # desynchronize those three consumers. Restrict to a safe charset.
@@ -270,7 +300,7 @@ _valid_claude_profile() {
 
 # =============================================================================
 # _sync_claude_assets — Deploy the file-based harness (CLAUDE.md, rules,
-# commands, agents, skills, output styles) into one config root. The single
+# commands, agents, skills, output styles, guides) into one config root. The single
 # authoritative asset list: both the default ~/.claude sync and every profile
 # sync go through here, so a new asset type cannot reach one and miss the
 # other. Each piece self-gates on its claude_code.sync_* flag.
@@ -283,6 +313,7 @@ _sync_claude_assets() {
     _sync_claude_agents "$root"
     _sync_claude_skills "$root"
     _sync_claude_output_styles "$root"
+    _sync_claude_guides "$root"
 }
 
 # =============================================================================
@@ -972,6 +1003,7 @@ _uninstall_claude_assets() {
     for f in "${cdir}/commands"/*.md; do remove_managed_file "${root}/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
     for f in "${cdir}/agents"/*.md;   do remove_managed_file "${root}/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
     for f in "${cdir}/output-styles"/*.md; do remove_managed_file "${root}/output-styles/$(basename "$f")" "$f" "output style $(basename "$f")"; done
+    for f in "${cdir}/guides"/*.md; do remove_managed_file "${root}/guides/$(basename "$f")" "$f" "guide $(basename "$f")"; done
     local skill_dir skill_name rel
     for skill_dir in "${cdir}/skills"/*/; do
         skill_name="$(basename "$skill_dir")"
