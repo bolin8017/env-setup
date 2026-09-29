@@ -189,9 +189,24 @@ pkg_update() {
         dry_run_cmd brew update
     elif is_linux; then
         if sudo_available; then
-            dry_run_cmd sudo apt-get update
+            dry_run_cmd sudo apt-get update && _PKG_APT_INDEX_FRESH=true
         fi
     fi
+}
+
+# =============================================================================
+# _pkg_apt_refresh_once — Refresh the apt index before the first install of
+# the run. A fresh OS image or CI runner ships package lists that point at
+# versions the mirrors have since replaced, so installing from them fails
+# with 404 on any dependency that got an update. Runs at most once per
+# process; a failed refresh is logged and the install is still attempted.
+# =============================================================================
+_PKG_APT_INDEX_FRESH=false
+_pkg_apt_refresh_once() {
+    [[ "$_PKG_APT_INDEX_FRESH" == "true" ]] && return 0
+    _PKG_APT_INDEX_FRESH=true
+    dry_run_cmd sudo apt-get update \
+        || log_warn "apt-get update failed; installing from the existing package index"
 }
 
 # =============================================================================
@@ -212,6 +227,7 @@ pkg_install() {
                 continue
             fi
             if command_exists apt-get; then
+                _pkg_apt_refresh_once
                 dry_run_cmd sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg" \
                     || { log_error "Failed to install ${pkg}"; had_failure=true; }
             elif command_exists dnf; then
