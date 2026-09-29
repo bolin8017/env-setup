@@ -53,6 +53,30 @@ _STUB_INSTALL_RC=1
 pkg_install broken-tool >/dev/null 2>&1
 assert_false $? "any failing package fails the batch"
 
+suite "pkg_install refreshes the apt index once before installing"
+
+# A stale index (fresh image, CI runner) makes apt 404 on dependencies that
+# the mirrors have since replaced; the first install must refresh it first.
+_CALLS=()
+dry_run_cmd() { _CALLS+=("$*"); return 0; }
+_PKG_APT_INDEX_FRESH=false
+pkg_install tool-a >/dev/null 2>&1
+pkg_install tool-b >/dev/null 2>&1
+assert_eq "sudo apt-get update" "${_CALLS[0]}" "apt-get update runs before the first install"
+_updates=0
+for _c in "${_CALLS[@]}"; do [[ "$_c" == "sudo apt-get update" ]] && _updates=$((_updates + 1)); done
+assert_eq "1" "$_updates" "apt-get update runs only once per process"
+assert_eq "3" "${#_CALLS[@]}" "one update plus one install per package"
+
+# A failed refresh must not block the install itself.
+_CALLS=()
+dry_run_cmd() { _CALLS+=("$*"); [[ "$*" == "sudo apt-get update" ]] && return 1; return 0; }
+_PKG_APT_INDEX_FRESH=false
+pkg_install tool-c >/dev/null 2>&1
+assert_true $? "install still succeeds when the refresh fails"
+assert_eq "2" "${#_CALLS[@]}" "install attempted after a failed refresh"
+dry_run_cmd() { return "$_STUB_INSTALL_RC"; }
+
 suite "pkg_remove propagates removal failure"
 
 _STUB_INSTALL_RC=0
