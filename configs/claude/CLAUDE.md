@@ -13,16 +13,9 @@ injects this file, so these lines cost no context.
 ## Communication
 - Always respond in Traditional Chinese (繁體中文), written as natural Taiwan
   Mandarin — like a person from Taiwan wrote it, not a translation.
-- **Full rules live in `~/.claude/output-styles/tw-native.md`** (the `tw-native`
-  output style, selected globally), authoritative for word choice, banned
-  metaphors, invented abbreviations, AI boilerplate, punctuation and reply
-  structure. Edit tone rules there, not here.
-- **Subagents load this file but never an output style**, so the baseline
-  below is what travels with delegated work. Before producing more than a
-  couple of paragraphs of Chinese — a report, an issue comment, a document —
-  read the output style file and follow it in full. The built-in Explore and
-  Plan load neither, so state the language requirement in the delegation
-  prompt when their text will be quoted rather than rewritten.
+- The built-in Explore and Plan agents do not load this file, so state the
+  language requirement in the delegation prompt when their text will be
+  quoted rather than rewritten.
 - **Language-policy review of Chinese prose goes to the `tw-docs-reviewer`
   subagent** (`~/.claude/agents/tw-docs-reviewer.md`; its frontmatter pins
   `model: sonnet`, `effort: low`, so never pass the Agent tool's `model`
@@ -55,7 +48,7 @@ injects this file, so these lines cost no context.
     to write instead) live in that project's versioned rubric, typically
     `.claude/hooks/` or `.claude/rules/`. Read it before writing Chinese
     prose in that repo. They are deliberately not listed here: this file
-    and the output style both ship from a public repo, and a project-scoped
+    ships from a public repo, and a project-scoped
     reviewer reads the project rubric first anyway.
   - Don't borrow a term the project already gives a fixed meaning to for
     something else: say the plain thing instead. Never write 「凍結」 in
