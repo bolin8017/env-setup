@@ -22,5 +22,5 @@
   },
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
-  "outputStyle": "tw-native"
+  "outputStyle": "Concise"
 }
