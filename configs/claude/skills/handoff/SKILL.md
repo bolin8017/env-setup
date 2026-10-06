@@ -1,12 +1,23 @@
 ---
 name: handoff
-description: "Use when the user says the current session should wrap up and a NEW session will continue the work — e.g. 「這個 session 收尾，下個 session 繼續做 X」「這個session準備先到一個段落」. Settles open questions with the user, writes the baton the next session's /pickup reads, and updates the Obsidian notes. Args: --name <line> (required; derived from the work if omitted) [next-session tasks...]."
+description: "Use when the user says the current session should wrap up and a NEW session will continue the work — e.g. 「這個 session 收尾，下個 session 繼續做 X」「這個session準備先到一個段落」「交接給 <session 名稱>」. Settles open questions with the user, then either writes the baton the next session's /pickup reads, or — with --to <session name> — sends the whole handoff straight to an already-open session as a message (no file; that session starts working without /kickoff). Updates the Obsidian notes. Args: [--to <session name>] [--name <line>] [--domain <field>] [next-session tasks...]."
 ---
 
 Wrap up the current session and write a machine-executable baton for the
 next one. The baton is a file, not chat prose — a fresh session cannot read
 this conversation. Its job is that the user never has to repeat, in the
 next session, anything already said in this one.
+
+## Two modes
+
+- **File mode** (no `--to`): write `handoff-<line>.md`; the next session
+  runs `/kickoff --name <line>`. Everything below describes this mode.
+- **Direct mode** (`--to <session name>`): the user has already opened the
+  next session and named it (`claude -n <name>`). Do handoff and kickoff in
+  one go: send the baton to that session as a message and write no baton
+  file. Steps 1, 2, 4 and 5 are unchanged; steps 3 and 6 are replaced by
+  the "Direct mode" section at the end. A bare session name as the only
+  argument (it matches a session `ListAgents` shows) means `--to` it.
 
 ## Where batons live
 
@@ -114,3 +125,67 @@ exactly what makes the next session's `/pickup` take the wrong one.
 Never put secrets or tokens in a baton. Overwrite an existing baton of the
 same line only after folding anything still relevant from it into the new
 one.
+
+## Direct mode (`--to <session name>`)
+
+Replaces steps 3 and 6. The receiving session has none of this
+conversation and will not run `/kickoff` or `/pickup`, so the message has
+to carry what those two would have given it.
+
+D1. **Find the target before composing.** Call `ListAgents` and match
+    `<session name>` exactly. Not listed, or two rows share the name: stop
+    and tell the user what is listed — do not guess, and do not fall back
+    to file mode without asking. Never send to a subagent of this session.
+D2. **Hand over or stop what this session is running** (per the step-2
+    answers): subagents and background jobs die with this session or keep
+    reporting to it, and cannot be re-parented. For each one either finish
+    and collect it now, stop it, or describe it in the message as "running
+    detached on <machine>, check <path>" with the exact files and
+    processes the receiver must watch. Nothing may be left that only this
+    session can see.
+D3. **Compose the message** — the step-3 baton, same sections in the same
+    order, with these changes:
+    - First paragraph, in this order: who is handing over to whom; that
+      the user has confirmed the content (the step-2 rulings are final —
+      the receiver must not ask them again); that no baton file exists and
+      none should be written; that this session stops acting on MRs,
+      issues and machines once the message is sent.
+    - Then the **session contract**, copied from `~/.claude/commands/kickoff.md`
+      ("Session contract" section, items 1–4: domain stance with the
+      `--domain` value or `diffusion`, who drafts and who reviews documents,
+      Obsidian through `obsidian-tracker`, model routing by difficulty).
+      Read that file when composing; do not paraphrase it from memory.
+    - Then what the receiver does first, replacing kickoff steps 1–4:
+      (a) verify the message against reality before acting — branches,
+      MRs/PRs, pipelines, machine locks, running jobs — and flag every
+      mismatch; (b) ask the user only about questions that are new (a
+      mismatch found in (a), or something this message marks as still
+      open); with none, start on the task list without waiting; (c) start
+      its own patrols, since none are handed over.
+    - Paths the receiver needs (scratchpads, helper scripts, status files)
+      are written out in full; an older baton worth reading is given by
+      path, not summarised from memory.
+    - The last line is `session: <tool>/<this session's id>` so the
+      receiver and any later audit can tell who sent it.
+    Write it in the language the user works in. Plain text only; no
+    secrets or tokens.
+D4. **Send it** with `SendMessage` to the name exactly as `ListAgents`
+    printed it. One message if it fits; otherwise numbered parts
+    (`[1/3]`…), each self-contained enough to be read in order, the last
+    one ending with "end of handoff". Do not ask the receiver to reply
+    unless `ListAgents` shows it can message back.
+D5. **Confirm delivery, then stop.** Report to the user: the target name,
+    how many parts were sent, and the one-line fallback to paste into the
+    new session if the message did not show up there (`請照上一個
+    session <this session's name or id> 傳來的交接訊息接手`, plus the
+    transcript path if known). After the send, take no further action on
+    the handed-over work — a second actor on the same MRs and machines is
+    exactly what the handoff is meant to prevent.
+
+Steps 4 (memory and machine notes) and 5 (Obsidian) run before D4, so the
+message can say they are done. Step 5 has no baton path to pass in this
+mode: give `obsidian-tracker` the composed message text instead (a draft
+in the session scratchpad is fine — it is working material, not a baton).
+A direct handoff leaves no `handoff-*.md`;
+if the user later wants a record, the sent text is in this session's
+transcript.
