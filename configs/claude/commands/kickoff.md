@@ -26,8 +26,8 @@ Parse the arguments:
    it) before it is pushed or posted. Re-review after edits.
 3. **Obsidian notes.** Updates to the Obsidian vault go through the
    `obsidian-tracker` subagent, never hand-edited here.
-4. **Model routing by difficulty** (the rule in `~/.claude/CLAUDE.md`,
-   spelled out):
+4. **Model routing by difficulty** (the rule in
+   `~/.claude/guides/delegation.md`, spelled out):
    - `haiku` — mechanical work: file/log search, renames, bulk formatting,
      collecting numbers from existing outputs.
    - `sonnet` — document drafting, routine code changes with a clear spec,

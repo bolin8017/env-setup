@@ -141,13 +141,13 @@ New on-demand detail goes into the matching `~/.claude/guides/` file with a
 row here, not back into this file.
 
 ## Hard rules — never do these without an explicit user request
-- Do NOT use `--no-verify` to bypass pre-commit / commit-msg hooks
-- Do NOT `--amend` a commit that has already been pushed to a shared branch
-- Do NOT `git push --force`; if a force update is truly needed, use `--force-with-lease` and ask first
-- Do NOT stage or commit files containing secrets: `.env`, `*.pem`, `credentials.json`, anything matching `*_token*` / `*_secret*` / `*_key*`
-- Do NOT add a `Co-Authored-By: Claude` trailer to commits
-- Do NOT push directly to `main` / `master` — always open a PR
-- Do NOT merge an MR/PR into a protected branch, change GitLab/GitHub project
+- Don't use `--no-verify` to bypass pre-commit / commit-msg hooks
+- Don't `--amend` a commit that has already been pushed to a shared branch
+- Don't `git push --force`; if a force update is truly needed, use `--force-with-lease` and ask first
+- Don't stage or commit files containing secrets: `.env`, `*.pem`, `credentials.json`, anything matching `*_token*` / `*_secret*` / `*_key*`
+- Don't add a `Co-Authored-By: Claude` trailer to commits
+- Don't push directly to `main` / `master` — always open a PR
+- Don't merge an MR/PR into a protected branch, change GitLab/GitHub project
   settings (protected branches, squash defaults, merge gates, runners), tag a
   release, or promote develop into main without the user's explicit go for
   that specific action. Daily feature branches and MRs targeting develop are
@@ -186,7 +186,7 @@ does: read it by path when a case is unclear.
 
 ## GitHub workflow
 - Branch naming: `<type>/<short-kebab-description>` — e.g., `feat/add-auth`, `fix/parser-empty-input`
-- Squash merge by default; the squashed subject MUST be the PR title, and the PR title itself MUST follow Conventional Commits
+- Squash merge by default; the squashed subject is the PR title, so the PR title follows Conventional Commits
 - Delete branch after merge
 
 ## Pre-Commit self-check

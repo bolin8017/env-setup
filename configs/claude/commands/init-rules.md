@@ -73,7 +73,7 @@ If absent, create at `./CLAUDE.md` (preferred) or `./.claude/CLAUDE.md`. Team-sh
 
 **Target < 200 lines** (official guidance — longer files consume more context and reduce adherence).
 
-If `AGENTS.md` already exists, do NOT duplicate it. Either:
+If `AGENTS.md` already exists, reuse it instead of copying its content. Either:
 
 - Create `CLAUDE.md` with `@AGENTS.md` as the first line, then append Claude-specific instructions below; OR
 - Symlink: `ln -s AGENTS.md CLAUDE.md` (Linux / macOS only — Windows needs admin or developer mode)
@@ -99,8 +99,6 @@ Rules should capture:
 - Build and CI requirements
 
 **Unconditional rules** (no `paths` frontmatter) load at session start with the same priority as `.claude/CLAUDE.md` — use sparingly to preserve context budget. Prefer path-scoped rules.
-
-**Do NOT duplicate content already in `CLAUDE.md`** — rules complement it with path-specific guidance.
 
 ### 5. Update `.gitignore`
 
