@@ -1,14 +1,10 @@
 # Global Claude Code Guidelines
 
-<!-- Maintainer notes. Claude Code strips block-level HTML comments before it
-injects this file, so these lines cost no context.
-- Every session and every subagent except the built-in Explore and Plan loads
-  this file; keep it under 200 lines (tests/test_claude_assets.sh checks).
-- Goal/verification discipline is covered by the TDD and verification skills;
-  it is deliberately not repeated here.
-- Git Conventions below carries every normative commit rule. The full spec in
-  rules/conventional-commits.md is path-scoped, so it no longer loads into
-  every session. Never @import it here: imports expand at launch. -->
+<!-- Maintainer notes (HTML comments are stripped before injection). Every
+session and subagent except Explore/Plan loads this file; keep it under 200
+lines (tests check). Verification discipline lives in the TDD/verification
+skills. Git Conventions carries every normative commit rule; the full spec
+in rules/conventional-commits.md is path-scoped: never @import it here. -->
 
 ## Communication
 - Always respond in Traditional Chinese (繁體中文), written as natural Taiwan
@@ -66,9 +62,6 @@ injects this file, so these lines cost no context.
     a new claim that needs its own evidence (user rulings 2026-08-20, after
     two doc claims were overturned by a verifier)
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
-- For polishing outward-facing Chinese prose (posts, newsletters, replies),
-  invoke the `speak-human-tw` skill — full de-AI rewrite flow with Taiwan
-  localization
 
 ## Execution Policy
 - **Autonomous until done.** Once the requirement is clear, carry the task to
@@ -96,14 +89,34 @@ injects this file, so these lines cost no context.
   hand-roll only utilities so small and edge-case-free that a dependency
   costs more than it saves. When outside practice shaped a decision, cite the
   source in one line of the commit/PR body.
+- **Fix the root cause, with a design that lasts** (user ruling
+  2026-10-10). Solve each problem once, in a form later changes build on;
+  a workaround on a flawed design is torn out later at higher cost. Find
+  why it happened and what in the architecture, responsibilities or data
+  flow allowed it, and fix it there: when the design is the problem,
+  change the design instead of wrapping it in a special case, flag or
+  retry, and fix the same cause wherever else it appears. Aim for clear
+  responsibilities, boundaries and dependencies so the next foreseeable
+  change stays local, without pushing complexity into a neighbouring
+  module. Correctness holds and performance does not regress (measure hot
+  paths before and after). The smallest diff is no reason to pick a fix,
+  nor is existing a reason to keep a design; when the fix reaches further
+  than the request implied, say so in one sentence and carry on. For a
+  non-trivial fix, the PR/MR or final summary states the root cause and
+  why the old approach fell short, how the design removes it, which
+  foreseeable changes it absorbs and which would still need rework, and
+  its cost in complexity, speed or upkeep.
 - **YAGNI governs scale.** Mainstream practice informs the approach;
   simplicity decides how much of it to adopt — the minimal subset that
-  solves the stated problem. No speculative features, no abstractions for
-  single-use code, no config knobs nobody asked for.
-- **Surgical changes.** Every changed line should trace to the request. Don't
-  refactor or reformat adjacent code that isn't broken; match existing style
-  even if you'd do it differently. Remove only the symbols your own change
-  orphaned — flag pre-existing dead code instead of deleting it.
+  solves the problem at its root. A need counts as foreseeable only when a
+  stated plan, an open issue or a pattern already repeating backs it; no
+  speculative features, no abstractions for single-use code, no config
+  knobs nobody asked for.
+- **Surgical changes.** Every changed line should trace to the request or
+  to its root cause. Don't refactor or reformat adjacent code that isn't
+  broken; match existing style even if you'd do it differently. Remove
+  only the symbols your own change orphaned — flag pre-existing dead code
+  instead of deleting it.
 - **No error is not evidence.** A signal and the fact it claims can diverge
   silently: a copy that reports success on a truncated file, a counter that
   structurally cannot see one class of I/O, a probe attached to a launcher
@@ -151,10 +164,9 @@ does: read it by path when a case is unclear.
 
 - `<type>(<scope>): <description>`, optional `!` before the colon; a blank
   line before the body and before the footers
-- Types: `feat` user-facing feature (minor), `fix` bug fix (patch), `docs`,
-  `style` formatting only, `refactor` neither fix nor feature, `perf`, `test`,
-  `build` build system or deps, `ci`, `chore` routine maintenance, `revert`
-  (body: `Reverts: <sha>`); a breaking change bumps major
+- Types are the spec's set (`feat` minor, `fix` patch, `docs`, `style`,
+  `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` with body
+  `Reverts: <sha>`); a breaking change bumps major
 - Scope: optional lowercase noun for the affected area, from a small stable
   per-project set; omit it when cross-cutting or already clear
 - Subject: lowercase, imperative, no trailing period; target ≤ 50 chars, hard

@@ -93,7 +93,8 @@ Per roadmap batch, severity first:
    its artifact's own check instead — the drifted claim now matches
    reality, the workflow lints and runs green. Every other batch
    tests-first, no exceptions.
-3. Minimal fix; full suite + lint green locally.
+3. Fix the finding at its root cause (`~/.claude/CLAUDE.md`, Execution
+   Policy), within this batch's concern; full suite + lint green locally.
 4. One concern per PR. The PR body quotes the finding (ID + scenario) so it
    stands alone even before the report PR merges; wait for CI green.
 5. PR shows merge conflicts → merge main *into the branch* (this is not
