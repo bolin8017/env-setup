@@ -4,6 +4,7 @@ paths:
   - "lib/*.sh"
   - "scripts/*.sh"
   - "setup.sh"
+  - "uninstall.sh"
   - "bootstrap.sh"
 ---
 
