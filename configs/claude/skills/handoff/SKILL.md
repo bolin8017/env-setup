@@ -8,6 +8,29 @@ next one. The baton is a file, not chat prose — a fresh session cannot read
 this conversation. Its job is that the user never has to repeat, in the
 next session, anything already said in this one.
 
+## Completeness requirement (user ruling 2026-10-10)
+
+The user's words, binding on both modes:
+
+> 交接內容要詳細且完整，確保下一個 Session 接手後，不會出現任何資訊落差。凡是我曾經告訴你、討論過、做過決策、修改過、確認過，或目前仍在進行中的事情，都要完整同步，不要遺漏任何重要資訊。尤其是那些沒有明確寫進最終結論、但會影響後續工作的上下文、我的偏好、需求變更、已排除的方案、目前進度與待辦事項，也必須一併交接。目標是讓下一個 Session 可以直接無縫接續工作，不需要我重新解釋背景或重複提供已經說過的資訊。
+
+How to apply it:
+- Detail beats brevity here. A long baton is fine; a missing fact makes
+  the user repeat themselves, which is the failure this skill exists to
+  prevent. When unsure whether something matters, include it.
+- Build the baton from a sweep of the **whole** conversation, from the
+  first message (and any compaction summary) to now, not from what is
+  in recent turns or memory of the outcome. Walk it once per category:
+  what the user told you, discussed, decided, changed, confirmed, and
+  what is still in progress; plus the context behind conclusions,
+  preferences, requirement changes (old → new, with date), rejected
+  approaches and why, current progress, and every open to-do, including
+  small ones never promoted to a task.
+- Before finishing step 3, re-read the baton against that sweep and add
+  whatever is missing. Facts already recorded elsewhere (repo docs,
+  auto-memory, an issue) still get a one-line pointer in the baton, so the
+  next session knows they exist and where.
+
 ## Two modes
 
 - **File mode** (no `--to`): write `handoff-<line>.md`; the next session
@@ -69,6 +92,15 @@ exactly what makes the next session's `/pickup` take the wrong one.
      reviews documents, how Obsidian is updated, clarify-first, how
      verification is done, authorization scope (what may be merged, closed,
      posted)>
+   ## 使用者偏好與需求變更
+   - <each preference the user showed (said outright or by correcting
+     you) and each requirement change, as old → new with the date and
+     the reason the user gave; include ones that never reached a final
+     conclusion>
+   ## 背景脈絡（沒寫進結論但會影響後續）
+   - <discussion, constraints, half-formed ideas, open threads and
+     "we'll come back to this" items that shape later work but appear in
+     no decision or task below>
    ## Agent 管理（每個 session 都要做）
    <the block below, verbatim, plus this project's patrol script path and
    machine-reservation command if it has them>
@@ -84,9 +116,14 @@ exactly what makes the next session's `/pickup` take the wrong one.
    - <each task: goal; done-criteria and how to verify; starting point
      (file:line, branch, command); which tasks it depends on; model tier
      (haiku / sonnet / session model)>
+   ## 其他待辦（還沒排進任務的）
+   - <small follow-ups, promises made to the user, things to check later>
    ## 已做的決策（不要重新討論）
-   - <choice + one-line why; include REJECTED hypotheses/approaches and
-     every step-2 ruling>
+   - <choice + one-line why; every step-2 ruling; everything the user
+     confirmed>
+   ## 已排除的方案（不要再提）
+   - <each REJECTED hypothesis/approach: what it was, why it was ruled out,
+     and what evidence or ruling settled it>
    ## 指標
    - <PR/MR #s, file:line pointers, commands that matter>
    ```
@@ -101,16 +138,20 @@ exactly what makes the next session's `/pickup` take the wrong one.
    - 機器不能閒置：下一步已經排好就馬上派。砍 agent 時連它的子程序一起停，確認持有者已經不在才釋放機器，留下的排隊項目要清掉。
    ```
 
-   Carry forward: the 工作方式 and 已做的決策 sections of the baton this
-   session picked up still apply unless the user changed them; fold them
-   in. The 已做的決策 section is the highest-value part: a fresh session
-   re-litigates anything not written down — record negative knowledge
-   (what was ruled out) explicitly.
+   Carry forward from the baton this session picked up: 工作方式,
+   使用者偏好與需求變更, 已做的決策 and 已排除的方案 still apply unless the
+   user changed them, so fold every entry in; from 背景脈絡, 其他待辦 and
+   the task list, keep every item not yet resolved. Nothing drops out just
+   because this session did not touch it. 已做的決策 and 已排除的方案 are
+   the highest-value parts: a fresh session re-litigates anything not
+   written down, so record negative knowledge (what was ruled out)
+   explicitly.
 4. **Split durable from transient.** Lessons that outlive this handoff go
    to auto-memory as usual; machine facts (access limits, flaky network,
    tunnels, which machine is off-limits until when) go to the project's
-   `CLAUDE.local.md` / `.claude/local/<machine>.md`. The baton holds only
-   the one-shot continuation state plus the two standing sections above.
+   `CLAUDE.local.md` / `.claude/local/<machine>.md`. The baton still
+   names each such fact in one line with where it was written, so the
+   next session knows it exists; it does not copy the full text.
 5. **Update the Obsidian notes** after the baton is written: dispatch
    `obsidian-tracker` with the project name, the baton path, the PRs/MRs
    merged this session, and the step-2 rulings. It reads the vault path
