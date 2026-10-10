@@ -22,9 +22,10 @@ directory listed in your system prompt; fall back to the project's
 
 ## Steps
 
-1. Read the baton. Restate in a few lines: the tasks, the in-flight state,
-   and the already-made decisions you will NOT reopen. This is the contract
-   for the session — the user corrects it here if the baton is stale.
+1. Read the whole baton. Restate in a few lines: the tasks, the in-flight
+   state, and the already-made decisions and rejected approaches you will
+   NOT reopen. This is the contract for the session — the user corrects it
+   here if the baton is stale.
 2. **Verify the baton against reality before acting** — it describes the
    past: named branches still exist? PRs still open/unmerged? File pointers
    still valid? Baton older than 7 days? Flag every mismatch instead of
@@ -35,6 +36,9 @@ directory listed in your system prompt; fall back to the project's
    mismatch that awaits the user's decision, delay the rename until the
    direction is confirmed — a line nobody actually picked up must keep
    matching.
-4. Work the tasks. Honor the baton's decision log — re-opening a recorded
-   decision needs new information plus the user's say-so, not fresh-context
-   amnesia.
+4. Work the tasks. Every section of the baton binds this session: the
+   working rules, the user's preferences and requirement changes, the
+   background context, and the decisions and rejected approaches —
+   re-opening a recorded decision or reviving a rejected approach needs new
+   information plus the user's say-so, not fresh-context amnesia. When this
+   session hands off in turn, those sections carry forward (see /handoff).

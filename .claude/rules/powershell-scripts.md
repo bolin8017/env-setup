@@ -1,6 +1,7 @@
 ---
 paths:
   - "setup.ps1"
+  - "uninstall.ps1"
   - "bootstrap.ps1"
   - "lib/*.psm1"
   - "modules/*.ps1"
