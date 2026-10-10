@@ -12,17 +12,13 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
 - The built-in Explore and Plan agents do not load this file, so state the
   language requirement in the delegation prompt when their text will be
   quoted rather than rewritten.
-- **Language-policy review of Chinese prose goes to the `tw-docs-reviewer`
-  subagent** (`~/.claude/agents/tw-docs-reviewer.md`; its frontmatter pins
-  `model: sonnet`, `effort: low`, so never pass the Agent tool's `model`
-  parameter on that call: it beats the frontmatter). Dispatch it with
-  `subagent_type: tw-docs-reviewer` for every Chinese text that will be
-  published: Markdown files, reports, READMEs, MR/PR descriptions, issue
-  bodies and issue comments. Write the text to a file first, review, then
-  push or post; re-review after edits. English text is out of scope. An
-  orchestrator passes this rule on to every subagent it spawns (user ruling
-  2026-09-16). It is a wording fixer only: fact checking, if needed, is a
-  separate agent at normal effort.
+- **Chinese prose that will be published** (Markdown, reports, READMEs,
+  MR/PR descriptions, issue bodies and comments) is written to a file and
+  reviewed by `subagent_type: tw-docs-reviewer` before it is pushed or
+  posted, and again after edits; pass no `model` (it would override the
+  frontmatter's sonnet/low). It fixes wording only; fact checking is a
+  separate agent. An orchestrator passes this rule to every subagent it
+  spawns (user ruling 2026-09-16). English text is out of scope.
 - Baseline, in force everywhere:
   - Taiwan terms, never mainland-China terms: 影片 not 視頻, 品質 not 質量,
     資訊 not 信息, 軟體 not 軟件, 網路 not 網絡, 水準 not 水平, 預設 not 默認,
@@ -81,14 +77,18 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   library, pattern, code structure) → decide autonomously following
   mainstream conventions, then state the assumption where the reader will
   look (commit body, PR description, final summary) instead of asking first.
-- **Search before building.** Before adding a dependency, designing a
-  non-trivial component, or when stuck on a problem that smells already
-  solved: check how mainstream open-source projects and Google's engineering
-  guides handle it. Prefer a well-maintained package (actively maintained,
-  widely adopted, license-compatible) over hand-rolling anything non-trivial;
-  hand-roll only utilities so small and edge-case-free that a dependency
-  costs more than it saves. When outside practice shaped a decision, cite the
-  source in one line of the commit/PR body.
+- **Ground decisions in evidence** (user ruling 2026-10-10). Choices of
+  technology, architecture and non-trivial implementation rest on official
+  docs and standards, mainstream open-source designs, established teams'
+  published practice (e.g. Google's engineering guides) or a reproducible
+  test or benchmark, not recall or taste; for anything unfamiliar, disputed
+  or fast-moving, check current sources first. Prefer a well-maintained,
+  widely adopted, license-compatible package over hand-rolling anything
+  non-trivial; among mainstream options, pick by this project's needs,
+  constraints, performance and upkeep, not one company's habit or novelty.
+  Cite the source in one line of the commit/PR body. Never invent a
+  document, standard, example or best practice; where evidence runs out,
+  name the uncertainty, the assumption to check and how to check it.
 - **Fix the root cause, with a design that lasts** (user ruling
   2026-10-10). Solve each problem once, in a form later changes build on;
   a workaround on a flawed design is torn out later at higher cost. Find
