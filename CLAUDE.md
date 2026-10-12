@@ -82,7 +82,7 @@ env-setup/
 │   ├── p10k/             # Powerlevel10k configuration
 │   ├── ccstatusline/     # ccstatusline widget config (deployed by 08-claude-code)
 │   ├── claude/           # Claude Code personal harness: CLAUDE.md, rules/, commands/,
-│   │                     #   skills/, output-styles/, settings.json (deployed by
+│   │                     #   skills/, settings.json (deployed by
 │   │                     #   08-claude-code; see its README)
 │   ├── worklog/          # /worklog + /worklog-sync command assets (deployed by 10-worklog)
 │   ├── pwsh/             # (Windows) $PROFILE fragments (numbered)
