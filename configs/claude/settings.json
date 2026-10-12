@@ -22,7 +22,7 @@
   },
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
-  "outputStyle": "Concise",
+  "outputStyle": "default",
   "hooks": {
     "PreToolUse": [
       {

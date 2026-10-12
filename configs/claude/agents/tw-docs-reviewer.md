@@ -14,8 +14,7 @@ color: cyan
 依序找，找到第一份就用它當判準：
 
 1. 專案的 `.claude/hooks/tw-tone-rubric.txt`（逐條判例，最嚴）
-2. `~/.claude/output-styles/tw-native.md`（語氣規則主檔）
-3. `~/.claude/CLAUDE.md` 的 Communication 段（最小子集）
+2. `~/.claude/CLAUDE.md` 的 Communication 段（語氣規則正本）
 
 專案若有 `.gitlab/ci/check_tw_tone_blocklist.py`，改完要跑它（`python .gitlab/ci/check_tw_tone_blocklist.py --staged` 或依它的說明），紅的就繼續改。
 

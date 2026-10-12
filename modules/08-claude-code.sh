@@ -229,37 +229,6 @@ _sync_claude_skills() {
 }
 
 # =============================================================================
-# _sync_claude_output_styles — Sync ~/.claude/output-styles/ from
-# configs/claude/output-styles/. Output styles replace the system prompt's
-# tone section (selected by settings.json `outputStyle`); subagents never
-# load them, which is why CLAUDE.md keeps a baseline subset.
-# Additive: existing user-only styles are preserved.
-# =============================================================================
-_sync_claude_output_styles() {
-    if ! cfg_enabled "claude_code.sync_output_styles"; then
-        log_info "sync_output_styles disabled — skipping"
-        return 0
-    fi
-
-    local src_dir="${ENV_SETUP_DIR}/configs/claude/output-styles"
-    local dest_dir="${1:-${HOME}/.claude}/output-styles"
-
-    if [[ ! -d "$src_dir" ]]; then
-        log_warn "output-styles source dir not found: ${src_dir}"
-        return 0
-    fi
-
-    dry_run_mkdir "$dest_dir"
-
-    local f
-    shopt -s nullglob
-    for f in "$src_dir"/*.md; do
-        deploy_config "$f" "${dest_dir}/$(basename "$f")" "output style $(basename "$f")"
-    done
-    shopt -u nullglob
-}
-
-# =============================================================================
 # _sync_claude_guides — Sync ~/.claude/guides/ from configs/claude/guides/.
 # Guides hold detail split out of CLAUDE.md; they load only when CLAUDE.md's
 # index table sends a session to read one, so they cost no launch context.
@@ -312,7 +281,6 @@ _sync_claude_assets() {
     _sync_claude_commands "$root"
     _sync_claude_agents "$root"
     _sync_claude_skills "$root"
-    _sync_claude_output_styles "$root"
     _sync_claude_guides "$root"
 }
 
@@ -1002,7 +970,6 @@ _uninstall_claude_assets() {
     for f in "${cdir}/rules"/*.md;    do remove_managed_file "${root}/rules/$(basename "$f")"    "$f" "rule $(basename "$f")"; done
     for f in "${cdir}/commands"/*.md; do remove_managed_file "${root}/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
     for f in "${cdir}/agents"/*.md;   do remove_managed_file "${root}/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
-    for f in "${cdir}/output-styles"/*.md; do remove_managed_file "${root}/output-styles/$(basename "$f")" "$f" "output style $(basename "$f")"; done
     for f in "${cdir}/guides"/*.md; do remove_managed_file "${root}/guides/$(basename "$f")" "$f" "guide $(basename "$f")"; done
     local skill_dir skill_name rel
     for skill_dir in "${cdir}/skills"/*/; do
