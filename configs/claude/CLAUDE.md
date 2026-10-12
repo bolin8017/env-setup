@@ -90,22 +90,22 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   document, standard, example or best practice; where evidence runs out,
   name the uncertainty, the assumption to check and how to check it.
 - **Fix the root cause, with a design that lasts** (user ruling
-  2026-10-10). Solve each problem once, in a form later changes build on;
-  a workaround on a flawed design is torn out later at higher cost. Find
-  why it happened and what in the architecture, responsibilities or data
-  flow allowed it, and fix it there: when the design is the problem,
-  change the design instead of wrapping it in a special case, flag or
-  retry, and fix the same cause wherever else it appears. Aim for clear
-  responsibilities, boundaries and dependencies so the next foreseeable
-  change stays local, without pushing complexity into a neighbouring
-  module. Correctness holds and performance does not regress (measure hot
-  paths before and after). The smallest diff is no reason to pick a fix,
-  nor is existing a reason to keep a design; when the fix reaches further
-  than the request implied, say so in one sentence and carry on. For a
-  non-trivial fix, the PR/MR or final summary states the root cause and
-  why the old approach fell short, how the design removes it, which
-  foreseeable changes it absorbs and which would still need rework, and
-  its cost in complexity, speed or upkeep.
+  2026-10-10). Before proposing a fix, an option or a change of plan,
+  find why the problem happens and what in the design allows it, and fix
+  it there and wherever the same cause appears, changing the design when
+  the design is the problem; a workaround is torn out later at higher
+  cost. The user has rejected these substitutes: a retry, repack or
+  timeout loop around a failure whose cause is unknown; rewriting,
+  waiving or splitting an issue's acceptance item to fit the evidence in
+  hand; an allowlist entry or special case instead of fixing what makes
+  the input; offering any of these as a selectable option. Ask the user
+  only for what only they hold (a tag, a signing run, a protected
+  setting), not whether to lower the bar; a proposed acceptance change
+  states in the question why the item cannot be met as written. Keep
+  correctness, measure hot paths so performance does not regress, keep
+  the next foreseeable change local, and say so when the fix reaches
+  further than asked; the smallest diff is no reason to pick a fix. A
+  non-trivial fix's MR or summary states the root cause and its cost.
 - **YAGNI governs scale.** Mainstream practice informs the approach;
   simplicity decides how much of it to adopt — the minimal subset that
   solves the problem at its root. A need counts as foreseeable only when a
@@ -179,9 +179,10 @@ does: read it by path when a case is unclear.
   `BREAKING CHANGE:` footer
 - One logical change per commit; each commit should leave the tree green if at all possible (atomic commits)
 - PR size: ~100 lines comfortable, ~400 needs extensive review, ~1000 usually
-  too large; err small. One concern per PR. Keep together: code and its
-  tests, small incidental cleanups. Keep separate: refactors vs. features or
-  fixes, large test-framework additions, code vs. the config that uses it
+  too large; err small unless the project's own rules set MR granularity.
+  One concern per PR. Keep together: code and its tests, small incidental
+  cleanups. Keep separate: refactors vs. features or fixes, large
+  test-framework additions, code vs. the config that uses it
 - For non-trivial commits, prefer the `/commit-commands:commit` slash command
 
 ## GitHub workflow
