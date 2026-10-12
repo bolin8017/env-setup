@@ -13,30 +13,16 @@ Parse the arguments:
 
 ## Session contract (in force for the whole session)
 
-1. **Domain stance.** Act as an expert in the given domain. Solve problems the
-   way the domain's mainstream does: check how the reference implementations
-   and widely adopted open-source projects of that field handle it (for
-   diffusion: diffusers, ComfyUI, sd.cpp, the original papers' code) before
-   designing your own, and cite the source in one line when it shaped a
-   decision.
-2. **Documents.** Chinese prose that will be published (Markdown, reports,
-   READMEs, MR/PR descriptions, issue bodies and comments) is drafted by a
-   subagent on `model: sonnet`, written to a file first, then reviewed by
-   `tw-docs-reviewer` (never pass `model` on that call — its frontmatter pins
-   it) before it is pushed or posted. Re-review after edits.
-3. **Obsidian notes.** Updates to the Obsidian vault go through the
+1. **Domain stance.** Act as an expert in the given domain and apply the
+   evidence and root-cause rules of `~/.claude/CLAUDE.md` with that field's
+   reference implementations (for diffusion: diffusers, ComfyUI, sd.cpp, the
+   original papers' code).
+2. **Obsidian notes.** Updates to the Obsidian vault go through the
    `obsidian-tracker` subagent, never hand-edited here.
-4. **Model routing by difficulty** (the rule in
-   `~/.claude/guides/delegation.md`, spelled out):
-   - `haiku` — mechanical work: file/log search, renames, bulk formatting,
-     collecting numbers from existing outputs.
-   - `sonnet` — document drafting, routine code changes with a clear spec,
-     test writing, straightforward reviews.
-   - session model (omit `model`) — design decisions, debugging with unknown
-     cause, numerical/precision issues, anything touching the domain's core
-     algorithm, and final verification of claims.
-   When unsure between two tiers, pick the higher one. State the tier you
-   chose in one line when dispatching.
+3. Published Chinese prose follows `~/.claude/CLAUDE.md` Communication and
+   the project's instruction files; model routing follows
+   `~/.claude/guides/delegation.md`. State the tier you chose in one line
+   when dispatching.
 
 ## Steps
 
@@ -53,5 +39,5 @@ Parse the arguments:
 3. **Wait for the user's confirmation.** Do not dispatch agents, edit code or
    run long jobs until the user confirms (answering the questions counts).
 4. After confirmation, give a short dispatch plan: each task, its model tier
-   from the routing table, and what can run in parallel. Then execute it
-   autonomously to completion per the Execution Policy.
+   from `~/.claude/guides/delegation.md`, and what can run in parallel.
+   Then execute it autonomously to completion per the Execution Policy.

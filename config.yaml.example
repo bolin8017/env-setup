@@ -288,6 +288,7 @@ claude_code:
     - skipDangerousModePermissionPrompt
     - teammateMode
     - outputStyle
+    - hooks
 
   # Register plugin marketplaces via `claude plugin marketplace add`.
   # Without these, enabledPlugins entries cannot resolve to real plugins.

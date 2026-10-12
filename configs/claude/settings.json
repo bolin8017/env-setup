@@ -22,5 +22,20 @@
   },
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
-  "outputStyle": "default"
+  "outputStyle": "default",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "prompt",
+            "timeout": 30,
+            "continueOnBlock": true,
+            "prompt": "You check one narrow rule on a multiple-choice question that an AI coding agent is about to show its user. Default to allowing; block only a clear case. The hook input JSON is below; tool_input.questions holds the questions and options.\n\n$ARGUMENTS\n\nBlock only when BOTH hold:\n1. Some option (recommended or not) proposes to rewrite, waive, narrow or split the written acceptance criteria (驗收, 驗收條件, acceptance item) of an existing issue or ticket, or to deliver or close that issue with one of its acceptance items unmet or verified by weaker substitute evidence. The option or question must refer to the issue's acceptance or verification explicitly.\n2. The question gives no concrete reason why the acceptance item cannot be met as written. A concrete reason is: the operating system, hardware or a third party makes it impossible; an earlier decision by the user, named in the question, removed the need; or the item contradicts the issue's own purpose. \"It is slow\", \"it needs more measurement time\", \"the fix lands in a later release\" or \"we already have other evidence\" are not reasons.\n\nEverything else is allowed without comment: design and architecture choices, scope of new work, trade-offs between cost, speed, memory or risk, scheduling a follow-up fix for a newly found defect, cleanup, asking for a resource or permission, and handing work to someone.\n\nRespond with JSON only. Allowed: {\"ok\": true}. Blocked: {\"ok\": false, \"reason\": \"<quote the option; say: find the root cause and a root fix that meets the item as written; ask the user only for a resource or permission that fix needs; if the item truly cannot be met, state the concrete reason in the question>\"}"
+          }
+        ]
+      }
+    ]
+  }
 }
