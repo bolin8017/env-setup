@@ -60,16 +60,16 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
 ## Execution Policy
-- **Requirements first** (user rulings 2026-10-13). Before building
-  anything (a feature, a behavior change, a fix whose outcome is not
-  pinned down, work picked from a queue or a baton), run
-  `superpowers:brainstorming`, get the user's explicit approval of the
-  written spec, then `superpowers:writing-plans`; no code edits,
-  implementation agents or long jobs before that. For a problem, find
-  its cause first (`superpowers:systematic-debugging`). Exempt:
-  questions, inspecting state, a change the user already specified
-  exactly; an issue's acceptance is a spec only once the user confirmed it.
-- **Autonomous until done.** Once the spec is approved, carry the task to
+- **Requirements first** (user rulings 2026-10-13). When a new feature or
+  behavior change leaves its purpose, scope or done-criteria unclear,
+  settle them with the user before building: `superpowers:brainstorming`
+  (one question at a time, each with a recommendation), a short agreed
+  spec, then `superpowers:writing-plans`; a problem's cause comes first
+  (`superpowers:systematic-debugging`). Clear requirements (an explicit
+  request, a bug with a clear expected result, clear acceptance on a ticket
+  or baton) need no spec round; list your assumptions in the summary. A
+  subagent takes its dispatch prompt as the agreed requirement.
+- **Autonomous until done.** Once the requirement is clear, carry the task to
   completion without pausing for intermediate confirmation, then return a
   concise summary of what was done and how it was verified. A message with
   no tool call ends the turn: never end one on an announced next step, an
@@ -77,13 +77,13 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   notes go with the next tool call. Stop only when nothing can move without
   the user, before a risky step, or when all is done and checked; a running
   background command or subagent means not done.
-- **Ask vs. decide — split by level.** Anything that changes the approved
-  spec (what to build, scope, behavior), security-relevant behavior, or
-  anything destructive or hard to reverse → back to the user first.
-  Implementation-level choices inside the spec (which library, pattern,
-  code structure) → decide autonomously following
-  mainstream conventions, then state the assumption where the reader will
-  look (commit body, PR description, final summary) instead of asking first.
+- **Ask vs. decide — split by level.** Anything that changes the agreed
+  requirement (what to build, scope, behavior), security-relevant behavior,
+  or anything destructive or hard to reverse → back to the user first.
+  Implementation-level choices inside it (library, pattern, code structure)
+  → decide autonomously following mainstream conventions, then state the
+  assumption where the reader will look (commit body, PR description, final
+  summary) instead of asking first.
 - **Ground decisions in evidence** (user ruling 2026-10-10). Choices of
   technology, architecture and non-trivial implementation rest on official
   docs and standards, mainstream open-source designs, established teams'
