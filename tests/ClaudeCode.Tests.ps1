@@ -21,6 +21,7 @@ claude_code:
   sync_agents: true
   sync_skills: true
   sync_guides: true
+  sync_hooks: true
   settings_merge_keys:
     - env
   register_marketplaces: true
@@ -58,6 +59,21 @@ claude_code:
         Import-Config -Path $f
         Install-ClaudeCode
         Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'guides/*' }
+    }
+    It 'deploys hook scripts when sync_hooks is true' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'hooks/check_commit_msg.py' }
+    }
+    It 'skips hook scripts when sync_hooks is false' {
+        $yaml = @'
+claude_code:
+  enabled: true
+  sync_hooks: false
+'@
+        $f = Join-Path $TestDrive 'c5.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'hooks/*' }
     }
     It 'deploys skills when sync_skills is true' {
         Install-ClaudeCode

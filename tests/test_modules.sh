@@ -276,6 +276,14 @@ _out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_guides 2>&1
 assert_contains "$_out" "sync_guides disabled" "guides: flag off skips the step"
 CFG_CLAUDE_CODE_SYNC_GUIDES="true"
 
+CFG_CLAUDE_CODE_SYNC_HOOKS="true"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_hooks 2>&1)"
+assert_contains "$_out" "profile_home/.claude/hooks/check_commit_msg.py" "hooks: deploy under ~/.claude/hooks"
+CFG_CLAUDE_CODE_SYNC_HOOKS="false"
+_out="$(HOME="$TEST_TMPDIR/profile_home" DRY_RUN="true" _sync_claude_hooks 2>&1)"
+assert_contains "$_out" "sync_hooks disabled" "hooks: flag off skips the step"
+CFG_CLAUDE_CODE_SYNC_HOOKS="true"
+
 # Invalid names (path separators, dot-dot, empty) are rejected, not deployed
 CFG_CLAUDE_CODE_PROFILES_COUNT=2
 CFG_CLAUDE_CODE_PROFILES_0="team/alpha"

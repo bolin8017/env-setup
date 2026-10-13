@@ -258,6 +258,10 @@ claude_code:
   # table points a session at one).
   sync_guides: true
 
+  # Deploy ~/.claude/hooks/*.py from configs/claude/hooks/ (scripts that the
+  # settings.json hooks block runs, e.g. the commit-message check).
+  sync_hooks: true
+
   # Alternate Claude Code account profiles. Each name gets its own config dir
   # ~/.claude-<name> (credentials, settings, history, plugins all isolated via
   # the official CLAUDE_CONFIG_DIR mechanism) with the same file-based harness
