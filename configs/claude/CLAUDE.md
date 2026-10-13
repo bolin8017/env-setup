@@ -3,8 +3,8 @@
 <!-- Maintainer notes (HTML comments are stripped before injection). Every
 session and subagent except Explore/Plan loads this file; keep it under 200
 lines (tests check). Verification discipline lives in the TDD/verification
-skills. Git Conventions carries every normative commit rule; the full spec
-in rules/conventional-commits.md is path-scoped: never @import it here. -->
+skills. The Git section keeps the core commit rules (a hook enforces the
+format); guides/git.md keeps the full set; never @import either here. -->
 
 ## Communication
 - Always respond in Traditional Chinese (繁體中文), written as natural Taiwan
@@ -141,6 +141,7 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
 | --- | --- |
 | 派 subagent、選它的 model／effort、寫派工 prompt、主持多 agent 批次、寫 agent 定義檔 | `~/.claude/guides/delegation.md` |
 | 開新 repo，或寫任何會進版控的文件（指令檔、intent.md、decisions.md、報告） | `~/.claude/guides/repo-docs.md` |
+| 寫 commit message、開分支、寫 PR/MR，遇到核心規則沒涵蓋的情況 | `~/.claude/guides/git.md` |
 
 New on-demand detail goes into the matching `~/.claude/guides/` file with a
 row here, not back into this file.
@@ -157,43 +158,19 @@ row here, not back into this file.
   into main without an explicit go for that action; feature branches and
   MRs to develop are autonomous, merging them is not (ruling 2026-09-16)
 
-## Git Conventions
-
-Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
-the list below is the whole rule set. For examples and sources read
-`~/.claude/rules/conventional-commits.md` by path (it auto-loads only with
-commit tooling files).
-
-- `<type>(<scope>): <description>`, optional `!` before the colon; a blank
-  line before the body and before the footers
-- Types are the spec's set (`feat` minor, `fix` patch, `docs`, `style`,
-  `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` with body
-  `Reverts: <sha>`); a breaking change bumps major
-- Scope: optional lowercase noun for the affected area, from a small stable
-  per-project set; omit it when cross-cutting or already clear
-- Subject: lowercase, imperative, no trailing period; target ≤ 50 chars, hard
-  cap 72 chars (Tim Pope 50/72 rule)
-- Body explains **why**, not what (the diff shows what): the problem, why
-  this approach, the trade-offs. Wrap at ~72; skip it only for truly obvious
-  changes
-- Footers: `Closes #123`, `Refs #456`, `Fixes #789`; hyphenated tokens
-  (`Reviewed-by:`). Breaking changes: `feat!:` prefix or an uppercase
-  `BREAKING CHANGE:` footer
-- One logical change per commit; each commit should leave the tree green if at all possible (atomic commits)
-- PR size: ~100 lines comfortable, ~400 needs extensive review, ~1000 usually
-  too large; err small unless the project's own rules set MR granularity.
-  One concern per PR. Keep together: code and its tests, small incidental
-  cleanups. Keep separate: refactors vs. features or fixes, large
-  test-framework additions, code vs. the config that uses it
-- For non-trivial commits, prefer the `/commit-commands:commit` slash command
-
-## GitHub workflow
-- Branch naming: `<type>/<short-kebab-description>` — e.g., `feat/add-auth`, `fix/parser-empty-input`
-- Squash merge by default; the squashed subject is the PR title, so the PR title follows Conventional Commits
-- Delete branch after merge
-
-## Pre-Commit self-check
-Read `git diff --cached` (no stray build artifacts, IDE configs or secrets);
-run the repo's linter and tests; the subject completes "If applied, this
-commit will ___"; update `CLAUDE.md` / `README.md` when the change affects
-architecture, commands or public-facing behavior.
+## Git
+- Commit subjects and PR/MR titles follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+  `<type>(<scope>): <description>`, types `feat fix docs style refactor perf
+  test build ci chore revert`, lowercase imperative, ≤ 50 chars (cap 72), no
+  trailing period; breaking changes take `!` or a `BREAKING CHANGE:` footer.
+  A PreToolUse hook rejects commit messages that break this.
+- The body explains why (the problem, this approach, the trade-offs), wrapped
+  at ~72; footers `Refs #N` / `Closes #N`. One logical change per commit,
+  each leaving the tree green.
+- Before committing, read `git diff --cached` (no build artifacts, IDE files
+  or secrets), run the repo's linter and tests, and update `CLAUDE.md` /
+  `README.md` when architecture, commands or public behavior change.
+- Branch `<type>/<short-kebab>`; one concern per PR (~100 lines easy, ~400
+  heavy, ~1000 too large); squash merge with the PR title as the subject;
+  delete the branch after merge. Full rules and examples:
+  `~/.claude/guides/git.md`.
