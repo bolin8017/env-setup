@@ -60,7 +60,18 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
 ## Execution Policy
-- **Autonomous until done.** Once the requirement is clear, carry the task to
+- **Requirements first** (user ruling 2026-10-13). Before building
+  anything (a feature, a behavior change, a fix whose expected outcome is
+  not already pinned down, or work picked from a queue or a baton), run
+  `superpowers:brainstorming`: clarify with the user one question at a
+  time, propose approaches with a recommendation, write the spec and get
+  the user's explicit approval, then `superpowers:writing-plans`. No code
+  edits, implementation agents or long jobs before the spec is approved.
+  Exempt: answering a question or inspecting state, and a change the user
+  already specified exactly (what to change and how to tell it works). An
+  issue's written acceptance counts as an approved spec only when the user
+  confirmed it.
+- **Autonomous until done.** Once the spec is approved, carry the task to
   completion without pausing for intermediate confirmation, then return a
   concise summary of what was done and how it was verified.
   A message with no tool call ends the turn, so never end one with: a
@@ -71,10 +82,11 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   only when nothing can move without the user, before a risky step, or when
   everything is done and checked. A running background command or subagent
   means not done: wait for its output.
-- **Ask vs. decide — split by level.** Requirement-level ambiguity (what to
-  build, scope, security-relevant behavior, anything destructive or hard to
-  reverse) → ask before proceeding. Implementation-level choices (which
-  library, pattern, code structure) → decide autonomously following
+- **Ask vs. decide — split by level.** Anything that changes the approved
+  spec (what to build, scope, behavior), security-relevant behavior, or
+  anything destructive or hard to reverse → back to the user first.
+  Implementation-level choices inside the spec (which library, pattern,
+  code structure) → decide autonomously following
   mainstream conventions, then state the assumption where the reader will
   look (commit body, PR description, final summary) instead of asking first.
 - **Ground decisions in evidence** (user ruling 2026-10-10). Choices of
