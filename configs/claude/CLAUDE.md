@@ -60,23 +60,30 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
 ## Execution Policy
+- **Requirements first** (user rulings 2026-10-13). When a new feature or
+  behavior change leaves its purpose, scope or done-criteria unclear,
+  settle them with the user before building: `superpowers:brainstorming`
+  (one question at a time, each with a recommendation), a short agreed
+  spec, then `superpowers:writing-plans`; a problem's cause comes first
+  (`superpowers:systematic-debugging`). Clear requirements (an explicit
+  request, a bug with a clear expected result, clear acceptance on a ticket
+  or baton) need no spec round; list your assumptions in the summary. A
+  subagent takes its dispatch prompt as the agreed requirement.
 - **Autonomous until done.** Once the requirement is clear, carry the task to
   completion without pausing for intermediate confirmation, then return a
-  concise summary of what was done and how it was verified.
-  A message with no tool call ends the turn, so never end one with: a
-  summary that announces the next step instead of taking it; an offer to
-  go on "unless you'd prefer otherwise"; a list of decisions none of which
-  blocks the rest; a report just because a milestone is done. Status notes
-  and recommendations go in the same message as the next tool call. Stop
-  only when nothing can move without the user, before a risky step, or when
-  everything is done and checked. A running background command or subagent
-  means not done: wait for its output.
-- **Ask vs. decide — split by level.** Requirement-level ambiguity (what to
-  build, scope, security-relevant behavior, anything destructive or hard to
-  reverse) → ask before proceeding. Implementation-level choices (which
-  library, pattern, code structure) → decide autonomously following
-  mainstream conventions, then state the assumption where the reader will
-  look (commit body, PR description, final summary) instead of asking first.
+  concise summary of what was done and how it was verified. A message with
+  no tool call ends the turn: never end one on an announced next step, an
+  offer to go on, non-blocking decisions or a milestone report; status
+  notes go with the next tool call. Stop only when nothing can move without
+  the user, before a risky step, or when all is done and checked; a running
+  background command or subagent means not done.
+- **Ask vs. decide — split by level.** Anything that changes the agreed
+  requirement (what to build, scope, behavior), security-relevant behavior,
+  or anything destructive or hard to reverse → back to the user first.
+  Implementation-level choices inside it (library, pattern, code structure)
+  → decide autonomously following mainstream conventions, then state the
+  assumption where the reader will look (commit body, PR description, final
+  summary) instead of asking first.
 - **Ground decisions in evidence** (user ruling 2026-10-10). Choices of
   technology, architecture and non-trivial implementation rest on official
   docs and standards, mainstream open-source designs, established teams'
@@ -87,8 +94,10 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   non-trivial; among mainstream options, pick by this project's needs,
   constraints, performance and upkeep, not one company's habit or novelty.
   Cite the source in one line of the commit/PR body. Never invent a
-  document, standard, example or best practice; where evidence runs out,
-  name the uncertainty, the assumption to check and how to check it.
+  document, standard, example or best practice. Label what a decision
+  rests on as confirmed fact, industry convention or unverified
+  inference; where evidence runs out, name the uncertainty, the
+  assumption to check and how to check it.
 - **Fix the root cause, with a design that lasts** (user ruling
   2026-10-10). Before proposing a fix, an option or a change of plan,
   find why the problem happens and what in the design allows it, and fix
@@ -98,12 +107,15 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   timeout loop around a failure whose cause is unknown; rewriting,
   waiving or splitting an issue's acceptance item to fit the evidence in
   hand; an allowlist entry or special case instead of fixing what makes
-  the input; offering any of these as a selectable option. Ask the user
+  the input; offering any of these as a selectable option. Every option
+  offered is a root fix differing in design, cost or scope; one root fix
+  means one option, never a stopgap to fill a count. Ask the user
   only for what only they hold (a tag, a signing run, a protected
   setting), not whether to lower the bar; a proposed acceptance change
   states in the question why the item cannot be met as written. Keep
-  correctness, measure hot paths so performance does not regress, keep
-  the next foreseeable change local, and say so when the fix reaches
+  correctness, measure hot paths so performance does not regress, prefer
+  clear responsibilities and designs that are easy to test, keep the next
+  foreseeable change local, and say so when the fix reaches
   further than asked; the smallest diff is no reason to pick a fix. A
   non-trivial fix's MR or summary states the root cause and its cost.
 - **YAGNI governs scale.** Mainstream practice informs the approach;
@@ -118,19 +130,12 @@ in rules/conventional-commits.md is path-scoped: never @import it here. -->
   only the symbols your own change orphaned — flag pre-existing dead code
   instead of deleting it.
 - **No error is not evidence.** A signal and the fact it claims can diverge
-  silently: a copy that reports success on a truncated file, a counter that
-  structurally cannot see one class of I/O, a probe attached to a launcher
-  process instead of the worker, a lock or reservation released while the
-  resource is still in use, a restore that reports completion without
-  verifying. Verify every claim that matters against an independent
-  measurement (compare sizes after copying, read the value a tool prints
-  rather than its exit code, sample the whole process tree, read the lock's
-  owner record), and remember a check is only as strong as the assumption
-  behind it; when that assumption changes, the check stays silent
-  (user rulings 2026-09-16).
-- **Delegating.** Rules given to subagents must not contradict this file;
-  when two rule sources conflict, the user-level rule wins and the agent
-  asks (user ruling 2026-09-16).
+  silently (a copy that reports success on a truncated file, a probe on the
+  launcher instead of the worker, a lock released while still in use).
+  Verify every claim that matters against an independent measurement
+  (compare sizes, read the printed value not the exit code, sample the
+  whole process tree, read the lock's owner); a check is only as strong as
+  the assumption behind it (user rulings 2026-09-16).
 
 | 要做什麼 | 先讀哪一份 |
 | --- | --- |
@@ -147,20 +152,17 @@ row here, not back into this file.
 - Don't stage or commit files containing secrets: `.env`, `*.pem`, `credentials.json`, anything matching `*_token*` / `*_secret*` / `*_key*`
 - Don't add a `Co-Authored-By: Claude` trailer to commits
 - Don't push directly to `main` / `master` — always open a PR
-- Don't merge an MR/PR into a protected branch, change GitLab/GitHub project
-  settings (protected branches, squash defaults, merge gates, runners), tag a
-  release, or promote develop into main without the user's explicit go for
-  that specific action. Daily feature branches and MRs targeting develop are
-  autonomous; merging them is not (user ruling 2026-09-16; three tiers:
-  autonomous / needs explicit go / never)
+- Don't merge into a protected branch, change project settings (protected
+  branches, squash, merge gates, runners), tag a release or promote develop
+  into main without an explicit go for that action; feature branches and
+  MRs to develop are autonomous, merging them is not (ruling 2026-09-16)
 
 ## Git Conventions
 
 Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/);
-the list below is the whole rule set. `~/.claude/rules/conventional-commits.md`
-adds examples and sources but loads by itself only when commit tooling files
-are read (commitlint, commit and PR/MR templates), which a normal commit never
-does: read it by path when a case is unclear.
+the list below is the whole rule set. For examples and sources read
+`~/.claude/rules/conventional-commits.md` by path (it auto-loads only with
+commit tooling files).
 
 - `<type>(<scope>): <description>`, optional `!` before the colon; a blank
   line before the body and before the footers
@@ -191,9 +193,7 @@ does: read it by path when a case is unclear.
 - Delete branch after merge
 
 ## Pre-Commit self-check
-Before drafting any commit message, verify:
-- Read `git diff --cached` (not just `git status`) — know exactly what's staged
-- No accidentally-staged files (build artifacts, IDE configs, secrets)
-- If linter / tests are configured for the repo, run them
-- Subject answers: "If applied, this commit will ___"
-- `CLAUDE.md` / `README.md` updated if the change affects architecture, commands, or public-facing behavior
+Read `git diff --cached` (no stray build artifacts, IDE configs or secrets);
+run the repo's linter and tests; the subject completes "If applied, this
+commit will ___"; update `CLAUDE.md` / `README.md` when the change affects
+architecture, commands or public-facing behavior.

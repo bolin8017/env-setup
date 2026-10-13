@@ -36,6 +36,9 @@ Parse the arguments:
    confirm. Group them; number them so the user can answer by number. Skip
    implementation-level choices — decide those yourself per the Execution
    Policy.
+   A task whose requirement is unclear goes through
+   `superpowers:brainstorming` with the user first (Execution Policy,
+   Requirements first); one with clear acceptance needs no spec round.
 3. **Wait for the user's confirmation.** Do not dispatch agents, edit code or
    run long jobs until the user confirms (answering the questions counts).
 4. After confirmation, give a short dispatch plan: each task, its model tier
