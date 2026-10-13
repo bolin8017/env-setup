@@ -59,6 +59,10 @@ claude_code:
         Install-ClaudeCode
         Should -Invoke Deploy-Config -Times 0 -ParameterFilter { $Label -like 'guides/*' }
     }
+    It 'deploys hook scripts when sync_hooks is true' {
+        Install-ClaudeCode
+        Should -Invoke Deploy-Config -ParameterFilter { $Label -eq 'hooks/check_commit_msg.py' }
+    }
     It 'deploys skills when sync_skills is true' {
         Install-ClaudeCode
         Should -Invoke Deploy-Config -ParameterFilter { $Label -like 'skills/weekly-review/*' }

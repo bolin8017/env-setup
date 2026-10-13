@@ -16,6 +16,7 @@ deployed.
 | `agents/*.md` | `~/.claude/agents/` | `claude_code.sync_agents` | additive per-file copy |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | `claude_code.sync_skills` | additive per-dir copy |
 | `guides/*.md` | `~/.claude/guides/` | `claude_code.sync_guides` | additive per-file copy |
+| `hooks/*.py` | `~/.claude/hooks/` | `claude_code.sync_hooks` | additive per-file copy; run by `settings.json` `hooks` |
 | `settings.json` | `~/.claude/settings.json` | (whitelist) | jq/PS merge of `settings_merge_keys` only; other keys preserved |
 | `mcp-servers.json` | `~/.claude.json` `mcpServers` | `claude_code.sync_mcp_servers` | merge; no-op while the source declares no servers |
 

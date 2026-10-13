@@ -41,6 +41,7 @@ tests=(
     "test_git_defaults.sh"
     "test_ccstatusline.sh"
     "test_claude_assets.sh"
+    "test_commit_msg_hook.sh"
     "test_episodic_memory_patch.sh"
     "test_shellcheck.sh"
     "test_parser_parity.sh"

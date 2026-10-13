@@ -100,13 +100,14 @@ function Sync-ClaudeFile {
 function Sync-ClaudeDir {
     param(
         [Parameter(Mandatory)][string]$SubDir,
-        [string]$Root = (Join-Path $HOME '.claude')
+        [string]$Root = (Join-Path $HOME '.claude'),
+        [string]$Filter = '*.md'
     )
     $srcDir = Join-Path $script:ClaudeCfg $SubDir
     if (-not (Test-Path $srcDir)) { Write-Info "$SubDir source missing - skipping"; return }
     $destDir = Join-Path $Root $SubDir
     New-DirOrDryRun -Path $destDir
-    Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
+    Get-ChildItem $srcDir -Filter $Filter -ErrorAction Ignore | ForEach-Object {
         Deploy-Config -Source $_.FullName -Destination (Join-Path $destDir $_.Name) -Label "$SubDir/$($_.Name)"
     }
 }
@@ -153,6 +154,8 @@ function Sync-ClaudeAssets {
     if (Test-CfgEnabled 'claude_code.sync_skills')   { Sync-ClaudeSkills -Root $Root }
     # Guides load on demand: CLAUDE.md's index table names each one by path.
     if (Test-CfgEnabled 'claude_code.sync_guides') { Sync-ClaudeDir -SubDir 'guides' -Root $Root }
+    # Scripts that settings.json's hooks block runs (commit-message check).
+    if (Test-CfgEnabled 'claude_code.sync_hooks') { Sync-ClaudeDir -SubDir 'hooks' -Root $Root -Filter '*.py' }
 }
 
 function Sync-ClaudeProfiles {
@@ -459,10 +462,11 @@ function Uninstall-ClaudeAssets {
     param([Parameter(Mandatory)][string]$Root)
     Remove-ManagedFile -Dest (Join-Path $Root 'CLAUDE.md') `
         -RepoSrc (Join-Path $script:ClaudeCfg 'CLAUDE.md') -Label 'global CLAUDE.md'
-    foreach ($sub in @('rules', 'commands', 'agents', 'guides')) {
+    foreach ($sub in @('rules', 'commands', 'agents', 'guides', 'hooks')) {
         $srcDir = Join-Path $script:ClaudeCfg $sub
         if (-not (Test-Path $srcDir)) { continue }
-        Get-ChildItem $srcDir -Filter *.md -ErrorAction Ignore | ForEach-Object {
+        $filter = if ($sub -eq 'hooks') { '*.py' } else { '*.md' }
+        Get-ChildItem $srcDir -Filter $filter -ErrorAction Ignore | ForEach-Object {
             Remove-ManagedFile -Dest (Join-Path $Root "$sub/$($_.Name)") -RepoSrc $_.FullName -Label "$sub/$($_.Name)"
         }
     }

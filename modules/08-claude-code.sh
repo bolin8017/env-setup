@@ -259,6 +259,35 @@ _sync_claude_guides() {
 }
 
 # =============================================================================
+# _sync_claude_hooks — Sync ~/.claude/hooks/ from configs/claude/hooks/.
+# Hook scripts that settings.json's `hooks` block runs (e.g. the commit-message
+# check). Additive: existing user-only hooks are preserved.
+# =============================================================================
+_sync_claude_hooks() {
+    if ! cfg_enabled "claude_code.sync_hooks"; then
+        log_info "sync_hooks disabled — skipping"
+        return 0
+    fi
+
+    local src_dir="${ENV_SETUP_DIR}/configs/claude/hooks"
+    local dest_dir="${1:-${HOME}/.claude}/hooks"
+
+    if [[ ! -d "$src_dir" ]]; then
+        log_warn "hooks source dir not found: ${src_dir}"
+        return 0
+    fi
+
+    dry_run_mkdir "$dest_dir"
+
+    local f
+    shopt -s nullglob
+    for f in "$src_dir"/*.py; do
+        deploy_config "$f" "${dest_dir}/$(basename "$f")" "hook $(basename "$f")"
+    done
+    shopt -u nullglob
+}
+
+# =============================================================================
 # _valid_claude_profile — Profile names become path components (~/.claude-<name>
 # on install, uninstall, and the claude-as alias), so anything path-like would
 # desynchronize those three consumers. Restrict to a safe charset.
@@ -269,7 +298,7 @@ _valid_claude_profile() {
 
 # =============================================================================
 # _sync_claude_assets — Deploy the file-based harness (CLAUDE.md, rules,
-# commands, agents, skills, output styles, guides) into one config root. The single
+# commands, agents, skills, output styles, guides, hooks) into one config root. The single
 # authoritative asset list: both the default ~/.claude sync and every profile
 # sync go through here, so a new asset type cannot reach one and miss the
 # other. Each piece self-gates on its claude_code.sync_* flag.
@@ -282,6 +311,7 @@ _sync_claude_assets() {
     _sync_claude_agents "$root"
     _sync_claude_skills "$root"
     _sync_claude_guides "$root"
+    _sync_claude_hooks "$root"
 }
 
 # =============================================================================
@@ -971,6 +1001,7 @@ _uninstall_claude_assets() {
     for f in "${cdir}/commands"/*.md; do remove_managed_file "${root}/commands/$(basename "$f")" "$f" "command $(basename "$f")"; done
     for f in "${cdir}/agents"/*.md;   do remove_managed_file "${root}/agents/$(basename "$f")"   "$f" "agent $(basename "$f")"; done
     for f in "${cdir}/guides"/*.md; do remove_managed_file "${root}/guides/$(basename "$f")" "$f" "guide $(basename "$f")"; done
+    for f in "${cdir}/hooks"/*.py;  do remove_managed_file "${root}/hooks/$(basename "$f")"  "$f" "hook $(basename "$f")"; done
     local skill_dir skill_name rel
     for skill_dir in "${cdir}/skills"/*/; do
         skill_name="$(basename "$skill_dir")"
