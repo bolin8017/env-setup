@@ -16,7 +16,7 @@ format); guides/git.md keeps the full set; never @import either here. -->
   MR/PR descriptions, issue bodies and comments) is written to a file and
   reviewed by `subagent_type: tw-docs-reviewer` before it is pushed or
   posted, and again after edits; pass no `model` (it would override the
-  frontmatter's sonnet/low). It fixes wording only; fact checking is a
+  frontmatter's haiku/low). It fixes wording only; fact checking is a
   separate agent. An orchestrator passes this rule to every subagent it
   spawns (user ruling 2026-09-16). English text is out of scope.
 - Baseline, in force everywhere:
