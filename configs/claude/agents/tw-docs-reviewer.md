@@ -1,7 +1,7 @@
 ---
 name: tw-docs-reviewer
 description: 繁體中文文件的語言政策審查與修正工。Proactively use it whenever a Markdown file, report, README, issue comment draft or any Chinese prose has just been written or edited and must pass the Taiwan-tone rules before it goes to the user or gets committed. Fast wording fixer, not an analyst.
-model: sonnet
+model: haiku
 effort: low
 tools: Read, Edit, Grep, Glob, Bash
 color: cyan
