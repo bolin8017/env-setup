@@ -4,10 +4,15 @@ Split out of `~/.claude/CLAUDE.md` (2026-09-29). Read before dispatching any
 subagent (choosing its model/effort, writing its prompt), before running a
 multi-agent batch on shared machines, or when writing an agent definition.
 
-- **Model routing.** Other subagents get a model by difficulty
-  (user ruling 2026-09-23): `haiku` mechanical search/edits, `sonnet` docs and
-  well-specified code, session model for design, debugging, verification and
-  whenever unsure. `effort` is the only thinking lever (no "thinking off", no
+- **Model routing.** Weekly quota first (user ruling 2026-10-19, replacing
+  the 2026-09-23 split): the session model keeps the judgement (hypotheses,
+  root cause, design, verification verdicts) and writes dispatches that spell
+  out every step, the check for it and where to stop; subagents execute.
+  `haiku` for read-only fact gathering, wording review and note updates;
+  `sonnet` for measurements and experiments, well-specified code and machine
+  configuration. Give a subagent the session model only when its steps
+  cannot be written down in advance. `effort` is the only thinking lever
+  (no "thinking off", no
   "think carefully" lines). Opus 5.5 `medium` matches Opus 5 `high`; keep
   `xhigh`/`max` for measured gains. Sonnet 5.5 at `low`/`medium` may stop to
   check in or skip checks, so multistep sonnet agent definitions carry a
