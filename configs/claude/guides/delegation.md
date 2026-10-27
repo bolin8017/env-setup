@@ -17,6 +17,20 @@ multi-agent batch on shared machines, or when writing an agent definition.
   `xhigh`/`max` for measured gains. Sonnet 5.5 at `low`/`medium` may stop to
   check in or skip checks, so multistep sonnet agent definitions carry a
   keep-working and a real-check paragraph.
+- **Context economy.** A subagent's tool output stays in its own context;
+  only its final message reaches the parent (code.claude.com sub-agents
+  doc, "Isolate high-volume operations"), and every parent turn re-reads the
+  whole conversation at the cached rate (costs doc). So every dispatch names
+  the file that takes the full result and caps the final message at about
+  10 lines (file path, verdict, blockers). Web research needing more than a
+  couple of searches or a long page goes to `web-researcher` (haiku), which
+  quotes and links every claim; before a decision rests on one of its
+  claims, open that source yourself. Hooks cannot batch completion
+  notifications: SubagentStop can block a subagent from stopping or add
+  context, not delay or merge what the parent receives (hooks doc). A batch
+  of independent agents that should report once is a dynamic workflow
+  (`parallel()` waits for all, intermediate results stay out of context),
+  which needs the user's opt-in.
 - **Orchestration: no idle machines, no idle agents.** When delegating to
   subagents that drive shared machines: each agent writes a STATUS line every
   5 minutes (including "waiting for X until HH:MM"), reports any failed run
