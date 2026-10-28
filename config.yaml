@@ -304,6 +304,8 @@ claude_code:
   marketplaces:
     - anthropics/claude-plugins-official
     - obra/superpowers-marketplace
+    - xuanji86/claude-agentpane
+    - cathrynlavery/diagram-design
 
   # Explicitly install every plugin marked `true` in configs/claude/settings.json
   # via `claude plugin install`. Required on a fresh machine — without this,
