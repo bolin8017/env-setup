@@ -21,11 +21,60 @@
     "elements-of-style@superpowers-marketplace": false,
     "frontend-design@claude-plugins-official": true,
     "agentpane@claude-agentpane": false,
-    "diagram-design@diagram-design": false
+    "diagram-design@diagram-design": false,
+    "cc-plugin-you-should-know@builtin": true
   },
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
   "outputStyle": "default",
+  "effortLevel": "xhigh",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5": {
+      "effortLevel": "medium"
+    },
+    "claude-fable-5": {
+      "effortLevel": "high"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "high"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high",
+      "autoCompactWindow": 500000
+    }
+  },
+  "advisorModel": "fable",
+  "autoUpdatesChannel": "latest",
+  "switchModelsOnFlag": false,
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "claude-agentpane": {
+      "source": {
+        "source": "github",
+        "repo": "xuanji86/claude-agentpane"
+      }
+    },
+    "diagram-design": {
+      "source": {
+        "source": "github",
+        "repo": "cathrynlavery/diagram-design"
+      }
+    }
+  },
   "deniedMcpServers": [
     {
       "serverName": "claude.ai Claude Docs"

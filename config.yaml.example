@@ -293,6 +293,12 @@ claude_code:
     - teammateMode
     - outputStyle
     - hooks
+    - effortLevel
+    - modelSettings
+    - advisorModel
+    - autoUpdatesChannel
+    - switchModelsOnFlag
+    - extraKnownMarketplaces
 
   # Register plugin marketplaces via `claude plugin marketplace add`.
   # Without these, enabledPlugins entries cannot resolve to real plugins.

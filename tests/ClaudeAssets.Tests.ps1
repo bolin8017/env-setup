@@ -33,6 +33,7 @@ Describe 'enabledPlugins marketplaces are registered' {
         foreach ($p in $script:Settings.enabledPlugins.PSObject.Properties) {
             if ($p.Value -ne $true) { continue }
             $mp = ($p.Name -split '@')[-1]
+            if ($mp -eq 'builtin') { continue }  # ships inside Claude Code, no marketplace to register
             $registered | Should -Contain $mp -Because "plugin '$($p.Name)' cannot resolve on a fresh machine otherwise"
         }
     }

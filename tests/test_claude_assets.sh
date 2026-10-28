@@ -63,6 +63,7 @@ while IFS= read -r plugin; do
     plugin="${plugin%$'\r'}"
     [[ -z "$plugin" ]] && continue
     _mp="${plugin##*@}"
+    [[ "$_mp" == "builtin" ]] && continue  # ships inside Claude Code, no marketplace to register
     grep -qxF "$_mp" <<< "$_registered"
     assert_true $? "plugin '$plugin' marketplace '$_mp' is registered"
 done < <(jq -r '.enabledPlugins | to_entries[] | select(.value == true) | .key' "$SETTINGS")
