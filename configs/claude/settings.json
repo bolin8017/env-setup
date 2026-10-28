@@ -26,6 +26,11 @@
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
   "outputStyle": "default",
+  "deniedMcpServers": [
+    {
+      "serverName": "claude.ai Claude Docs"
+    }
+  ],
   "hooks": {
     "PreToolUse": [
       {
