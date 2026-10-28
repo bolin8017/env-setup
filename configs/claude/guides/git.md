@@ -32,7 +32,6 @@ commit tooling files).
   One concern per PR. Keep together: code and its tests, small incidental
   cleanups. Keep separate: refactors vs. features or fixes, large
   test-framework additions, code vs. the config that uses it
-- For non-trivial commits, prefer the `/commit-commands:commit` slash command
 
 ## GitHub workflow
 - Branch naming: `<type>/<short-kebab-description>` — e.g., `feat/add-auth`, `fix/parser-empty-input`
