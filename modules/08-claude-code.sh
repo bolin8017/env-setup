@@ -112,8 +112,8 @@ _install_ccstatusline_pkg() {
     # node on PATH yet.
     if ! command_exists npm; then
         local nb
-        nb="$(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/*/bin 2>/dev/null | sort -V | tail -1)"
-        [[ -n "$nb" ]] && export PATH="$nb:$PATH"
+        nb="$(printf '%s\n' "${NVM_DIR:-$HOME/.nvm}"/versions/node/*/bin | sort -V | tail -1)"
+        [[ -d "$nb" ]] && export PATH="$nb:$PATH"
     fi
     if ! command_exists npm; then
         log_warn "npm not found — ccstatusline not installed (the status line will say so)"
