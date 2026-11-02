@@ -7,6 +7,16 @@ BeforeAll {
     . "$PSScriptRoot/../modules/08-ClaudeCode.ps1"
 }
 
+Describe 'Get-CcstatuslineCommand' {
+    It 'runs the pinned install with node directly, never npx' {
+        $cmd = Get-CcstatuslineCommand
+        $cmd | Should -Match '^node '
+        $cmd | Should -Match 'ccstatusline/dist/ccstatusline\.js'
+        $cmd | Should -Not -Match 'npx'
+        $cmd.Contains([string][char]92) | Should -BeFalse   # forward slashes for the bash launcher
+    }
+}
+
 Describe 'Install-ClaudeCode dispatch (dry-run)' {
     BeforeEach {
         $env:ENVSETUP_DRY_RUN = 'true'

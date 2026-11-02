@@ -63,10 +63,10 @@ _deploy_ccstatusline_config() {
     dry_run_mkdir "$dest_dir"
     deploy_config "$src" "$dest" "ccstatusline settings.json"
 
-    # Launcher wrapper that guarantees a node runtime is on PATH. The bare
-    # `npx` in settings.json fails in Claude Code's non-interactive shell when
-    # nvm is lazy-loaded (interactive-only). The Unix statusLine command is
-    # repointed at this wrapper by _set_ccstatusline_command (after the merge).
+    # Launcher wrapper that puts node on PATH (nvm is lazy-loaded, interactive
+    # only, so Claude Code's non-interactive shell lacks it) and runs the
+    # pinned install. The Unix statusLine command is repointed at this wrapper
+    # by _set_ccstatusline_command (after the merge).
     local wrapper_src="${ENV_SETUP_DIR}/configs/ccstatusline/statusline.sh"
     local wrapper_dest="${dest_dir}/statusline.sh"
     if [[ -f "$wrapper_src" ]]; then
@@ -88,6 +88,52 @@ _install_ccstatusline() {
 
     print_header "ccstatusline"
     _deploy_ccstatusline_config
+    _install_ccstatusline_pkg
+}
+
+# =============================================================================
+# _install_ccstatusline_pkg — Install ccstatusline at the pinned
+# claude_code.ccstatusline.version into ~/.local/share/ccstatusline, which the
+# launcher wrapper runs with node directly. A fixed prefix (not npm -g) keeps
+# the path stable when nvm switches node versions. Idempotent: skips when the
+# installed package.json already reports the pinned version.
+# =============================================================================
+_install_ccstatusline_pkg() {
+    local version prefix pkg installed=""
+    version="$(cfg_get "claude_code.ccstatusline.version")"
+    if [[ -z "$version" ]]; then
+        log_warn "claude_code.ccstatusline.version not set — skipping ccstatusline install"
+        return 0
+    fi
+    prefix="${HOME}/.local/share/ccstatusline"
+    pkg="${prefix}/node_modules/ccstatusline/package.json"
+
+    # Same lazy-nvm fallback as the launcher: a --modules run may not have
+    # node on PATH yet.
+    if ! command_exists npm; then
+        local nb
+        nb="$(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/*/bin 2>/dev/null | sort -V | tail -1)"
+        [[ -n "$nb" ]] && export PATH="$nb:$PATH"
+    fi
+    if ! command_exists npm; then
+        log_warn "npm not found — ccstatusline not installed (the status line will say so)"
+        return 0
+    fi
+
+    if [[ -f "$pkg" ]]; then
+        installed="$(node -p 'require(process.argv[1]).version' "$pkg" 2>/dev/null || true)"
+    fi
+    if [[ "$installed" == "$version" ]]; then
+        log_info "ccstatusline ${version} already installed"
+        return 0
+    fi
+
+    dry_run_mkdir "$prefix"
+    if dry_run_cmd npm install --prefix "$prefix" --no-fund --no-audit --loglevel=error "ccstatusline@${version}"; then
+        log_success "Installed ccstatusline ${version} into ${prefix}"
+    else
+        log_warn "npm install ccstatusline@${version} failed — status line will report it missing"
+    fi
 }
 
 # =============================================================================
@@ -472,7 +518,7 @@ _merge_claude_settings() {
         return 0
     }
     # On Unix the deployed statusLine points at the ccstatusline launcher wrapper
-    # (node-on-PATH guarantee), not the repo's portable `npx ...`. Fold that into
+    # (node-on-PATH guarantee), not the repo template's command. Fold that into
     # the idempotency baseline so an already-synced file isn't re-merged (and
     # re-backed-up) on every run; the actual repoint is _set_ccstatusline_command.
     if cfg_enabled "claude_code.ccstatusline.enabled"; then
@@ -539,9 +585,9 @@ _merge_claude_settings() {
 
 # =============================================================================
 # _set_ccstatusline_command — Repoint ~/.claude/settings.json's statusLine at the
-# deployed launcher wrapper (Unix only; node-on-PATH guarantee under lazy nvm).
-# The shared configs/claude/settings.json keeps the portable `npx ...` command
-# for the Windows engine. Runs AFTER _merge_claude_settings so the whitelist
+# deployed launcher wrapper (node-on-PATH guarantee under lazy nvm, then the
+# pinned install). The Windows engine does its own repoint in
+# Sync-ClaudeSettings. Runs AFTER _merge_claude_settings so the whitelist
 # merge doesn't clobber it. Idempotent; honours DRY_RUN.
 # =============================================================================
 _set_ccstatusline_command() {
@@ -1054,6 +1100,9 @@ uninstall_claude_code() {
         "${ENV_SETUP_DIR}/configs/ccstatusline/statusline.sh" "ccstatusline launcher"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         rmdir "${HOME}/.config/ccstatusline" 2>/dev/null || true
+    fi
+    if [[ "${KEEP_TOOLS:-false}" != "true" ]]; then
+        remove_managed_dir "${HOME}/.local/share/ccstatusline" "ccstatusline package"
     fi
 
     # T — plugins/marketplaces + CLI binary

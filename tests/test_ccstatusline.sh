@@ -220,7 +220,30 @@ assert_true "$rc" "launcher wrapper is executable"
 wrapper_body="$(cat "$PROJECT_ROOT/configs/ccstatusline/statusline.sh")"
 assert_contains "$wrapper_body" "command -v node" "wrapper checks for node on PATH"
 assert_contains "$wrapper_body" "versions/node" "wrapper falls back to nvm node bin"
-assert_contains "$wrapper_body" "ccstatusline@latest" "wrapper execs ccstatusline"
+assert_contains "$wrapper_body" "dist/ccstatusline.js" "wrapper runs the pinned install"
+wrapper_cmds="$(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/configs/ccstatusline/statusline.sh")"
+assert_not_contains "$wrapper_cmds" "npx" "wrapper never runs npx (too slow per render)"
+
+# ---------------------------------------------------------------------------
+suite "Package: pinned version is configured and installed idempotently"
+# ---------------------------------------------------------------------------
+pinned="$(cfg_get "claude_code.ccstatusline.version")"
+assert_true "$([[ -n "$pinned" ]]; echo $?)" "config.yaml pins claude_code.ccstatusline.version"
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    _pkgdir="$HOME/.local/share/ccstatusline/node_modules/ccstatusline"
+    mkdir -p "$_pkgdir"
+    printf '{"name":"ccstatusline","version":"%s"}
+' "$pinned" > "$_pkgdir/package.json"
+    out="$(_install_ccstatusline_pkg 2>&1)"
+    assert_contains "$out" "already installed" "matching installed version skips npm"
+    printf '{"name":"ccstatusline","version":"0.0.0"}
+' > "$_pkgdir/package.json"
+    out="$(DRY_RUN=true _install_ccstatusline_pkg 2>&1)"
+    assert_contains "$out" "ccstatusline@${pinned}" "stale version triggers npm install of the pin"
+    rm -rf "$HOME/.local/share/ccstatusline"
+else
+    skip "node/npm absent — package install checks not run"
+fi
 
 # ---------------------------------------------------------------------------
 suite "Deploy: launcher wrapper is deployed executable"

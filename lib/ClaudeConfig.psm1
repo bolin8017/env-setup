@@ -66,6 +66,22 @@ function Set-ClaudeTeammateMode {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
+function Set-ClaudeStatusLineCommand {
+    # Point an existing statusLine block at $Command (the pinned ccstatusline
+    # install run with node). The shared template's command is replaced here,
+    # after the merge, the same way Set-ClaudeTeammateMode pins teammateMode.
+    # Only rewrites when statusLine is present. Pure -> unit-testable.
+    param(
+        [Parameter(Mandatory)][string]$CurrentJson,
+        [Parameter(Mandatory)][string]$Command
+    )
+    $cur = $CurrentJson | ConvertFrom-Json
+    if ($cur.PSObject.Properties['statusLine'] -and $cur.statusLine) {
+        $cur.statusLine | Add-Member -NotePropertyName command -NotePropertyValue $Command -Force
+    }
+    return ($cur | ConvertTo-Json -Depth 32)
+}
+
 function Remove-ManagedSettingsKeys {
     # Inverse of Merge-ClaudeSettings: given the user's settings JSON, the repo's
     # settings JSON, and the whitelist keys, return JSON with each whitelisted key
@@ -91,4 +107,4 @@ function Remove-ManagedSettingsKeys {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Remove-ManagedSettingsKeys
+Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Set-ClaudeStatusLineCommand, Remove-ManagedSettingsKeys
