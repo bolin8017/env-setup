@@ -17,7 +17,9 @@ readonly CLI_TOOLS=(
     "jq:jq:jq:jq"
     "fd:fd:fd-find:fd"
     "btop:btop:btop:btop"
-    "tldr:tldr:tldr:tldr"
+    # Homebrew removed the unmaintained "tldr" formula (disabled 2025-10-24,
+    # deleted 2026-10-25); its named replacement "tlrc" ships the same `tldr`.
+    "tldr:tlrc:tldr:tldr"
     "tree:tree:tree:tree"
     "httpie:httpie:httpie:http"
     "eza:eza:eza:eza"
