@@ -33,6 +33,20 @@ Describe 'Merge-McpServers' {
 }
 
 
+Describe 'Set-ClaudeStatusLineCommand' {
+    It 'rewrites an existing statusLine.command and keeps sibling keys' {
+        $cur = '{"statusLine":{"type":"command","command":"npx -y ccstatusline@latest","refreshInterval":10},"keep":"me"}'
+        $o = (Set-ClaudeStatusLineCommand -CurrentJson $cur -Command 'node C:/x/ccstatusline.js') | ConvertFrom-Json
+        $o.statusLine.command | Should -Be 'node C:/x/ccstatusline.js'
+        $o.statusLine.refreshInterval | Should -Be 10
+        $o.keep | Should -Be 'me'
+    }
+    It 'never injects statusLine into a file that lacks it' {
+        $o = (Set-ClaudeStatusLineCommand -CurrentJson '{"env":{"A":"1"}}' -Command 'node x') | ConvertFrom-Json
+        $o.PSObject.Properties['statusLine'] | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Set-ClaudeTeammateMode' {
     It 'rewrites an existing teammateMode to in-process' {
         $o = (Set-ClaudeTeammateMode -CurrentJson '{"teammateMode":"tmux","keep":"me"}') | ConvertFrom-Json

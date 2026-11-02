@@ -163,6 +163,15 @@ env-setup/
   the Claude settings sync: the sync rewrites `statusLine.command` from this
   repo's template, and the account-swap installer must have the last word,
   pointing it back at its own wrapper.
+- **ccstatusline is a pinned install, never npx**: Claude Code cancels a
+  status line command that is still running when the next refresh fires, and
+  `npx -y ccstatusline@latest` (npm startup + a registry lookup per render)
+  measured 8.5-9.6s against a 10s `refreshInterval`, so the line never
+  rendered and cancelled runs left orphaned pwsh/node behind. 08-claude-code
+  installs `claude_code.ccstatusline.version` into `~/.local/share/ccstatusline`
+  (a fixed prefix, not `npm -g`, so nvm version switches don't lose it) and
+  statusLine runs `node .../dist/ccstatusline.js` directly (0.5s): via the
+  launcher wrapper on Unix, via `Set-ClaudeStatusLineCommand` on Windows.
 - **Shell-startup self-update**: an oh-my-zsh-style cadence gate
   (`configs/zshrc/55-self-update.zsh`) checks for env-setup updates at most once
   per `update.frequency_days`. When behind upstream it `git pull --ff-only`s and

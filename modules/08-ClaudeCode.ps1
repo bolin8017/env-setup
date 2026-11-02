@@ -242,7 +242,11 @@ function Sync-ClaudeSettings {
         # Seed the template but pin teammateMode to in-process: native Windows
         # can't run the shared repo value "tmux" (no tmux/iTerm2), so a verbatim
         # copy would seed an unusable config that Claude Code flags.
-        Write-Utf8NoBom -Path $dest -Content (Set-ClaudeTeammateMode -CurrentJson (Get-Content -Raw $src))
+        $seed = Set-ClaudeTeammateMode -CurrentJson (Get-Content -Raw $src)
+        if (Test-CfgEnabled 'claude_code.ccstatusline.enabled') {
+            $seed = Set-ClaudeStatusLineCommand -CurrentJson $seed -Command (Get-CcstatuslineCommand)
+        }
+        Write-Utf8NoBom -Path $dest -Content $seed
         Write-Success "Created $dest from repo template"; return
     }
     # A corrupted user file must degrade to a warning (the Bash twin jq-empty
@@ -255,6 +259,9 @@ function Sync-ClaudeSettings {
     # pin it to in-process before the idempotency compare. Also heals files
     # merged with "tmux" before this fix.
     $merged = Set-ClaudeTeammateMode -CurrentJson $merged
+    if (Test-CfgEnabled 'claude_code.ccstatusline.enabled') {
+        $merged = Set-ClaudeStatusLineCommand -CurrentJson $merged -Command (Get-CcstatuslineCommand)
+    }
     $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
     if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync - skipping'; return }
@@ -398,6 +405,41 @@ function Repair-EpisodicMemoryDeps {
     }
 }
 
+function Get-CcstatuslinePrefix { return (Join-Path $HOME '.local/share/ccstatusline') }
+
+function Get-CcstatuslineCommand {
+    # statusLine.command for the pinned install: node runs the entry script
+    # directly. No npx (npm startup + a registry lookup per render outlasts
+    # the refreshInterval, and Claude Code cancels the unfinished run) and no
+    # npm .ps1 shim. Forward slashes work in the bash Claude Code launches it
+    # from; quoted only when the path has whitespace, because the
+    # account-swap wrapper splits its recorded renderer on spaces.
+    $entry = (Join-Path (Get-CcstatuslinePrefix) 'node_modules/ccstatusline/dist/ccstatusline.js') -replace '\\', '/'
+    if ($entry -match '\s') { $entry = '"' + $entry + '"' }
+    return "node $entry"
+}
+
+function Install-CcstatuslinePackage {
+    # Install ccstatusline at the pinned claude_code.ccstatusline.version into a
+    # fixed prefix (not npm -g, whose location follows the active nvm node
+    # version). Idempotent: skips when the installed version already matches.
+    $version = Get-CfgValue 'claude_code.ccstatusline.version'
+    if (-not $version) { Write-Warn 'claude_code.ccstatusline.version not set - skipping ccstatusline install'; return }
+    $prefix = Get-CcstatuslinePrefix
+    $pkg = Join-Path $prefix 'node_modules/ccstatusline/package.json'
+    if (Test-Path -LiteralPath $pkg) {
+        $installed = $null
+        try { $installed = (Get-Content -Raw -LiteralPath $pkg | ConvertFrom-Json).version } catch { $installed = $null }
+        if ($installed -eq $version) { Write-Info "ccstatusline $version already installed"; return }
+    }
+    if (-not (Test-Command 'npm')) { Write-Warn 'npm not found - ccstatusline not installed'; return }
+    if (Test-DryRun) { Write-Info "[DRY-RUN] Would run: npm install --prefix $prefix ccstatusline@$version"; return }
+    New-DirOrDryRun -Path $prefix
+    $out = Invoke-Native npm install --prefix $prefix '--no-fund' '--no-audit' '--loglevel=error' "ccstatusline@$version"
+    if ($LASTEXITCODE -eq 0) { Write-Success "Installed ccstatusline $version into $prefix" }
+    else { Write-Warn "npm install ccstatusline@$version failed: $($out | Out-String)" }
+}
+
 function Install-Ccstatusline {
     if (-not (Test-CfgEnabled 'claude_code.ccstatusline.enabled')) { return }
     $src = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
@@ -405,6 +447,7 @@ function Install-Ccstatusline {
     $dest = Join-Path $HOME '.config/ccstatusline/settings.json'
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     Deploy-Config -Source $src.Path -Destination $dest -Label 'ccstatusline settings.json'
+    Install-CcstatuslinePackage
 }
 
 function Install-ClaudeCode {
@@ -521,6 +564,7 @@ function Uninstall-ClaudeCode {
             Remove-Item -LiteralPath $ccDir
         }
     }
+    if (-not (Test-KeepTools)) { Remove-ManagedDir -Dir (Get-CcstatuslinePrefix) -Label 'ccstatusline package' }
 
     # T - plugins/marketplaces + CLI binary
     if (-not (Test-KeepTools)) {

@@ -209,12 +209,17 @@ claude_code:
 
   # ccstatusline — status line formatter for Claude Code
   # https://github.com/sirmalloc/ccstatusline
-  # Runs on demand via `npx -y ccstatusline@latest`, so no package install
-  # is performed here. The widget template is deployed to
+  # Installed at the pinned `version` into ~/.local/share/ccstatusline and
+  # run with node directly. Claude Code cancels a status line command that is
+  # still running when the next refresh fires, and `npx -y ccstatusline@latest`
+  # (npm startup + a registry lookup on every render) can take longer than
+  # the 10s refreshInterval, leaving the line blank. Bump `version` and re-run
+  # setup to upgrade. The widget template is deployed to
   # ~/.config/ccstatusline/settings.json; the corresponding statusLine block
   # in ~/.claude/settings.json is handled by the unified settings merge below.
   ccstatusline:
     enabled: true
+    version: "2.2.33"
 
   # Claude Code multi-account switching (claude-as / claude-swap /
   # claude-logout / opt-in auto-swap). The implementation lives in its own

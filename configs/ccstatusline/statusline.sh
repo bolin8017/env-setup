@@ -4,13 +4,14 @@
 # Claude Code runs the statusLine command in a NON-interactive shell. On hosts
 # where env-setup installs Node via nvm with lazy-loading (which only wires
 # node/npm/npx into interactive zsh, and only after the first call), those
-# binaries are absent from the non-interactive PATH — so a bare
-# `npx -y ccstatusline@latest` exits 127 and the status line silently stays
-# blank. This launcher guarantees a node runtime is on PATH before handing off.
+# binaries are absent from the non-interactive PATH — so a bare `node` exits
+# 127 and the status line silently stays blank. This launcher guarantees a
+# node runtime is on PATH before handing off.
 #
-# Cross-engine note: the shared configs/claude/settings.json keeps the portable
-# `npx -y ccstatusline@latest` command for the Windows engine (where node is on
-# PATH via scoop/winget). Only the Unix engine repoints statusLine at this file.
+# It runs the copy 08-claude-code installed at the pinned version, never
+# `npx`: Claude Code cancels a status line command that is still running when
+# the next refresh fires, and npx's npm startup plus registry lookup can
+# outlast the refreshInterval, so the line would never render.
 
 # If node already resolves (system install, eager nvm, etc.), change nothing.
 if ! command -v node >/dev/null 2>&1; then
@@ -21,4 +22,8 @@ if ! command -v node >/dev/null 2>&1; then
     unset _nb
 fi
 
-exec npx -y ccstatusline@latest
+_entry="$HOME/.local/share/ccstatusline/node_modules/ccstatusline/dist/ccstatusline.js"
+if [ -f "$_entry" ]; then
+    exec node "$_entry"
+fi
+echo "ccstatusline not installed - re-run env-setup (08-claude-code)"
