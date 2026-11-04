@@ -85,7 +85,19 @@
         ]
       },
       {
-        "matcher": "Bash|PowerShell",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "if": "Bash(git *)",
+            "command": "python \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/check_commit_msg.py\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
         "hooks": [
           {
             "type": "command",
