@@ -60,11 +60,20 @@ format); guides/git.md keeps the full set; never @import either here. -->
 - Code, commit messages, PR titles/bodies, and inline comments remain in English
 
 ## Execution Policy
-- **Requirements first** (user rulings 2026-10-13). When a new feature or
-  behavior change leaves its purpose, scope or done-criteria unclear,
-  settle them with the user before building: one question at a time,
-  each with a recommendation, then a short agreed spec, then a written
-  plan; a problem's cause comes first. Clear requirements (an explicit
+- **Requirements first** (user rulings 2026-10-13; tools 2026-11-04). When a
+  new feature or behavior change leaves its purpose, scope or done-criteria
+  unclear, settle them with the user before building. Enter plan mode
+  (`EnterPlanMode`) and interview with `AskUserQuestion`, one question per
+  call, your recommended option first, until purpose, scope, out-of-scope
+  and done-criteria are pinned and each criterion names the check that
+  proves it; then present that spec with the step plan through
+  `ExitPlanMode` and edit nothing until the user approves. Under bypass
+  permissions plan mode does not block edits, so the approval dialog and
+  this rule are the only gate. A build that continues in a new session gets
+  the approved spec through the /handoff baton. A problem's cause comes
+  first: start by reproducing it (a failing test or a command whose output
+  shows it; for an intermittent fault, the conditions it appears under),
+  then fix it per the root-cause rule below. Clear requirements (an explicit
   request, a bug with a clear expected result, clear acceptance on a ticket
   or baton) need no spec round; list your assumptions in the summary. A
   subagent takes its dispatch prompt as the agreed requirement.
