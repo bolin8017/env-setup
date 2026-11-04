@@ -62,10 +62,9 @@ format); guides/git.md keeps the full set; never @import either here. -->
 ## Execution Policy
 - **Requirements first** (user rulings 2026-10-13). When a new feature or
   behavior change leaves its purpose, scope or done-criteria unclear,
-  settle them with the user before building: `superpowers:brainstorming`
-  (one question at a time, each with a recommendation), a short agreed
-  spec, then `superpowers:writing-plans`; a problem's cause comes first
-  (`superpowers:systematic-debugging`). Clear requirements (an explicit
+  settle them with the user before building: one question at a time,
+  each with a recommendation, then a short agreed spec, then a written
+  plan; a problem's cause comes first. Clear requirements (an explicit
   request, a bug with a clear expected result, clear acceptance on a ticket
   or baton) need no spec round; list your assumptions in the summary. A
   subagent takes its dispatch prompt as the agreed requirement.
