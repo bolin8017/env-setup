@@ -314,7 +314,6 @@ claude_code:
   register_marketplaces: true
   marketplaces:
     - anthropics/claude-plugins-official
-    - obra/superpowers-marketplace
     - xuanji86/claude-agentpane
     - cathrynlavery/diagram-design
 
