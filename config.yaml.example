@@ -213,7 +213,10 @@ claude_code:
   # run with node directly. Claude Code cancels a status line command that is
   # still running when the next refresh fires, and `npx -y ccstatusline@latest`
   # (npm startup + a registry lookup on every render) can take longer than
-  # the 10s refreshInterval, leaving the line blank. Bump `version` and re-run
+  # the gap between renders, leaving the line blank. No refreshInterval:
+  # the line re-renders on conversation events only, because a timed refresh
+  # spawns bash+node per session every few seconds and loaded a shared dev
+  # box (measured 54% of all new processes with 10 sessions at 10s). Bump `version` and re-run
   # setup to upgrade. The widget template is deployed to
   # ~/.config/ccstatusline/settings.json; the corresponding statusLine block
   # in ~/.claude/settings.json is handled by the unified settings merge below.
