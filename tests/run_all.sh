@@ -40,6 +40,7 @@ tests=(
     "test_user_dirs.sh"
     "test_git_defaults.sh"
     "test_ccstatusline.sh"
+    "test_statusline_throttle.sh"
     "test_claude_assets.sh"
     "test_commit_msg_hook.sh"
     "test_shellcheck.sh"

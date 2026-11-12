@@ -1,0 +1,3 @@
+# Deployed byte-for-byte to ~/.config/ccstatusline on Windows and read by Git Bash,
+# which does not accept CRLF line endings in a script.
+configs/ccstatusline/statusline-throttle.sh text eol=lf
