@@ -369,8 +369,20 @@ function Get-CcstatuslineCommand {
     # account-swap wrapper splits its recorded renderer on spaces.
     $entry = (Join-Path (Get-CcstatuslinePrefix) 'node_modules/ccstatusline/dist/ccstatusline.js') -replace '\\', '/'
     if ($entry -match '\s') { $entry = '"' + $entry + '"' }
-    return "node $entry"
+    $render = "node $entry"
+    # account-swap wraps the status line itself and runs the recorded renderer
+    # from PowerShell as "<program> <args>": it gets the plain form.
+    if (Test-CfgEnabled 'claude_code.account_swap.enabled') { return $render }
+    # Otherwise render through statusline-throttle.sh: it answers with the last
+    # rendered line and re-renders at most once a minute per session (numbers
+    # in the script header). Sourced, so the throttle adds no process to the
+    # `bash -c` Claude Code already starts.
+    $throttle = (Get-CcstatuslineThrottlePath) -replace '\\', '/'
+    if ($throttle -match '\s') { $throttle = '"' + $throttle + '"' }
+    return ". $throttle $render"
 }
+
+function Get-CcstatuslineThrottlePath { return (Join-Path $HOME '.config/ccstatusline/statusline-throttle.sh') }
 
 function Install-CcstatuslinePackage {
     # Install ccstatusline at the pinned claude_code.ccstatusline.version into a
@@ -400,6 +412,10 @@ function Install-Ccstatusline {
     $dest = Join-Path $HOME '.config/ccstatusline/settings.json'
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
     Deploy-Config -Source $src.Path -Destination $dest -Label 'ccstatusline settings.json'
+    $throttle = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/statusline-throttle.sh') -ErrorAction Ignore)
+    if ($throttle) {
+        Deploy-Config -Source $throttle.Path -Destination (Get-CcstatuslineThrottlePath) -Label 'ccstatusline throttle'
+    }
     Install-CcstatuslinePackage
 }
 
@@ -511,6 +527,10 @@ function Uninstall-ClaudeCode {
     $cc = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/settings.json') -ErrorAction Ignore)
     if ($cc) {
         Remove-ManagedFile -Dest (Join-Path $HOME '.config/ccstatusline/settings.json') -RepoSrc $cc.Path -Label 'ccstatusline settings.json'
+        $throttle = (Resolve-Path (Join-Path $PSScriptRoot '../configs/ccstatusline/statusline-throttle.sh') -ErrorAction Ignore)
+        if ($throttle) {
+            Remove-ManagedFile -Dest (Get-CcstatuslineThrottlePath) -RepoSrc $throttle.Path -Label 'ccstatusline throttle'
+        }
         $ccDir = Join-Path $HOME '.config/ccstatusline'
         if (-not (Test-DryRun) -and (Test-Path -LiteralPath $ccDir) -and -not @(Get-ChildItem -LiteralPath $ccDir -Force)) {
             Remove-Item -LiteralPath $ccDir

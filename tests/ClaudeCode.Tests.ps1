@@ -8,12 +8,50 @@ BeforeAll {
 }
 
 Describe 'Get-CcstatuslineCommand' {
-    It 'runs the pinned install with node directly, never npx' {
+    It 'renders the pinned install with node through the throttle, never npx' {
+        $f = Join-Path $TestDrive 'sl.yaml'; Set-Content -Path $f -Value "claude_code:`n  enabled: true"
+        Import-Config -Path $f
         $cmd = Get-CcstatuslineCommand
-        $cmd | Should -Match '^node '
-        $cmd | Should -Match 'ccstatusline/dist/ccstatusline\.js'
+        $cmd | Should -Match '^\. \S*statusline-throttle\.sh node \S*ccstatusline/dist/ccstatusline\.js$'
         $cmd | Should -Not -Match 'npx'
         $cmd.Contains([string][char]92) | Should -BeFalse   # forward slashes for the bash launcher
+    }
+    It 'keeps the plain node form when account-swap wraps the status line' {
+        $yaml = @'
+claude_code:
+  enabled: true
+  account_swap:
+    enabled: true
+'@
+        $f = Join-Path $TestDrive 'sl2.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        $cmd = Get-CcstatuslineCommand
+        $cmd | Should -Match '^node \S*ccstatusline/dist/ccstatusline\.js$'
+    }
+}
+
+Describe 'Install-Ccstatusline (dry-run)' {
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = 'true'
+        $yaml = @'
+claude_code:
+  enabled: true
+  ccstatusline:
+    enabled: true
+'@
+        $f = Join-Path $TestDrive 'sl3.yaml'; Set-Content -Path $f -Value $yaml
+        Import-Config -Path $f
+        Mock Deploy-Config { }
+        Mock New-DirOrDryRun { }
+        Mock Install-CcstatuslinePackage { }
+    }
+    AfterEach { $env:ENVSETUP_DRY_RUN = $null }
+
+    It 'deploys the render throttle next to the widget template' {
+        Install-Ccstatusline
+        Should -Invoke Deploy-Config -Times 1 -ParameterFilter {
+            $Label -eq 'ccstatusline throttle' -and $Destination -like '*ccstatusline*statusline-throttle.sh'
+        }
     }
 }
 
