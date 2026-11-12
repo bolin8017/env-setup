@@ -26,7 +26,7 @@ Steps:
    Raw bullets, zh-TW prose, identifiers in English. Be concrete.
 5. Commit + push:
    `git -C "$WORKLOG_INBOX_PATH" add -A`
-   `git -C "$WORKLOG_INBOX_PATH" commit -m "log($WORKLOG_SOURCE): <date> <topic>"`
+   `git -C "$WORKLOG_INBOX_PATH" commit -m "docs(worklog): add $WORKLOG_SOURCE <date> entry"`
    `git -C "$WORKLOG_INBOX_PATH" push -q`
 6. Report the entry path + a 1–2 line summary of what was logged.
 

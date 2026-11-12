@@ -1,7 +1,7 @@
 # Git: commits, branches and PRs
 
-Split out of `~/.claude/CLAUDE.md` (2026-10-13): the full rule set behind the
-core lines in its Git section. The commit-message format is enforced by
+The full rule set behind the core lines in the Git section of
+`~/.claude/CLAUDE.md`. The commit-message format is enforced by
 `~/.claude/hooks/check_commit_msg.py`.
 
 ## Conventions

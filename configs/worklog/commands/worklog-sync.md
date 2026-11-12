@@ -24,8 +24,9 @@ Steps:
    - **else** → route by content; ask if unclear.
    If `$WORKLOG_INBOX_PATH/sources.yaml` exists, prefer its source→home mapping.
    Merge same-day entries only if they share a vault home.
-4. Commit + push the vault (`content:` message; direct-to-master allowed per the
-   vault's repo CLAUDE.md).
+4. Commit + push the vault (`docs(vault): ...` message, since the commit-message
+   hook accepts Conventional Commits types only; direct-to-master allowed per
+   the vault's repo CLAUDE.md).
 5. Delete the consumed raw entries from the inbox and commit + push the inbox
    (`chore: clear curated logs`) so they are not re-processed.
 6. Report what was curated (and where) and what was cleared.

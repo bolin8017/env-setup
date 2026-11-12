@@ -133,7 +133,7 @@ exactly what makes the next session's `/pickup` take the wrong one.
    ```markdown
    - 派出去的每個 agent 每 5 分鐘在 STATUS 寫一行；在等東西也要寫「等 X，預計 HH:MM」。
    - orchestrator 開背景巡查，每 10 分鐘看一次每個 agent 的 STATUS 和機器占用。
-   - STATUS 超過 15 分鐘沒更新就 SendMessage 提醒一次；下一輪還是沒動，或同一個錯誤連續出現兩次，就 TaskStop 砍掉，用同名加 b 重派。新的 prompt 要寫進卡住的原因和已經做完的部分。
+   - STATUS 超過 15 分鐘沒更新、漏讀訊息，或同一個錯誤連續出現兩次：先 TaskStop 中斷它，再用 SendMessage 把卡住的原因與接下來的步驟送給同一支 agent，讓它帶著前面的脈絡接著做，不重派新 agent。要給正在跑的 agent 任何訊息，都先 TaskStop 再送。救不回來（agent 報錯結束、接不回去）才問使用者。
    - 任何 agent 閒置都不能超過 1 小時：prompt cache 只保留 1 小時，超過之後再叫它，整段 context 要重新計費。快到 1 小時還沒有下一步，就先把它的結果收回來、把它關掉，之後有事改派新的 agent，prompt 裡附上精簡的前情。
    - 機器不能閒置：下一步已經排好就馬上派。砍 agent 時連它的子程序一起停，確認持有者已經不在才釋放機器，留下的排隊項目要清掉。
    ```
@@ -192,9 +192,8 @@ D3. **Compose the message** — the step-3 baton, same sections in the same
       none should be written; that this session stops acting on MRs,
       issues and machines once the message is sent.
     - Then the **session contract**, copied from `~/.claude/commands/kickoff.md`
-      ("Session contract" section, items 1–4: domain stance with the
-      `--domain` value or `diffusion`, who drafts and who reviews documents,
-      Obsidian through `obsidian-tracker`, model routing by difficulty).
+      (every item of its "Session contract" section, with the `--domain`
+      value or `diffusion` filled into the domain stance).
       Read that file when composing; do not paraphrase it from memory.
     - Then what the receiver does first, replacing kickoff steps 1–4:
       (a) verify the message against reality before acting — branches,

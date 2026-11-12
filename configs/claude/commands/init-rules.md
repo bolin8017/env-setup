@@ -120,7 +120,7 @@ For project overview, see @README.md. Available commands: @package.json.
 Notes:
 
 - Relative paths resolve relative to the file containing the import (not the working directory)
-- Maximum recursion depth: **5 hops**
+- Maximum recursion depth: **4 hops**
 - Cross-worktree shared content: import from `~` (e.g., `@~/.claude/my-shared-notes.md`)
 
 ### 7. Summary
