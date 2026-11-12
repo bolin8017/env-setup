@@ -34,7 +34,8 @@ Steps:
    Sections: 本週重點 (3-5 bullets), 專案進展 (per project, link the pages),
    決策與學到, 卡關與未解, 下週優先. zh-TW prose, identifiers in English,
    tags `職涯/群聯` + `類型/日誌`. Link day logs with `[[...]]`.
-5. **Commit + push** the vault: `content: <year>-W<ww> weekly review`.
+5. **Commit + push** the vault: `docs(vault): add <year>-W<ww> weekly review`
+   (the commit-message hook accepts Conventional Commits types only).
 6. **Report** the note path, the week's headline in 1-2 lines, and any
    uncurated inbox entries found in step 3.
 

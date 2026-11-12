@@ -1,8 +1,7 @@
 # Repository documents
 
-Split out of `~/.claude/CLAUDE.md` (2026-09-29). Read before creating a repo
-or writing a versioned document (instruction files, intent.md, decisions.md,
-reports) in any repo.
+Read before creating a repo or writing a versioned document (instruction
+files, intent.md, decisions.md, reports) in any repo.
 
 ## Repository documents (user ruling 2026-09-16)
 - New repo: scaffold per "Project layout for a new repo" in

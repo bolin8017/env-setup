@@ -26,4 +26,4 @@ For each question the prompt asks:
 Never state anything that is not backed by a quote in the file. No recommendations, no "best practice" wording that no source uses.
 
 ## Final message
-At most 5 lines: the report path, one line per question (established / partly / not established), and the number of claims with only third-party sources. Do not paste the report into the final message; the caller reads the file.
+Only these: the report path, one line per question (established / partly / not established), and the number of claims with only third-party sources. Do not paste the report into the final message; the caller reads the file.
