@@ -222,6 +222,14 @@ Describe 'Sync-ClaudeProfileStatusLines' {
         Get-Content -Raw $script:Stale | Should -Be $settled
         @(Get-ChildItem (Split-Path $script:Stale) -Filter 'settings.json.bak.*').Count | Should -Be 1
     }
+    It 'does not rewrite a profile whose block only differs in key order' {
+        Set-Content -Path $script:Stale `
+            -Value '{"statusLine":{"padding":0,"command":". C:/x/statusline-throttle.sh node C:/x/ccstatusline.js","type":"command"},"theme":"dark"}'
+        $before = Get-Content -Raw $script:Stale
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        Get-Content -Raw $script:Stale | Should -Be $before
+        @(Get-ChildItem (Split-Path $script:Stale) -Filter 'settings.json.bak.*').Count | Should -Be 0
+    }
     It 'only announces the change under dry-run' {
         $env:ENVSETUP_DRY_RUN = 'true'
         $before = Get-Content -Raw $script:Stale

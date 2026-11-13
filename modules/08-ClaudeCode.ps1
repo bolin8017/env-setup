@@ -203,8 +203,8 @@ function Sync-ClaudeProfileStatusLines {
         $curJson = Get-Content -Raw -LiteralPath $dest
         try {
             $newJson = Set-ClaudeProfileStatusLine -CurrentJson $curJson -SourceJson $mainJson
-            $curNorm = ($curJson | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
-            $newNorm = ($newJson | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+            $curNorm = ConvertTo-ClaudeCanonicalJson -Json $curJson
+            $newNorm = ConvertTo-ClaudeCanonicalJson -Json $newJson
         } catch { Write-Warn "$dest is not valid JSON - statusLine left alone"; continue }
         if ($curNorm -eq $newNorm) { continue }
         if (Test-DryRun) { Write-Info "[DRY-RUN] Would sync the statusLine block into $dest"; continue }
@@ -302,8 +302,10 @@ function Sync-ClaudeSettings {
     if (Test-CfgEnabled 'claude_code.ccstatusline.enabled') {
         $merged = Set-ClaudeStatusLineCommand -CurrentJson $merged -Command (Get-CcstatuslineCommand)
     }
-    $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
-    $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+    # Compared with keys sorted: the same settings in another key order are in
+    # sync (the Bash twin compares `jq -S` output).
+    $curNorm = ConvertTo-ClaudeCanonicalJson -Json (Get-Content -Raw $dest)
+    $newNorm = ConvertTo-ClaudeCanonicalJson -Json $merged
     if ($curNorm -eq $newNorm) { Write-Info 'claude settings already in sync - skipping'; return }
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Write-Utf8NoBom -Path $dest -Content $merged
@@ -326,8 +328,8 @@ function Sync-ClaudeMcp {
     # Idempotency (the Bash twin has this): without it every setup run backed
     # up and rewrote the live ~/.claude.json, so the "newest backup" converged
     # to already-merged content and the uninstall restore became a no-op.
-    $curNorm = (Get-Content -Raw $dest | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
-    $newNorm = ($merged | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+    $curNorm = ConvertTo-ClaudeCanonicalJson -Json (Get-Content -Raw $dest)
+    $newNorm = ConvertTo-ClaudeCanonicalJson -Json $merged
     if ($curNorm -eq $newNorm) { Write-Info 'MCP servers already in sync - skipping'; return }
     Backup-File -Path $dest -Stamp (Get-Date -Format 'yyyyMMdd_HHmmss') | Out-Null
     Write-Utf8NoBom -Path $dest -Content $merged
