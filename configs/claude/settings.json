@@ -101,6 +101,7 @@
           {
             "type": "command",
             "shell": "bash",
+            "if": "PowerShell(git *)",
             "command": "python \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/check_commit_msg.py\"",
             "timeout": 15
           }
