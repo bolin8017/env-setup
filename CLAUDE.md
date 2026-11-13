@@ -159,10 +159,10 @@ env-setup/
   doesn't require all of env-setup. `claude_code.account_swap.enabled` (off by
   default — the repo is private) clones it and runs its installer, from
   `_install_account_swap` / `Install-AccountSwap` in
-  `08-claude-code.sh`/`08-ClaudeCode.ps1`. That step runs deliberately after
-  the Claude settings sync: the sync rewrites `statusLine.command` from this
-  repo's template, and the account-swap installer must have the last word,
-  pointing it back at its own wrapper.
+  `08-claude-code.sh`/`08-ClaudeCode.ps1`. That step runs deliberately before
+  the Claude settings sync, so this repo's `statusLine.command` (the throttle
+  on Windows) has the last word: account-swap no longer ships a status-line
+  wrapper, and the throttle stays on whether or not account-swap is enabled.
 - **ccstatusline is a pinned install, never npx**: Claude Code cancels a
   status line command that is still running when the next refresh fires, and
   `npx -y ccstatusline@latest` (npm startup + a registry lookup per render)

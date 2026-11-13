@@ -394,11 +394,11 @@ _sync_claude_profiles() {
 # installer. Opt-in and off by default: the repo is private, so a default-on
 # step would leave anyone without access stuck on an unfetchable URL.
 #
-# Runs AFTER both _merge_claude_settings AND _set_ccstatusline_command on
-# purpose: the latter has the last word on statusLine.command on Unix (see
-# its own docstring), and the account-swap installer must have the final say
-# instead, pointing it back at its own wrapper. That ordering is the entire
-# mechanism that keeps auto-swap working across an env-setup run.
+# Runs BEFORE _merge_claude_settings and _set_ccstatusline_command on
+# purpose, so this repo's statusLine command has the last word.
+# account-swap dropped its status-line wrapper (claude-account-swap#3); its
+# installer only rewrites statusLine.command when it still names that
+# wrapper, which the repoint then overwrites.
 # =============================================================================
 _install_account_swap() {
     cfg_enabled "claude_code.account_swap.enabled" || return 0
@@ -442,6 +442,20 @@ _install_account_swap() {
     else
         log_warn "claude-account-swap setup.sh not found in ${dir}"
     fi
+}
+
+# =============================================================================
+# _jq_set_statusline_command <cmd> [jq args...] — Print the settings JSON (file
+# args or stdin) with statusLine.command set to <cmd>, when statusLine exists.
+# MSYS2_ARG_CONV_EXCL keeps Git Bash from rewriting a POSIX <cmd> into a
+# Windows path on its way to a native jq.exe (msys2.org/docs/filesystem-paths);
+# no-op outside MSYS2. Shared so the merge baseline and the repoint store the
+# same string.
+# =============================================================================
+_jq_set_statusline_command() {
+    local cmd="$1"; shift
+    MSYS2_ARG_CONV_EXCL="$cmd" jq --arg cmd "$cmd" \
+        'if .statusLine then .statusLine.command = $cmd else . end' "$@"
 }
 
 # =============================================================================
@@ -523,8 +537,8 @@ _merge_claude_settings() {
     # re-backed-up) on every run; the actual repoint is _set_ccstatusline_command.
     if cfg_enabled "claude_code.ccstatusline.enabled"; then
         local _cc_expected
-        if _cc_expected=$(printf '%s' "$expected" | jq -S --arg cmd "${HOME}/.config/ccstatusline/statusline.sh" \
-                'if .statusLine then .statusLine.command = $cmd else . end' 2>/dev/null); then
+        if _cc_expected=$(printf '%s' "$expected" | \
+                _jq_set_statusline_command "${HOME}/.config/ccstatusline/statusline.sh" -S 2>/dev/null); then
             expected="$_cc_expected"
         fi
     fi
@@ -612,7 +626,7 @@ _set_ccstatusline_command() {
     [[ "$cur" == "$wrapper" ]] && return 0
 
     local tmp="${dest}.tmp.$$"
-    if jq --arg cmd "$wrapper" 'if .statusLine then .statusLine.command = $cmd else . end' "$dest" > "$tmp" && mv "$tmp" "$dest"; then
+    if _jq_set_statusline_command "$wrapper" "$dest" > "$tmp" && mv "$tmp" "$dest"; then
         log_success "Pointed statusLine.command at ${wrapper}"
     else
         rm -f "$tmp"
@@ -860,9 +874,9 @@ install_claude_code() {
     print_header "Claude Code config sync"
     _sync_claude_assets "${HOME}/.claude"
     _sync_claude_profiles
+    _install_account_swap
     _merge_claude_settings
     _set_ccstatusline_command
-    _install_account_swap
     _register_plugin_marketplaces
     _install_enabled_plugins
     _sync_mcp_servers
