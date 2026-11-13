@@ -3,6 +3,15 @@
   "lines": [
     [
       {
+        "id": "c0a7e1d2-5b3f-4e8a-9c61-2f4d8b7a3e05",
+        "type": "claude-account-email",
+        "rawValue": true
+      },
+      {
+        "id": "4b9e2c6a-8d17-4f3b-a5e0-7c1d9f2b6a48",
+        "type": "separator"
+      },
+      {
         "id": "1",
         "type": "model",
         "color": "cyan"
