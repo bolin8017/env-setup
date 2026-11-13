@@ -120,4 +120,14 @@ done < <(grep -oE '[0-9a-z_-]+\.sh' "$PROJECT_ROOT/CLAUDE.md" \
          | grep -v '^#' | sort -u)
 
 # =============================================================================
+suite "Test suites load the repo config without config.local.yaml"
+# =============================================================================
+# load_config "$PROJECT_ROOT/config.yaml" merges the developer's gitignored
+# config.local.yaml; suites go through load_repo_config (test_framework.sh).
+_direct="$(grep -l 'load_config "\$PROJECT_ROOT/config\.yaml"' \
+    "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/e2e/*.sh 2>/dev/null \
+    | grep -v '/test_config_consistency\.sh$' || true)"
+assert_eq "" "$_direct" "no suite loads \$PROJECT_ROOT/config.yaml directly"
+
+# =============================================================================
 print_test_summary

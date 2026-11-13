@@ -6,7 +6,11 @@ BeforeAll {
     Import-Module "$PSScriptRoot/../lib/Config.psm1" -Force
     $script:RepoRoot  = (Resolve-Path "$PSScriptRoot/..").Path
     $script:ClaudeDir = Join-Path $script:RepoRoot 'configs/claude'
-    Import-Config -Path (Join-Path $script:RepoRoot 'config.yaml')
+    # A copy without its sibling: Import-Config also merges a gitignored
+    # config.local.yaml, which would put this machine's overrides under test.
+    $baseCfg = Join-Path $TestDrive 'config.yaml'
+    Copy-Item (Join-Path $script:RepoRoot 'config.yaml') $baseCfg
+    Import-Config -Path $baseCfg
     $script:Settings = Get-Content -Raw (Join-Path $script:ClaudeDir 'settings.json') | ConvertFrom-Json
 }
 

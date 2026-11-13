@@ -136,7 +136,7 @@ if command -v jq >/dev/null 2>&1; then
     source "$PROJECT_ROOT/lib/yaml.sh"
     source "$PROJECT_ROOT/lib/config.sh"
     setup_logging
-    load_config "$PROJECT_ROOT/config.yaml" >/dev/null 2>&1
+    load_repo_config >/dev/null 2>&1
     source "$PROJECT_ROOT/modules/08-claude-code.sh"
 
     mkdir -p "$HOME/.claude"
@@ -160,7 +160,7 @@ if ! declare -f uninstall_user_dirs >/dev/null 2>&1; then
     source "$PROJECT_ROOT/lib/yaml.sh"
     source "$PROJECT_ROOT/lib/config.sh"
     setup_logging
-    load_config "$PROJECT_ROOT/config.yaml" >/dev/null 2>&1
+    load_repo_config >/dev/null 2>&1
     source "$PROJECT_ROOT/modules/09-user-dirs.sh"
 fi
 
@@ -201,7 +201,7 @@ source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/config.sh"
 # shellcheck source=lib/package.sh
 source "$PROJECT_ROOT/lib/package.sh"
-load_config "$PROJECT_ROOT/config.yaml"
+load_repo_config
 # shellcheck source=modules/05-cli-tools.sh
 source "$PROJECT_ROOT/modules/05-cli-tools.sh"
 

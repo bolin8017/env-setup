@@ -17,7 +17,7 @@ source "$PROJECT_ROOT/lib/yaml.sh"
 source "$PROJECT_ROOT/lib/dryrun.sh"
 source "$PROJECT_ROOT/lib/config.sh"
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml"
+load_repo_config
 
 set +e
 

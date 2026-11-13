@@ -21,7 +21,7 @@ source "$PROJECT_ROOT/lib/uninstall.sh"
 
 # Load config so cfg_* functions work inside modules
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml"
+load_repo_config
 DRY_RUN="true"
 AUTO_YES="true"
 export ENV_SETUP_DIR="$PROJECT_ROOT"
