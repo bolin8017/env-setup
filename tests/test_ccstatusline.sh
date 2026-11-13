@@ -21,7 +21,7 @@ source "$PROJECT_ROOT/lib/dryrun.sh"
 source "$PROJECT_ROOT/lib/config.sh"
 
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml"
+load_repo_config
 DRY_RUN="false"
 AUTO_YES="true"
 export ENV_SETUP_DIR="$PROJECT_ROOT"

@@ -18,12 +18,9 @@ source "$PROJECT_ROOT/lib/dryrun.sh"
 
 setup_logging
 
-# Load the base config in isolation. load_config() also merges a sibling
-# config.local.yaml (per-machine overrides such as role: curator), which would
-# skew the schema-default assertions below; copying config.yaml into TEST_TMPDIR
-# (no sibling override there) keeps this suite hermetic on curator machines.
-cp "$PROJECT_ROOT/config.yaml" "$TEST_TMPDIR/config.yaml"
-load_config "$TEST_TMPDIR/config.yaml" >/dev/null
+# Committed defaults only (no config.local.yaml, e.g. role: curator), which
+# would skew the schema-default assertions below.
+load_repo_config >/dev/null
 export ENV_SETUP_DIR="$PROJECT_ROOT"
 DRY_RUN="true"
 AUTO_YES="true"

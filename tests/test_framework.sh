@@ -193,5 +193,21 @@ print_test_summary() {
     [[ $_TEST_FAIL -eq 0 ]]
 }
 
+# =============================================================================
+# load_repo_config — load the repo's config.yaml the way a fresh clone sees it.
+# load_config() also merges a sibling config.local.yaml (gitignored per-machine
+# overrides), so loading "$PROJECT_ROOT/config.yaml" directly makes a suite's
+# verdict depend on the developer's machine (account_swap.enabled: true there
+# failed "disabled by default" here). A copy in a directory with no sibling
+# keeps every suite on the committed defaults. Needs PROJECT_ROOT set and
+# lib/config.sh sourced; a suite that wants an override writes its own fixture.
+# =============================================================================
+load_repo_config() {
+    local dir="${TEST_TMPDIR}/repo-config"
+    mkdir -p "$dir" || return 1
+    cp "$PROJECT_ROOT/config.yaml" "$dir/config.yaml" || return 1
+    load_config "$dir/config.yaml"
+}
+
 # Initialize tmpdir
 _setup_tmpdir

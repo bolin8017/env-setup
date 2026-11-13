@@ -104,7 +104,9 @@ theme:
 
 Describe 'Import-Config on the repo config.yaml' {
     It 'parses the real config (which contains blank lines) without throwing' {
-        $repo = Join-Path $PSScriptRoot '../config.yaml'
+        # A copy without its sibling config.local.yaml (per-machine overrides).
+        $repo = Join-Path $TestDrive 'repo-config.yaml'
+        Copy-Item (Join-Path $PSScriptRoot '../config.yaml') $repo
         { Import-Config -Path $repo } | Should -Not -Throw
         Test-CfgEnabled 'windows.windows_terminal' | Should -BeTrue
     }

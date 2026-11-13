@@ -25,7 +25,7 @@ source "$PROJECT_ROOT/lib/config.sh"
 source "$PROJECT_ROOT/lib/package.sh"
 source "$PROJECT_ROOT/lib/uninstall.sh"
 setup_logging
-load_config "$PROJECT_ROOT/config.yaml"
+load_repo_config
 DRY_RUN="false"
 
 # shellcheck source=modules/01-core.sh
