@@ -220,6 +220,10 @@ claude_code:
   # setup to upgrade. The widget template is deployed to
   # ~/.config/ccstatusline/settings.json; the corresponding statusLine block
   # in ~/.claude/settings.json is handled by the unified settings merge below.
+  # When bumping `version`: ccstatusline rewrites an older-schema settings
+  # file on its first render, after which the deployed copy never equals the
+  # template again and every run backs it up and redeploys. Render once with
+  # `--config configs/ccstatusline/settings.json` and commit what it wrote.
   ccstatusline:
     enabled: true
     version: "2.2.33"
