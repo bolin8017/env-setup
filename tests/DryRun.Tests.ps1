@@ -58,6 +58,19 @@ Describe 'DryRun.psm1' {
             Deploy-Config -Source $src -Destination $dst
             Get-Content $dst | Should -Be 'new'
         }
+        It 'never prompts or writes under dry-run when the destination differs' {
+            # Regression: without AutoYes this reached Confirm-Action, which
+            # blocks an interactive dry run and throws in a non-interactive one.
+            $src = Join-Path $TestDrive 'drysrc'; Set-Content $src 'new'
+            $dst = Join-Path $TestDrive 'drydst'; Set-Content $dst 'old'
+            $env:ENVSETUP_DRY_RUN = 'true'
+            Mock -ModuleName DryRun Confirm-Action { throw 'prompted under dry-run' }
+            Mock -ModuleName DryRun Write-Info { }
+            { Deploy-Config -Source $src -Destination $dst } | Should -Not -Throw
+            Get-Content $dst | Should -Be 'old'
+            Should -Invoke -ModuleName DryRun Confirm-Action -Times 0
+            Should -Invoke -ModuleName DryRun Write-Info -ParameterFilter { $Message -match 'Would ask to overwrite' }
+        }
         It 'skips when destination is byte-identical to source' {
             # No env flags (not AutoYes/KeepExisting): the identical-content check
             # short-circuits before any Confirm-Action prompt would fire.
