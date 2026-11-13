@@ -51,6 +51,16 @@ while IFS= read -r key; do
     assert_true $? "whitelist key '$key' exists in settings.json"
 done < <(cfg_list "claude_code.settings_merge_keys")
 
+# Seed keys are read from the same template; one in both lists would be
+# replaced on every run, which is what the seed list exists to prevent.
+while IFS= read -r key; do
+    [[ -z "$key" ]] && continue
+    [[ "$(jq --arg k "$key" 'has($k)' "$SETTINGS")" == "true" ]]
+    assert_true $? "seed key '$key' exists in settings.json"
+    ! cfg_list "claude_code.settings_merge_keys" | grep -Fxq -- "$key"
+    assert_true $? "seed key '$key' is not also a merge key"
+done < <(cfg_list "claude_code.settings_seed_keys")
+
 # =============================================================================
 suite "enabledPlugins marketplaces are registered"
 # =============================================================================

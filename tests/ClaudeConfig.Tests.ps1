@@ -14,6 +14,24 @@ Describe 'Merge-ClaudeSettings' {
         $o = (Merge-ClaudeSettings -CurrentJson '{"env":{"A":"1"}}' -SourceJson '{"env":{"A":"1"}}' -WhitelistKeys @('env')) | ConvertFrom-Json
         $o.env.A | Should -Be '1'
     }
+    It 'writes a seed key only while the machine has no value for it' {
+        $src = '{"env":{"A":"2"},"effortLevel":"high","modelSettings":{"m1":{"effortLevel":"high"}}}'
+        # The app already saved its own choice for both seed keys: left alone.
+        $cur = '{"env":{"A":"1"},"effortLevel":"xhigh","modelSettings":{"m2":{"effortLevel":"xhigh"}}}'
+        $o = (Merge-ClaudeSettings -CurrentJson $cur -SourceJson $src -WhitelistKeys @('env') -SeedKeys @('effortLevel','modelSettings')) | ConvertFrom-Json
+        $o.env.A | Should -Be '2'
+        $o.effortLevel | Should -Be 'xhigh'
+        $o.modelSettings.m2.effortLevel | Should -Be 'xhigh'
+        $o.modelSettings.PSObject.Properties['m1'] | Should -BeNullOrEmpty
+        # A machine with no value yet starts from the repo's.
+        $o = (Merge-ClaudeSettings -CurrentJson '{"env":{"A":"1"}}' -SourceJson $src -WhitelistKeys @('env') -SeedKeys @('effortLevel','modelSettings')) | ConvertFrom-Json
+        $o.effortLevel | Should -Be 'high'
+        $o.modelSettings.m1.effortLevel | Should -Be 'high'
+    }
+    It 'does not invent a seed key the source lacks' {
+        $o = (Merge-ClaudeSettings -CurrentJson '{"env":{"A":"1"}}' -SourceJson '{"env":{"A":"1"}}' -WhitelistKeys @('env') -SeedKeys @('effortLevel')) | ConvertFrom-Json
+        $o.PSObject.Properties['effortLevel'] | Should -BeNullOrEmpty
+    }
 }
 
 Describe 'Merge-McpServers' {

@@ -461,6 +461,8 @@ _jq_set_statusline_command() {
 
 # =============================================================================
 # _merge_claude_settings — Whitelist jq-merge of ~/.claude/settings.json.
+# Keys in claude_code.settings_seed_keys are copied only while the machine has
+# no value for them (the app writes them itself afterwards).
 # For each top-level key in claude_code.settings_merge_keys, copies that field
 # from the repo's settings.json into the user's. Other keys (e.g. internal
 # experimental flags) are preserved verbatim. Idempotent: skips if the merged
@@ -518,17 +520,31 @@ _merge_claude_settings() {
         return 0
     fi
 
+    # Seed keys (claude_code.settings_seed_keys) are written only while the
+    # machine has no value for them: Claude Code writes them itself afterwards
+    # (/model, /effort), and from then on its value wins.
+    local seed_keys=() seed_json
+    while IFS= read -r k; do
+        [[ -n "$k" ]] && seed_keys+=("$k")
+    done < <(cfg_list "claude_code.settings_seed_keys")
+    # ${a[@]+"${a[@]}"}: an empty array is an unbound-variable error under
+    # `set -u` before bash 4.4.
+    # shellcheck disable=SC2016  # $ARGS is a jq variable, not shell
+    seed_json="$(jq -nc '$ARGS.positional' --args ${seed_keys[@]+"${seed_keys[@]}"})"
+
     # Pass keys as data (--args) instead of building the jq filter via string
     # concatenation. This avoids any quoting / injection surface if a key
     # contains characters like " or \, and is the idiomatic jq pattern for
     # "operate on a list of keys".
-    # shellcheck disable=SC2016  # $ARGS, $k, $src are jq variables, not shell
-    local jq_filter='reduce $ARGS.positional[] as $k (.; .[$k] = $src[0][$k])'
+    # shellcheck disable=SC2016  # $ARGS, $k, $src, $seed are jq variables, not shell
+    local jq_filter='reduce $ARGS.positional[] as $k (.; .[$k] = $src[0][$k])
+        | reduce $seed[] as $k (.;
+            if has($k) or ($src[0] | has($k) | not) then . else .[$k] = $src[0][$k] end)'
 
     # Idempotency check: would the merged result equal the current file?
     local current expected
     current=$(jq -S . "$dest" 2>/dev/null)
-    expected=$(jq -S --slurpfile src "$src" "$jq_filter" "$dest" --args "${keys[@]}" 2>/dev/null) || {
+    expected=$(jq -S --slurpfile src "$src" --argjson seed "$seed_json" "$jq_filter" "$dest" --args "${keys[@]}" 2>/dev/null) || {
         log_error "jq merge dry-evaluation failed — skipping (no changes made)"
         return 0
     }
@@ -563,6 +579,13 @@ _merge_claude_settings() {
                 log_info "  ${k}: unchanged"
             fi
         done
+        for k in ${seed_keys[@]+"${seed_keys[@]}"}; do
+            if [[ "$(jq --arg k "$k" 'has($k)' "$dest" 2>/dev/null)" != "true" \
+                && "$(jq --arg k "$k" 'has($k)' "$src" 2>/dev/null)" == "true" ]]; then
+                log_info "  ${k}: will be seeded (no value on this machine)"
+                (( changing += 1 ))
+            fi
+        done
         if [[ $changing -eq 0 ]]; then
             log_info "no whitelisted keys actually changing — skipping"
             return 0
@@ -585,7 +608,7 @@ _merge_claude_settings() {
 
     # Apply merge atomically
     local tmp="${dest}.tmp.$$"
-    if jq --slurpfile src "$src" "$jq_filter" "$dest" --args "${keys[@]}" > "$tmp"; then
+    if jq --slurpfile src "$src" --argjson seed "$seed_json" "$jq_filter" "$dest" --args "${keys[@]}" > "$tmp"; then
         if mv "$tmp" "$dest"; then
             log_success "Merged ${#keys[@]} whitelisted keys into ${dest}"
         else
@@ -979,9 +1002,10 @@ _uninstall_claude_settings() {
     command_exists jq || { log_warn "jq not found — leaving settings.json"; return 0; }
     jq empty "$dest" 2>/dev/null || { log_warn "settings.json is invalid JSON — leaving it"; return 0; }
 
+    # Seed keys too: a seeded value that still equals the repo's is env-setup's.
     local keys=() k
     while IFS= read -r k; do [[ -n "$k" ]] && keys+=("$k"); done \
-        < <(cfg_list "claude_code.settings_merge_keys")
+        < <(cfg_list "claude_code.settings_merge_keys"; cfg_list "claude_code.settings_seed_keys")
     [[ ${#keys[@]} -eq 0 ]] && return 0
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then

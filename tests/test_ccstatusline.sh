@@ -118,6 +118,30 @@ assert_eq "npx -y ccstatusline@latest" "$cmd" \
     "statusLine.command merged from repo template"
 
 # ---------------------------------------------------------------------------
+suite "Merge: seed keys are written only while the machine has no value"
+# ---------------------------------------------------------------------------
+# effortLevel / modelSettings are saved by Claude Code itself (/effort, /model).
+_reset
+echo '{"effortLevel":"low","modelSettings":{"my-model":{"effortLevel":"low"}}}' > "$HOME/.claude/settings.json"
+_merge_claude_settings >/dev/null 2>&1
+assert_eq "low" "$(jq -r '.effortLevel' "$HOME/.claude/settings.json")" \
+    "seed key effortLevel: the machine's value survives the merge"
+assert_eq '{"my-model":{"effortLevel":"low"}}' "$(jq -c '.modelSettings' "$HOME/.claude/settings.json")" \
+    "seed key modelSettings: the machine's value survives the merge"
+assert_eq "$(jq -c '.hooks' "$PROJECT_ROOT/configs/claude/settings.json")" \
+    "$(jq -c '.hooks' "$HOME/.claude/settings.json")" "merge keys are still replaced in the same run"
+
+_reset
+echo '{"theme":"dark"}' > "$HOME/.claude/settings.json"
+_merge_claude_settings >/dev/null 2>&1
+assert_eq "$(jq -c '.modelSettings' "$PROJECT_ROOT/configs/claude/settings.json")" \
+    "$(jq -c '.modelSettings' "$HOME/.claude/settings.json")" \
+    "seed key modelSettings: a machine without one starts from the repo's"
+assert_eq "$(jq -r '.effortLevel' "$PROJECT_ROOT/configs/claude/settings.json")" \
+    "$(jq -r '.effortLevel' "$HOME/.claude/settings.json")" \
+    "seed key effortLevel: a machine without one starts from the repo's"
+
+# ---------------------------------------------------------------------------
 suite "Merge: non-whitelisted keys are preserved verbatim"
 # ---------------------------------------------------------------------------
 # settings_merge_keys whitelists env, statusLine, enabledPlugins,
