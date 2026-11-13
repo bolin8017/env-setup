@@ -366,7 +366,8 @@ _sync_claude_assets() {
 # accounts selected via CLAUDE_CONFIG_DIR (`claude-as <name>` in
 # configs/aliases.zsh); each keeps its own credentials/settings/plugins, so
 # only static assets are synced — settings.json merge and plugin installs
-# stay per-profile manual.
+# stay per-profile manual. The one exception is the statusLine block: see
+# _sync_profile_statuslines.
 # =============================================================================
 _sync_claude_profiles() {
     local profiles=() p
@@ -635,6 +636,63 @@ _set_ccstatusline_command() {
 }
 
 # =============================================================================
+# _sync_profile_statuslines — Keep the ccstatusline statusLine block of every
+# ~/.claude-<name> config dir equal to the one in ~/.claude/settings.json.
+# `claude-as` seeds that block once, when the profile has none, and never
+# refreshes it, so a profile kept whatever was current the day it was created
+# (found on a dev box: `npx -y ccstatusline@latest` plus refreshInterval 10,
+# both since replaced in ~/.claude).
+#
+# Detection-driven on purpose: `claude-as <name>` creates profiles that are
+# never declared in claude_code.profiles. Only a block that already renders
+# ccstatusline is replaced (the whole block, so dropped fields go too); a
+# profile with a custom status line, or without one, is left alone. Runs AFTER
+# _set_ccstatusline_command so it copies the settled block. Idempotent;
+# honours DRY_RUN and KEEP_EXISTING.
+# =============================================================================
+_sync_profile_statuslines() {
+    cfg_enabled "claude_code.ccstatusline.enabled" || return 0
+
+    local main="${HOME}/.claude/settings.json"
+    [[ -f "$main" ]] || return 0
+    command_exists jq || return 0
+
+    local renders_cc='(.statusLine.command? // "") | tostring | test("ccstatusline")'
+    jq -e "$renders_cc" "$main" >/dev/null 2>&1 || return 0
+
+    local dir dest tmp
+    for dir in "${HOME}"/.claude-*/; do
+        dest="${dir}settings.json"
+        [[ -f "$dest" ]] || continue
+        jq -e "$renders_cc" "$dest" >/dev/null 2>&1 || continue
+        # shellcheck disable=SC2016  # $m is a jq variable, not shell
+        jq -e --slurpfile m "$main" '.statusLine == $m[0].statusLine' "$dest" >/dev/null 2>&1 && continue
+
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            log_info "[DRY-RUN] Would sync the statusLine block into ${dest}"
+            continue
+        fi
+        if [[ "${KEEP_EXISTING:-false}" == "true" ]]; then
+            log_info "[SKIP] Keeping existing statusLine in ${dest} (--keep-existing)"
+            continue
+        fi
+
+        if ! cp -p "$dest" "${dest}.bak.$(date +%Y%m%d_%H%M%S)"; then
+            log_warn "Could not back up ${dest} — statusLine left as-is"
+            continue
+        fi
+        tmp="${dest}.tmp.$$"
+        # shellcheck disable=SC2016  # $m is a jq variable, not shell
+        if jq --slurpfile m "$main" '.statusLine = $m[0].statusLine' "$dest" > "$tmp" && mv "$tmp" "$dest"; then
+            log_success "Synced the statusLine block into ${dest}"
+        else
+            rm -f "$tmp"
+            log_warn "Failed to sync the statusLine block into ${dest} — left as-is"
+        fi
+    done
+}
+
+# =============================================================================
 # _register_plugin_marketplaces — Run `claude plugin marketplace add` for each
 # entry in claude_code.marketplaces. Idempotent via known_marketplaces.json.
 # =============================================================================
@@ -877,6 +935,7 @@ install_claude_code() {
     _install_account_swap
     _merge_claude_settings
     _set_ccstatusline_command
+    _sync_profile_statuslines
     _register_plugin_marketplaces
     _install_enabled_plugins
     _sync_mcp_servers

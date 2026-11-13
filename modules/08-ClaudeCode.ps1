@@ -164,7 +164,8 @@ function Sync-ClaudeProfiles {
     # selected via CLAUDE_CONFIG_DIR (`claude-as <name>` in
     # configs/aliases.ps1); each keeps its own credentials/settings/plugins,
     # so only static assets are synced - settings.json merge and plugin
-    # installs stay per-profile manual.
+    # installs stay per-profile manual. The one exception is the statusLine
+    # block: see Sync-ClaudeProfileStatusLines.
     $profiles = @(Get-CfgList 'claude_code.profiles')
     if ($profiles.Count -eq 0) { Write-Info 'no claude profiles declared - skipping'; return }
     foreach ($p in $profiles) {
@@ -174,6 +175,43 @@ function Sync-ClaudeProfiles {
         }
         Write-Info "Syncing claude account profile: $p"
         Sync-ClaudeAssets -Root (Join-Path $HOME ".claude-$p")
+    }
+}
+
+function Sync-ClaudeProfileStatusLines {
+    # Keep the ccstatusline statusLine block of every ~/.claude-<name> config
+    # dir equal to the one in ~/.claude/settings.json. `claude-as` seeds that
+    # block once, when the profile has none, and never refreshes it, so a
+    # profile kept whatever was current the day it was created (found on a dev
+    # box: `npx -y ccstatusline@latest` and refreshInterval 10, both since
+    # replaced in ~/.claude). Windows bakes the renderer into the command, so
+    # every change to it left those copies behind.
+    #
+    # Detection-driven on purpose: `claude-as <name>` creates profiles that
+    # are never declared in claude_code.profiles. Only a block that already
+    # renders ccstatusline is replaced; a profile with a custom status line,
+    # or without one, is left alone. Runs after Sync-ClaudeSettings so it
+    # copies the block that run just wrote.
+    param([string]$HomeDir = $HOME)
+    if (-not (Test-CfgEnabled 'claude_code.ccstatusline.enabled')) { return }
+    $main = Join-Path $HomeDir '.claude/settings.json'
+    if (-not (Test-Path -LiteralPath $main)) { return }
+    $mainJson = Get-Content -Raw -LiteralPath $main
+    foreach ($dir in @(Get-ChildItem -LiteralPath $HomeDir -Directory -Force -Filter '.claude-*' -ErrorAction Ignore)) {
+        $dest = Join-Path $dir.FullName 'settings.json'
+        if (-not (Test-Path -LiteralPath $dest)) { continue }
+        $curJson = Get-Content -Raw -LiteralPath $dest
+        try {
+            $newJson = Set-ClaudeProfileStatusLine -CurrentJson $curJson -SourceJson $mainJson
+            $curNorm = ($curJson | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+            $newNorm = ($newJson | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress)
+        } catch { Write-Warn "$dest is not valid JSON - statusLine left alone"; continue }
+        if ($curNorm -eq $newNorm) { continue }
+        if (Test-DryRun) { Write-Info "[DRY-RUN] Would sync the statusLine block into $dest"; continue }
+        if (Test-KeepExisting) { Write-Info "[SKIP] Keeping existing statusLine in $dest (KeepExisting)"; continue }
+        Backup-File -Path $dest | Out-Null
+        Write-Utf8NoBom -Path $dest -Content $newJson
+        Write-Success "Synced the statusLine block into $dest"
     }
 }
 
@@ -424,6 +462,7 @@ function Install-ClaudeCode {
     Sync-ClaudeProfiles
     Install-AccountSwap
     Sync-ClaudeSettings
+    Sync-ClaudeProfileStatusLines
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
     Install-ClaudePlugins
