@@ -182,10 +182,10 @@ function Install-AccountSwap {
     # off by default: the repo is private, so a default-on step would leave
     # anyone without access stuck on an unfetchable URL.
     #
-    # Runs AFTER Sync-ClaudeSettings on purpose. That sync rewrites
-    # statusLine.command from this repo's template; the account-swap
-    # installer points it back at its own wrapper, so ordering is what keeps
-    # auto-swap working across an env-setup run.
+    # Runs BEFORE Sync-ClaudeSettings on purpose, so this repo's statusLine
+    # command has the last word. account-swap dropped its status-line wrapper
+    # (claude-account-swap#3); its installer only rewrites statusLine.command
+    # when it still names that wrapper, which the sync then overwrites.
     if (-not (Test-CfgEnabled 'claude_code.account_swap.enabled')) { return }
 
     $repo = Get-CfgValue 'claude_code.account_swap.repo'
@@ -365,15 +365,11 @@ function Get-CcstatuslineCommand {
     # directly. No npx (npm startup + a registry lookup per render outlasts
     # the refreshInterval, and Claude Code cancels the unfinished run) and no
     # npm .ps1 shim. Forward slashes work in the bash Claude Code launches it
-    # from; quoted only when the path has whitespace, because the
-    # account-swap wrapper splits its recorded renderer on spaces.
+    # from; quoted only when the path has whitespace.
     $entry = (Join-Path (Get-CcstatuslinePrefix) 'node_modules/ccstatusline/dist/ccstatusline.js') -replace '\\', '/'
     if ($entry -match '\s') { $entry = '"' + $entry + '"' }
     $render = "node $entry"
-    # account-swap wraps the status line itself and runs the recorded renderer
-    # from PowerShell as "<program> <args>": it gets the plain form.
-    if (Test-CfgEnabled 'claude_code.account_swap.enabled') { return $render }
-    # Otherwise render through statusline-throttle.sh: it answers with the last
+    # Always render through statusline-throttle.sh: it answers with the last
     # rendered line and re-renders at most once a minute per session (numbers
     # in the script header). Sourced, so the throttle adds no process to the
     # `bash -c` Claude Code already starts.
@@ -426,8 +422,8 @@ function Install-ClaudeCode {
     Add-ClaudeBinToPath
     Sync-ClaudeAssets -Root (Join-Path $HOME '.claude')
     Sync-ClaudeProfiles
-    Sync-ClaudeSettings
     Install-AccountSwap
+    Sync-ClaudeSettings
     if (Test-CfgEnabled 'claude_code.sync_mcp_servers') { Sync-ClaudeMcp }
     Register-ClaudeMarketplaces
     Install-ClaudePlugins

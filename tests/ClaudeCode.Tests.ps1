@@ -16,7 +16,7 @@ Describe 'Get-CcstatuslineCommand' {
         $cmd | Should -Not -Match 'npx'
         $cmd.Contains([string][char]92) | Should -BeFalse   # forward slashes for the bash launcher
     }
-    It 'keeps the plain node form when account-swap wraps the status line' {
+    It 'still renders through the throttle when account-swap is enabled' {
         $yaml = @'
 claude_code:
   enabled: true
@@ -26,7 +26,7 @@ claude_code:
         $f = Join-Path $TestDrive 'sl2.yaml'; Set-Content -Path $f -Value $yaml
         Import-Config -Path $f
         $cmd = Get-CcstatuslineCommand
-        $cmd | Should -Match '^node \S*ccstatusline/dist/ccstatusline\.js$'
+        $cmd | Should -Match '^\. \S*statusline-throttle\.sh node \S*ccstatusline/dist/ccstatusline\.js$'
     }
 }
 

@@ -149,8 +149,7 @@ suite "Merge: idempotent — already in sync, no .bak, no content change"
 _reset
 # The settled, in-sync state has statusLine.command pointed at the launcher
 # wrapper (see _set_ccstatusline_command), not the repo's portable npx command.
-jq --arg cmd "$HOME/.config/ccstatusline/statusline.sh" \
-   'if .statusLine then .statusLine.command = $cmd else . end' \
+_jq_set_statusline_command "$HOME/.config/ccstatusline/statusline.sh" \
    "$PROJECT_ROOT/configs/claude/settings.json" > "$HOME/.claude/settings.json"
 hash_before="$(sha256sum "$HOME/.claude/settings.json" | awk '{print $1}')"
 out="$(_merge_claude_settings 2>&1)"
