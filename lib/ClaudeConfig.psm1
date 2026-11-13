@@ -6,6 +6,36 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function ConvertTo-ClaudeSortedNode {
+    # Private: rebuild a ConvertFrom-Json tree with every object's keys in
+    # ordinal order. Array order is content and is kept.
+    param($Node)
+    if ($Node -is [System.Management.Automation.PSCustomObject]) {
+        $sorted = [ordered]@{}
+        $names = [string[]]@($Node.PSObject.Properties | ForEach-Object { $_.Name })
+        [Array]::Sort($names, [System.StringComparer]::Ordinal)
+        foreach ($n in $names) { $sorted[$n] = ConvertTo-ClaudeSortedNode -Node $Node.$n }
+        return [pscustomobject]$sorted
+    }
+    if ($Node -is [System.Array]) {
+        $items = @(foreach ($i in $Node) { ConvertTo-ClaudeSortedNode -Node $i })
+        # Unary comma: return the array as one object, or a one-element array
+        # would unroll into its element and an empty one into nothing.
+        return , $items
+    }
+    return $Node
+}
+
+function ConvertTo-ClaudeCanonicalJson {
+    # Compressed JSON with object keys sorted at every level, for "is this file
+    # already in sync" checks. Key order is not content: a settings file that
+    # was rewritten in another order (by the app, or by hand) must not count as
+    # changed. What `jq -S` gives the Bash engine. Pure -> unit-testable.
+    param([Parameter(Mandatory)][string]$Json)
+    $tree = ConvertTo-ClaudeSortedNode -Node ($Json | ConvertFrom-Json)
+    return (ConvertTo-Json -InputObject $tree -Depth 32 -Compress)
+}
+
 function Merge-ClaudeSettings {
     # Copy each whitelisted top-level key from Source into Current, preserving
     # all other Current keys. Idempotent. Mirrors _merge_claude_settings's
@@ -140,4 +170,4 @@ function Remove-ManagedSettingsKeys {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Set-ClaudeStatusLineCommand, Set-ClaudeProfileStatusLine, Remove-ManagedSettingsKeys
+Export-ModuleMember -Function ConvertTo-ClaudeCanonicalJson, Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Set-ClaudeStatusLineCommand, Set-ClaudeProfileStatusLine, Remove-ManagedSettingsKeys

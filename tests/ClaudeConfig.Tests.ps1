@@ -1,5 +1,21 @@
 BeforeAll { Import-Module "$PSScriptRoot/../lib/ClaudeConfig.psm1" -Force }
 
+Describe 'ConvertTo-ClaudeCanonicalJson' {
+    It 'treats the same settings in another key order as equal, at every depth' {
+        $a = '{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","if":"Bash(git *)","timeout":15}]}]},"statusLine":{"type":"command","padding":0}}'
+        $b = '{"statusLine":{"padding":0,"type":"command"},"hooks":{"PreToolUse":[{"hooks":[{"timeout":15,"type":"command","if":"Bash(git *)"}],"matcher":"Bash"}]}}'
+        (ConvertTo-ClaudeCanonicalJson -Json $a) | Should -Be (ConvertTo-ClaudeCanonicalJson -Json $b)
+    }
+    It 'still tells different values and different array order apart' {
+        (ConvertTo-ClaudeCanonicalJson -Json '{"a":1}') | Should -Not -Be (ConvertTo-ClaudeCanonicalJson -Json '{"a":2}')
+        (ConvertTo-ClaudeCanonicalJson -Json '{"a":["x","y"]}') | Should -Not -Be (ConvertTo-ClaudeCanonicalJson -Json '{"a":["y","x"]}')
+    }
+    It 'keeps one-element and empty arrays as arrays' {
+        ConvertTo-ClaudeCanonicalJson -Json '{"b":[],"a":["x"],"c":[{"z":1,"y":[2]}]}' |
+            Should -Be '{"a":["x"],"b":[],"c":[{"y":[2],"z":1}]}'
+    }
+}
+
 Describe 'Merge-ClaudeSettings' {
     It 'copies whitelisted keys from source and preserves non-whitelisted current keys' {
         $cur = '{"env":{"A":"1"},"keep":"me"}'
