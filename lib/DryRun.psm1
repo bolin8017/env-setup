@@ -48,6 +48,17 @@ function Deploy-Config {
     if (-not (Test-Path -LiteralPath $Source)) { Write-Warn "$Label source not found: $Source"; return }
 
     if (Test-Path -LiteralPath $Destination) {
+        # A dry run must never block on a prompt: nothing will be mutated, so
+        # just preview the decision a real run would ask about. Same order as
+        # the Bash twin (deploy_config in lib/dryrun.sh).
+        if (Test-DryRun) {
+            if (Test-FileContentEqual -PathA $Source -PathB $Destination) {
+                Write-Info "${Label}: identical to repo version - skipping"
+            } else {
+                Write-Info "[DRY-RUN] Would ask to overwrite $Destination (differs from repo)"
+            }
+            return
+        }
         if (Test-KeepExisting) { Write-Info "[SKIP] Keeping existing $Label (KeepExisting)"; return }
         if (-not (Test-AutoYes)) {
             $same = Test-FileContentEqual -PathA $Source -PathB $Destination
