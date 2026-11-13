@@ -308,12 +308,21 @@ claude_code:
     - teammateMode
     - outputStyle
     - hooks
-    - effortLevel
-    - modelSettings
     - advisorModel
     - autoUpdatesChannel
     - switchModelsOnFlag
     - extraKnownMarketplaces
+
+  # Top-level keys copied from configs/claude/settings.json only while
+  # ~/.claude/settings.json has no value for them. Claude Code writes these
+  # itself (/model and /effort save their choice here), so replacing them on
+  # every run reverted whatever was picked in the app. A new machine still
+  # starts from the repo's preferences; a later change to the template does
+  # not reach a machine that already has a value. A key belongs in this list
+  # or in settings_merge_keys, never both.
+  settings_seed_keys:
+    - effortLevel
+    - modelSettings
 
   # Register plugin marketplaces via `claude plugin marketplace add`.
   # Without these, enabledPlugins entries cannot resolve to real plugins.

@@ -10,10 +10,13 @@ function Merge-ClaudeSettings {
     # Copy each whitelisted top-level key from Source into Current, preserving
     # all other Current keys. Idempotent. Mirrors _merge_claude_settings's
     # `reduce $ARGS.positional[] as $k (.; .[$k] = $src[0][$k])`.
+    # $SeedKeys are copied only while Current has no such key: the app writes
+    # them itself afterwards (/model, /effort), and its value wins from then on.
     param(
         [Parameter(Mandatory)][string]$CurrentJson,
         [Parameter(Mandatory)][string]$SourceJson,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$WhitelistKeys
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$WhitelistKeys,
+        [string[]]$SeedKeys = @()
     )
     $cur = $CurrentJson | ConvertFrom-Json
     $src = $SourceJson | ConvertFrom-Json
@@ -21,6 +24,11 @@ function Merge-ClaudeSettings {
         if ($src.PSObject.Properties[$k]) {
             if ($cur.PSObject.Properties[$k]) { $cur.$k = $src.$k }
             else { $cur | Add-Member -NotePropertyName $k -NotePropertyValue $src.$k }
+        }
+    }
+    foreach ($k in $SeedKeys) {
+        if ($src.PSObject.Properties[$k] -and -not $cur.PSObject.Properties[$k]) {
+            $cur | Add-Member -NotePropertyName $k -NotePropertyValue $src.$k
         }
     }
     return ($cur | ConvertTo-Json -Depth 32)

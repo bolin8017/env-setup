@@ -273,6 +273,8 @@ function Sync-ClaudeSettings {
     # @() guard: Get-CfgList unrolls to a scalar for a single-key list, and
     # $scalar.Count then throws under StrictMode.
     $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
+    # Written only while the machine has no value: Claude Code owns them after.
+    $seedKeys = @(Get-CfgList 'claude_code.settings_seed_keys')
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would merge $($keys.Count) whitelisted key(s) into $dest"; return }
     if ((Test-KeepExisting) -and (Test-Path $dest)) { Write-Info '[SKIP] Keeping existing settings.json (KeepExisting)'; return }
     New-DirOrDryRun -Path (Split-Path $dest -Parent)
@@ -292,7 +294,7 @@ function Sync-ClaudeSettings {
     # skip every later step (marketplaces, plugins, ccstatusline).
     try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
     catch { Write-Warn "$dest is not valid JSON - skipping merge. Fix manually."; return }
-    $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
+    $merged = Merge-ClaudeSettings -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys -SeedKeys $seedKeys
     # Native Windows can't use the shared "tmux" teammateMode (no tmux/iTerm2);
     # pin it to in-process before the idempotency compare. Also heals files
     # merged with "tmux" before this fix.
@@ -483,7 +485,8 @@ function Uninstall-ClaudeSettings {
     if (-not (Test-Path $src)) { return }
     try { $null = Get-Content -Raw $dest | ConvertFrom-Json }
     catch { Write-Warn "$dest is not valid JSON - leaving it. Fix manually."; return }
-    $keys = @(Get-CfgList 'claude_code.settings_merge_keys')
+    # Seed keys too: a seeded value that still equals the repo's is env-setup's.
+    $keys = @(Get-CfgList 'claude_code.settings_merge_keys') + @(Get-CfgList 'claude_code.settings_seed_keys')
     if (Test-DryRun) { Write-Info "[DRY-RUN] Would strip $($keys.Count) env-setup key(s) from settings.json"; return }
     $stripped = Remove-ManagedSettingsKeys -CurrentJson (Get-Content -Raw $dest) -SourceJson (Get-Content -Raw $src) -WhitelistKeys $keys
     Write-Utf8NoBom -Path $dest -Content $stripped

@@ -29,6 +29,15 @@ Describe 'settings_merge_keys whitelist matches settings.json' {
             $script:Settings.PSObject.Properties[$k] | Should -Not -BeNullOrEmpty -Because "whitelist key '$k' must exist in settings.json"
         }
     }
+    It 'every seed key exists as a top-level key and is not also a merge key' {
+        $merge = @(Get-CfgList 'claude_code.settings_merge_keys')
+        $seed = @(Get-CfgList 'claude_code.settings_seed_keys')
+        $seed.Count | Should -BeGreaterThan 0
+        foreach ($k in $seed) {
+            $script:Settings.PSObject.Properties[$k] | Should -Not -BeNullOrEmpty -Because "seed key '$k' must exist in settings.json"
+            $merge | Should -Not -Contain $k -Because "a key replaced on every run cannot also be seed-only"
+        }
+    }
 }
 
 Describe 'enabledPlugins marketplaces are registered' {

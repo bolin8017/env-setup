@@ -17,7 +17,7 @@ deployed.
 | `skills/<name>/` | `~/.claude/skills/<name>/` | `claude_code.sync_skills` | additive per-dir copy |
 | `guides/*.md` | `~/.claude/guides/` | `claude_code.sync_guides` | additive per-file copy |
 | `hooks/*.py` | `~/.claude/hooks/` | `claude_code.sync_hooks` | additive per-file copy; run by `settings.json` `hooks` |
-| `settings.json` | `~/.claude/settings.json` | (whitelist) | jq/PS merge of `settings_merge_keys` only; other keys preserved |
+| `settings.json` | `~/.claude/settings.json` | (whitelist) | jq/PS merge of `settings_merge_keys`; `settings_seed_keys` (model preferences the app also writes) only while the machine has no value; other keys preserved |
 | `mcp-servers.json` | `~/.claude.json` `mcpServers` | `claude_code.sync_mcp_servers` | merge; no-op while the source declares no servers |
 
 "Additive" means files that exist only on the machine (user-created rules,
@@ -56,8 +56,8 @@ re-copy those paths from upstream and bump this note.
 ## Guardrails
 
 `tests/test_claude_assets.sh` + `tests/ClaudeAssets.Tests.ps1` run in CI and
-check: JSON assets parse; every `settings_merge_keys` entry exists in
-`settings.json`; every `enabledPlugins` entry's `@marketplace` suffix appears
+check: JSON assets parse; every `settings_merge_keys` and `settings_seed_keys`
+entry exists in `settings.json` and no key is in both lists; every `enabledPlugins` entry's `@marketplace` suffix appears
 in `claude_code.marketplaces` (fresh-install resolvability); commands and
 skills carry frontmatter with a description; every skill dir has a `SKILL.md`;
 `CLAUDE.md` stays under 200 lines; every rule declares `paths:`; every
