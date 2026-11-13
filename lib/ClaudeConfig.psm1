@@ -82,6 +82,31 @@ function Set-ClaudeStatusLineCommand {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
+function Set-ClaudeProfileStatusLine {
+    # Replace a profile's statusLine block with the one in $SourceJson (the
+    # default ~/.claude settings). The whole block, not just the command: a
+    # copy seeded months ago also carries fields the template has since dropped
+    # (refreshInterval). Only when BOTH sides render ccstatusline - a profile
+    # with its own custom status line, or none, comes back unchanged.
+    # Pure -> unit-testable.
+    param(
+        [Parameter(Mandatory)][string]$CurrentJson,
+        [Parameter(Mandatory)][string]$SourceJson
+    )
+    $cur = $CurrentJson | ConvertFrom-Json
+    $src = $SourceJson | ConvertFrom-Json
+    $rendersCcstatusline = {
+        param($o)
+        $o.PSObject.Properties['statusLine'] -and $o.statusLine -and
+            $o.statusLine.PSObject.Properties['command'] -and
+            "$($o.statusLine.command)" -match 'ccstatusline'
+    }
+    if ((& $rendersCcstatusline $cur) -and (& $rendersCcstatusline $src)) {
+        $cur.statusLine = $src.statusLine
+    }
+    return ($cur | ConvertTo-Json -Depth 32)
+}
+
 function Remove-ManagedSettingsKeys {
     # Inverse of Merge-ClaudeSettings: given the user's settings JSON, the repo's
     # settings JSON, and the whitelist keys, return JSON with each whitelisted key
@@ -107,4 +132,4 @@ function Remove-ManagedSettingsKeys {
     return ($cur | ConvertTo-Json -Depth 32)
 }
 
-Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Set-ClaudeStatusLineCommand, Remove-ManagedSettingsKeys
+Export-ModuleMember -Function Merge-ClaudeSettings, Merge-McpServers, Set-ClaudeTeammateMode, Set-ClaudeStatusLineCommand, Set-ClaudeProfileStatusLine, Remove-ManagedSettingsKeys

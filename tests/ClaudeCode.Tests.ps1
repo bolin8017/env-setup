@@ -181,6 +181,64 @@ claude_code:
 # configs/aliases.ps1 into bolin8017/claude-account-swap; their coverage moved
 # with them (that repo's own Pester/bash suites).
 
+Describe 'Sync-ClaudeProfileStatusLines' {
+    BeforeEach {
+        $env:ENVSETUP_DRY_RUN = 'false'
+        $f = Join-Path $TestDrive 'psl.yaml'
+        Set-Content -Path $f -Value "claude_code:`n  enabled: true`n  ccstatusline:`n    enabled: true"
+        Import-Config -Path $f
+        $script:Home2 = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        foreach ($d in '.claude', '.claude-stale', '.claude-custom', '.claude-nosettings') {
+            New-Item -ItemType Directory -Force -Path (Join-Path $script:Home2 $d) | Out-Null
+        }
+        Set-Content -Path (Join-Path $script:Home2 '.claude/settings.json') `
+            -Value '{"statusLine":{"type":"command","command":". C:/x/statusline-throttle.sh node C:/x/ccstatusline.js","padding":0}}'
+        $script:Stale = Join-Path $script:Home2 '.claude-stale/settings.json'
+        Set-Content -Path $script:Stale `
+            -Value '{"theme":"dark","statusLine":{"type":"command","command":"npx -y ccstatusline@latest","padding":0,"refreshInterval":10}}'
+        $script:Custom = Join-Path $script:Home2 '.claude-custom/settings.json'
+        Set-Content -Path $script:Custom -Value '{"statusLine":{"type":"command","command":"my-own-line.ps1"}}'
+    }
+    AfterEach { Remove-Item Env:ENVSETUP_DRY_RUN -ErrorAction Ignore }
+
+    It 'heals a stale profile, undeclared in claude_code.profiles, and backs it up' {
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        $o = Get-Content -Raw $script:Stale | ConvertFrom-Json
+        $o.statusLine.command | Should -Be '. C:/x/statusline-throttle.sh node C:/x/ccstatusline.js'
+        $o.statusLine.PSObject.Properties['refreshInterval'] | Should -BeNullOrEmpty
+        $o.theme | Should -Be 'dark'
+        @(Get-ChildItem (Split-Path $script:Stale) -Filter 'settings.json.bak.*').Count | Should -Be 1
+    }
+    It 'leaves a custom status line and a profile without settings.json alone' {
+        $before = Get-Content -Raw $script:Custom
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        Get-Content -Raw $script:Custom | Should -Be $before
+        Test-Path (Join-Path $script:Home2 '.claude-nosettings/settings.json') | Should -BeFalse
+    }
+    It 'changes nothing on a second run' {
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        $settled = Get-Content -Raw $script:Stale
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        Get-Content -Raw $script:Stale | Should -Be $settled
+        @(Get-ChildItem (Split-Path $script:Stale) -Filter 'settings.json.bak.*').Count | Should -Be 1
+    }
+    It 'only announces the change under dry-run' {
+        $env:ENVSETUP_DRY_RUN = 'true'
+        $before = Get-Content -Raw $script:Stale
+        Mock Write-Info { }
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2
+        Get-Content -Raw $script:Stale | Should -Be $before
+        Should -Invoke Write-Info -ParameterFilter { $Message -match 'DRY-RUN' -and $Message -match 'claude-stale' }
+    }
+    It 'warns and moves on when a profile settings.json is not valid JSON' {
+        Set-Content -Path $script:Custom -Value '{ not json'
+        Mock Write-Warn { }
+        Sync-ClaudeProfileStatusLines -HomeDir $script:Home2 *> $null
+        Should -Invoke Write-Warn -ParameterFilter { $Message -match 'not valid JSON' }
+        (Get-Content -Raw $script:Stale | ConvertFrom-Json).statusLine.command | Should -Match 'statusline-throttle'
+    }
+}
+
 Describe 'Install-AccountSwap (dry-run)' {
     BeforeEach {
         $env:ENVSETUP_DRY_RUN = 'true'

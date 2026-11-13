@@ -302,6 +302,48 @@ assert_eq "$hb2" "$ha2" "settled state: no content change on re-run"
 assert_eq "0" "$(find "$HOME/.claude" -name 'settings.json.bak.*' 2>/dev/null | wc -l | tr -d ' ')" \
     "settled state: no new .bak on re-run"
 
+# ---------------------------------------------------------------------------
+suite "Profiles: stale ccstatusline statusLine blocks follow ~/.claude"
+# ---------------------------------------------------------------------------
+_reset
+rm -rf "$HOME"/.claude-*
+_merge_claude_settings >/dev/null 2>&1
+_set_ccstatusline_command >/dev/null 2>&1
+want="$(jq -Sc '.statusLine' "$HOME/.claude/settings.json")"
+mkdir -p "$HOME/.claude-stale" "$HOME/.claude-custom" "$HOME/.claude-bare" "$HOME/.claude-empty"
+# A copy seeded long ago: old command plus a field the template has dropped.
+echo '{"theme":"dark","statusLine":{"type":"command","command":"npx -y ccstatusline@latest","padding":0,"refreshInterval":10}}' \
+    > "$HOME/.claude-stale/settings.json"
+echo '{"statusLine":{"type":"command","command":"my-own-line.sh"}}' > "$HOME/.claude-custom/settings.json"
+echo '{"theme":"dark"}' > "$HOME/.claude-bare/settings.json"
+custom_before="$(sha256sum "$HOME/.claude-custom/settings.json" | awk '{print $1}')"
+bare_before="$(sha256sum "$HOME/.claude-bare/settings.json" | awk '{print $1}')"
+
+out="$(DRY_RUN="true" _sync_profile_statuslines 2>&1)"
+assert_contains "$out" ".claude-stale/settings.json" "dry-run names the stale profile"
+assert_eq "npx -y ccstatusline@latest" "$(jq -r '.statusLine.command' "$HOME/.claude-stale/settings.json")" \
+    "dry-run leaves the stale profile untouched"
+
+_sync_profile_statuslines >/dev/null 2>&1
+assert_eq "$want" "$(jq -Sc '.statusLine' "$HOME/.claude-stale/settings.json")" \
+    "stale profile gets the whole block (refreshInterval gone)"
+assert_eq "dark" "$(jq -r '.theme' "$HOME/.claude-stale/settings.json")" "other profile keys preserved"
+assert_eq "1" "$(find "$HOME/.claude-stale" -name 'settings.json.bak.*' | wc -l | tr -d ' ')" \
+    "stale profile backed up before the rewrite"
+assert_eq "$custom_before" "$(sha256sum "$HOME/.claude-custom/settings.json" | awk '{print $1}')" \
+    "custom (non-ccstatusline) status line left alone"
+assert_eq "$bare_before" "$(sha256sum "$HOME/.claude-bare/settings.json" | awk '{print $1}')" \
+    "profile without statusLine left alone"
+assert_file_not_exists "$HOME/.claude-empty/settings.json" "profile without settings.json gets none"
+
+stale_settled="$(sha256sum "$HOME/.claude-stale/settings.json" | awk '{print $1}')"
+_sync_profile_statuslines >/dev/null 2>&1
+assert_eq "$stale_settled" "$(sha256sum "$HOME/.claude-stale/settings.json" | awk '{print $1}')" \
+    "second run changes nothing"
+assert_eq "1" "$(find "$HOME/.claude-stale" -name 'settings.json.bak.*' | wc -l | tr -d ' ')" \
+    "second run makes no new backup"
+rm -rf "$HOME"/.claude-*
+
 # Cleanup
 export HOME="$ORIG_HOME"
 

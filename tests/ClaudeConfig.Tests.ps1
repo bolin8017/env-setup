@@ -47,6 +47,34 @@ Describe 'Set-ClaudeStatusLineCommand' {
     }
 }
 
+Describe 'Set-ClaudeProfileStatusLine' {
+    BeforeAll {
+        $script:Main = '{"statusLine":{"type":"command","command":". C:/x/statusline-throttle.sh node C:/x/ccstatusline.js","padding":0}}'
+    }
+    It 'replaces a stale ccstatusline block as a whole and keeps other keys' {
+        $cur = '{"theme":"dark","statusLine":{"type":"command","command":"npx -y ccstatusline@latest","padding":0,"refreshInterval":10}}'
+        $o = (Set-ClaudeProfileStatusLine -CurrentJson $cur -SourceJson $script:Main) | ConvertFrom-Json
+        $o.statusLine.command | Should -Be '. C:/x/statusline-throttle.sh node C:/x/ccstatusline.js'
+        $o.statusLine.PSObject.Properties['refreshInterval'] | Should -BeNullOrEmpty
+        $o.theme | Should -Be 'dark'
+    }
+    It 'leaves a custom (non-ccstatusline) status line alone' {
+        $cur = '{"statusLine":{"type":"command","command":"my-own-line.ps1"}}'
+        $o = (Set-ClaudeProfileStatusLine -CurrentJson $cur -SourceJson $script:Main) | ConvertFrom-Json
+        $o.statusLine.command | Should -Be 'my-own-line.ps1'
+    }
+    It 'never injects statusLine into a profile that lacks it' {
+        $o = (Set-ClaudeProfileStatusLine -CurrentJson '{"theme":"dark"}' -SourceJson $script:Main) | ConvertFrom-Json
+        $o.PSObject.Properties['statusLine'] | Should -BeNullOrEmpty
+    }
+    It 'copies nothing when ~/.claude itself has a custom status line' {
+        $cur = '{"statusLine":{"type":"command","command":"npx -y ccstatusline@latest"}}'
+        $src = '{"statusLine":{"type":"command","command":"my-own-line.ps1"}}'
+        $o = (Set-ClaudeProfileStatusLine -CurrentJson $cur -SourceJson $src) | ConvertFrom-Json
+        $o.statusLine.command | Should -Be 'npx -y ccstatusline@latest'
+    }
+}
+
 Describe 'Set-ClaudeTeammateMode' {
     It 'rewrites an existing teammateMode to in-process' {
         $o = (Set-ClaudeTeammateMode -CurrentJson '{"teammateMode":"tmux","keep":"me"}') | ConvertFrom-Json

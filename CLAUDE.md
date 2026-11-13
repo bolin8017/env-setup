@@ -163,6 +163,10 @@ env-setup/
   the Claude settings sync, so this repo's `statusLine.command` (the throttle
   on Windows) has the last word: account-swap no longer ships a status-line
   wrapper, and the throttle stays on whether or not account-swap is enabled.
+  `claude-as` seeds a new profile's `statusLine` block from `~/.claude` once
+  and never refreshes it, so both engines re-sync that block into every
+  `~/.claude-<name>` dir that renders ccstatusline on each run
+  (`_sync_profile_statuslines` / `Sync-ClaudeProfileStatusLines`).
 - **ccstatusline is a pinned install, never npx**: Claude Code cancels a
   status line command that is still running when the next refresh fires, and
   `npx -y ccstatusline@latest` (npm startup + a registry lookup per render)
