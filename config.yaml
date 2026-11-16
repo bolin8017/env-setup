@@ -306,6 +306,9 @@ claude_code:
     - enabledPlugins
     - skipDangerousModePermissionPrompt
     - teammateMode
+    # Deliver inbound cross-session messages without holding them for approval
+    # (recipient-side policy; valid values accept/hold/refuse).
+    - crossSessionInbound
     - outputStyle
     - hooks
     - advisorModel
